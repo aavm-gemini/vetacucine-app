@@ -105,6 +105,7 @@
 <body>
 
     <div class="app-container">
+        <!-- SIDEBAR -->
         <nav class="sidebar">
             <div class="sidebar-header">Veta<span>Cucine</span></div>
             <ul class="nav-links">
@@ -115,6 +116,7 @@
             </ul>
         </nav>
 
+        <!-- ÁREA DE TRABAJO PRINCIPAL -->
         <div class="main-content">
             
             <div class="header-top">
@@ -200,7 +202,6 @@
                 return;
             }
 
-            // --- LECTURA DE ROL Y OCULTAMIENTO DEL MENÚ ---
             const correoUsuario = session.user.email;
             const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol').eq('email', correoUsuario).single();
             const rolUsuario = empleado ? empleado.rol : 'Operador'; 
@@ -217,8 +218,27 @@
 
             const offsetZonaHoraria = (new Date()).getTimezoneOffset() * 60000;
             document.getElementById('fecha').value = (new Date(Date.now() - offsetZonaHoraria)).toISOString().split('T')[0];
+            
             await cargarCatalogos(); 
-            cargarTabla();
+            await cargarTabla();
+
+            // === MAGIA: LEER SI VENIMOS DE LA PÁGINA DE REPORTES ===
+            const urlParams = new URLSearchParams(window.location.search);
+            const editId = urlParams.get('edit');
+            
+            if (editId) {
+                // Buscamos ese mueble específico en la base de datos
+                const { data: regEdit } = await supabaseClient.from('registros_produccion').select('*').eq('id', editId).single();
+                
+                if (regEdit) {
+                    // Lo inyectamos en nuestra lista local si no estaba
+                    if (!window.registrosDescargados.find(r => r.id === regEdit.id)) {
+                        window.registrosDescargados.push(regEdit);
+                    }
+                    // Y llamamos a la función de editar automáticamente
+                    cargarParaEditar(regEdit.id);
+                }
+            }
         });
 
         async function cerrarSesion() {
@@ -366,7 +386,12 @@
             }
             
             document.getElementById('piso').value = ''; document.getElementById('bloque').value = ''; document.getElementById('suite').value = ''; document.getElementById('observaciones').value = ''; document.getElementById('modificaciones').value = '';
-            document.getElementById('piso').focus(); btn.innerHTML = "Guardar Mueble"; btn.classList.remove('btn-editando'); btn.disabled = false; cargarTabla();
+            document.getElementById('piso').focus(); btn.innerHTML = "Guardar Mueble"; btn.classList.remove('btn-editando'); btn.disabled = false; 
+            
+            await cargarTabla();
+            
+            // LIMPIAR LA DIRECCIÓN WEB SI VENÍAMOS DE REPORTES PARA QUE NO SE QUEDE PEGADO
+            window.history.replaceState({}, document.title, window.location.pathname);
             
             Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'El mueble se registró correctamente.', timer: 1500, showConfirmButton: false });
         }
@@ -427,6 +452,16 @@
                     <button class="btn-accion" onclick="eliminarRegistro('${fila.id}', '${fila.codigo_proyecto || '-'}', '${ubicacionVisual}')">🗑️</button></td></tr>`;
             });
         }
+
+        // ==========================================
+        // DETECTOR DE CONEXIÓN A INTERNET
+        // ==========================================
+        window.addEventListener('offline', () => {
+            Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Sin conexión a Internet', text: 'El sistema está trabajando fuera de línea.', showConfirmButton: false, background: '#fee2e2', color: '#ef4444', iconColor: '#ef4444' });
+        });
+        window.addEventListener('online', () => {
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Conexión restaurada', text: 'Ya puedes guardar datos.', showConfirmButton: false, timer: 4000, timerProgressBar: true, background: '#dcfce7', color: '#16a34a', iconColor: '#16a34a' });
+        });
     </script>
 </body>
 </html>

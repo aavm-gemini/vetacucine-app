@@ -4,8 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - VetaCucine</title>
+    <!-- Librería de Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Librería para Gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- LIBRERÍA DE ALERTAS AÑADIDA PARA EL AVISO "SIN CONEXIÓN" -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <style>
         :root { --tema-primario: #3b82f6; --tema-fondo: #f8fafc; }
@@ -73,6 +77,7 @@
 <body>
 
     <div class="app-container">
+        <!-- SIDEBAR -->
         <nav class="sidebar">
             <div class="sidebar-header">Veta<span>Cucine</span></div>
             <ul class="nav-links">
@@ -83,6 +88,7 @@
             </ul>
         </nav>
 
+        <!-- CONTENIDO PRINCIPAL -->
         <div class="main-content">
             
             <div class="header-top">
@@ -257,6 +263,39 @@
                 }
             });
         }
+
+        // ==========================================
+        // DETECTOR DE CONEXIÓN A INTERNET
+        // ==========================================
+        window.addEventListener('offline', () => {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'error',
+                title: 'Sin conexión a Internet',
+                text: 'El sistema está trabajando fuera de línea.',
+                showConfirmButton: false,
+                background: '#fee2e2', 
+                color: '#ef4444',      
+                iconColor: '#ef4444'
+            });
+        });
+
+        window.addEventListener('online', () => {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Conexión restaurada',
+                text: 'Ya puedes guardar datos en la nube.',
+                showConfirmButton: false,
+                timer: 4000,           
+                timerProgressBar: true,
+                background: '#dcfce7', 
+                color: '#16a34a',      
+                iconColor: '#16a34a'
+            });
+        });
     </script>
 </body>
 </html>
