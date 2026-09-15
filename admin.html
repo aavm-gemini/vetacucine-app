@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administrador - VetaCucine</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        /* --- ESTRUCTURA DEL MENÚ LATERAL (SIDEBAR) --- */
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f1f5f9; overflow: hidden; }
+        .app-container { display: flex; height: 100vh; width: 100vw; }
+        
+        .sidebar { width: 250px; background-color: #1e293b; color: white; display: flex; flex-direction: column; transition: 0.3s; box-shadow: 2px 0 10px rgba(0,0,0,0.1); z-index: 10; }
+        .sidebar-header { padding: 25px 20px; font-size: 22px; font-weight: bold; border-bottom: 1px solid #334155; text-align: center; letter-spacing: 1px; color: white; }
+        .sidebar-header span { color: #3b82f6; }
+        
+        .nav-links { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; flex-grow: 1; margin-top: 15px; }
+        .nav-links li { margin: 0; }
+        .nav-links a { display: block; padding: 16px 25px; color: #cbd5e1; text-decoration: none; font-size: 15px; border-left: 4px solid transparent; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
+        .nav-links a:hover { background-color: #334155; color: white; }
+        .nav-links a.active { background-color: #0f172a; border-left-color: #3b82f6; color: white; font-weight: bold; }
+        
+        /* --- ÁREA DE TRABAJO PRINCIPAL --- */
+        .main-content { flex: 1; padding: 25px; overflow-y: auto; background-color: #f1f5f9; scroll-behavior: smooth; }
+
+        /* --- NUEVA CABECERA Y PERFIL --- */
+        .header-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+        .perfil-usuario { display: flex; align-items: center; gap: 15px; }
+        .mensaje-bienvenida { font-size: 14px; color: #475569; }
+        .mensaje-bienvenida span { font-weight: bold; color: #1e293b; }
+        .foto-perfil { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid #3b82f6; }
+        .btn-salir { background-color: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-left: 5px; }
+        .btn-salir:hover { background-color: #fef2f2; }
+
+        /* ESTILOS INTERNOS DE ADMIN */
+        .header-admin { text-align: left; color: #1e293b; margin: 0; }
+        .header-admin span { background-color: #ef4444; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; vertical-align: middle; margin-left: 10px; }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; max-width: 1100px; margin: 0 auto; }
+        .panel { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #475569; }
+        h3 { color: #334155; margin-top: 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; font-size: 16px; }
+        .form-row { display: flex; gap: 10px; margin-bottom: 15px; align-items: end; }
+        .form-group { flex: 1; }
+        label { display: block; font-size: 12px; font-weight: bold; color: #64748b; margin-bottom: 4px; }
+        input { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; }
+        input[type="color"] { padding: 2px; cursor: pointer; height: 33px; }
+        .btn-add { background-color: #475569; color: white; border: none; padding: 9px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-add:hover { filter: brightness(0.8); }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+        th, td { border-bottom: 1px solid #e2e8f0; padding: 10px 8px; text-align: left; }
+        th { background-color: #f8fafc; color: #475569; }
+        tr:hover { background-color: #f1f5f9; }
+        .btn-delete, .btn-edit { background: none; border: none; cursor: pointer; font-size: 16px; transition: 0.2s; padding: 0 4px; }
+        .btn-delete:hover, .btn-edit:hover { transform: scale(1.2); }
+        .color-dot { display: inline-block; width: 16px; height: 16px; border-radius: 50%; vertical-align: middle; margin-right: 8px; border: 1px solid #ccc; }
+        .badge-orden { background-color: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+
+        @media (max-width: 1000px) { .dashboard-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) { 
+            body { overflow: auto; }
+            .app-container { flex-direction: column; height: auto; }
+            .sidebar { width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .sidebar-header { padding: 15px; }
+            .nav-links { flex-direction: row; margin-top: 0; justify-content: space-around; background-color: #0f172a; }
+            .nav-links a { padding: 10px 5px; font-size: 12px; border-left: none; border-bottom: 3px solid transparent; flex-direction: column; gap: 4px; text-align: center; }
+            .nav-links a.active { border-left: none; border-bottom-color: #3b82f6; }
+            .main-content { padding: 15px; height: auto; overflow-y: visible; }
+            .header-top { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- SIDEBAR -->
+        <nav class="sidebar">
+            <div class="sidebar-header">Veta<span>Cucine</span></div>
+            <ul class="nav-links">
+                <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <li><a href="index.html">📝 Ingreso Muebles</a></li>
+                <li><a href="reportes.html">🔍 Buscar y Reportes</a></li>
+                <li><a href="admin.html" class="active">⚙️ Administrador</a></li>
+            </ul>
+        </nav>
+
+        <!-- CONTENIDO -->
+        <div class="main-content">
+            <div class="header-top">
+                <div class="header-admin">
+                    <h2 style="margin: 0;">Panel de Configuración <span>ACCESO RESTRINGIDO</span></h2>
+                    <p style="color: #64748b; margin: 0; font-size: 14px; margin-top: 5px;">Administración de catálogos y datos fijos del sistema</p>
+                </div>
+                
+                <div class="perfil-usuario">
+                    <div class="mensaje-bienvenida">Hola, <span id="nombreUsuario">Cargando...</span></div>
+                    <img id="fotoUsuario" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Foto" class="foto-perfil">
+                    <button class="btn-salir" onclick="cerrarSesion()">Salir</button>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <!-- PANEL PROYECTOS -->
+                <div class="panel" style="border-top-color: #3b82f6;">
+                    <h3>Catálogo de Proyectos</h3>
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 0.5;"><label>Proyecto</label><input type="text" id="nombre_proyecto" placeholder="Ej: Promenade"></div>
+                        <div class="form-group" style="flex: 0.3;"><label>Bloques (Ej: A,B,C)</label><input type="text" id="bloques_proyecto" placeholder="Vacío = No aplica" style="text-transform: uppercase;"></div>
+                        <div class="form-group" style="flex: 0.2;"><label>Color</label><input type="color" id="color_proyecto" value="#0066cc"></div>
+                        <button id="btn_guardar_proyecto" class="btn-add" style="background-color: #3b82f6;" onclick="guardarProyecto()">Agregar</button>
+                    </div>
+                    <table>
+                        <thead><tr><th>Proyecto</th><th>Bloques</th><th style="width: 50px; text-align: center;">Acción</th></tr></thead>
+                        <tbody id="tabla_proyectos"></tbody>
+                    </table>
+                </div>
+
+                <!-- PANEL ESPACIOS -->
+                <div class="panel" style="border-top-color: #10b981;">
+                    <h3>Catálogo de Espacios</h3>
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 0.4;"><label>Sigla</label><input type="text" id="sigla_espacio" placeholder="HP" style="text-transform: uppercase;"></div>
+                        <div class="form-group"><label>Nombre</label><input type="text" id="nombre_espacio" placeholder="Hab. Principal"></div>
+                        <button class="btn-add" style="background-color: #10b981;" onclick="agregarDato('catalogo_espacios', 'sigla_espacio', 'nombre_espacio')">Agregar</button>
+                    </div>
+                    <table>
+                        <thead><tr><th>Sigla</th><th>Nombre</th><th style="width: 30px;"></th></tr></thead>
+                        <tbody id="tabla_espacios"></tbody>
+                    </table>
+                </div>
+
+                <!-- PANEL PRODUCTOS -->
+                <div class="panel" style="border-top-color: #f59e0b;">
+                    <h3>Catálogo de Productos</h3>
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 0.4;"><label>Sigla</label><input type="text" id="sigla_producto" placeholder="PP" style="text-transform: uppercase;"></div>
+                        <div class="form-group"><label>Nombre</label><input type="text" id="nombre_producto" placeholder="Puerta Ppal"></div>
+                        <button class="btn-add" style="background-color: #f59e0b;" onclick="agregarDato('catalogo_productos', 'sigla_producto', 'nombre_producto')">Agregar</button>
+                    </div>
+                    <table>
+                        <thead><tr><th>Sigla</th><th>Nombre</th><th style="width: 30px;"></th></tr></thead>
+                        <tbody id="tabla_productos"></tbody>
+                    </table>
+                </div>
+
+                <!-- PANEL ESTADOS -->
+                <div class="panel" style="border-top-color: #8b5cf6;">
+                    <h3>Catálogo de Estados</h3>
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 0.2;"><label>Orden</label><input type="number" id="orden_estado" placeholder="1" min="1"></div>
+                        <div class="form-group" style="flex: 0.8;"><label>Nombre del Estado</label><input type="text" id="nombre_estado" placeholder="Ej: Bloqueo"></div>
+                        <button id="btn_guardar_estado" class="btn-add" style="background-color: #8b5cf6;" onclick="guardarEstado()">Agregar</button>
+                    </div>
+                    <table>
+                        <thead><tr><th>Orden</th><th>Estado</th><th style="width: 50px; text-align: center;">Acción</th></tr></thead>
+                        <tbody id="tabla_estados"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://pnrntmkcisgymyvmzson.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBucm50bWtjaXNneW15dm16c29uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNzAwODQsImV4cCI6MjEwNDc0NjA4NH0.fdW9mj9rkO0rxHXB8rBeJc6a32QSQxtvsNtu9_rL6yc';
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+        
+        let idProyectoEditando = null; let idEstadoEditando = null;
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            // 1. Guardia de Seguridad
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // 2. CONTROL ESTRICTO DE ROLES
+            const correoUsuario = session.user.email;
+            const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol').eq('email', correoUsuario).single();
+            const rolUsuario = empleado ? empleado.rol : 'Operador'; // Si no tiene rol escrito, asume Operador
+
+            if (rolUsuario !== 'Administrador') {
+                // Lo pateamos al dashboard con una alerta
+                await Swal.fire({ 
+                    icon: 'error', 
+                    title: 'Acceso Denegado', 
+                    text: 'No tienes permisos de Administrador para ver esta página.', 
+                    confirmButtonColor: '#ef4444' 
+                });
+                window.location.href = 'dashboard.html';
+                return;
+            }
+
+            // 3. Inyección de datos
+            const nombreCompleto = session.user.user_metadata.full_name;
+            const urlFoto = session.user.user_metadata.avatar_url;
+            document.getElementById('nombreUsuario').innerText = nombreCompleto.split(' ')[0];
+            document.getElementById('fotoUsuario').src = urlFoto;
+
+            // 4. Cargar listas
+            cargarListaProyectos(); 
+            cargarLista('catalogo_espacios', 'tabla_espacios');
+            cargarLista('catalogo_productos', 'tabla_productos'); 
+            cargarEstados(); 
+        });
+
+        async function cerrarSesion() {
+            await supabaseClient.auth.signOut();
+            window.location.href = 'login.html';
+        }
+
+        async function agregarDato(tabla, idInputSigla, idInputNombre) {
+            let sigla = document.getElementById(idInputSigla).value.trim().toUpperCase(); 
+            let nombre = document.getElementById(idInputNombre).value.trim();
+            if (!sigla || !nombre) { Swal.fire('Faltan datos', 'Completa los campos.', 'warning'); return; }
+            const { error } = await supabaseClient.from(tabla).insert([{ sigla, nombre }]);
+            if (!error) { 
+                document.getElementById(idInputSigla).value = ''; 
+                document.getElementById(idInputNombre).value = ''; 
+                cargarLista(tabla, tabla === 'catalogo_espacios' ? 'tabla_espacios' : 'tabla_productos'); 
+            }
+        }
+
+        async function cargarLista(tabla, idTbody) {
+            const { data } = await supabaseClient.from(tabla).select('*').order('sigla', { ascending: true }); 
+            const tbody = document.getElementById(idTbody); 
+            tbody.innerHTML = ""; 
+            if(data) data.forEach(item => { 
+                tbody.innerHTML += `<tr><td><strong>${item.sigla}</strong></td><td>${item.nombre}</td><td><button class="btn-delete" onclick="eliminarDato('${tabla}', '${item.id}', '${item.sigla}')">🗑️</button></td></tr>`; 
+            });
+        }
+
+        function prepararEdicionProyecto(id, nombre, color, bloques) {
+            idProyectoEditando = id; 
+            document.getElementById('nombre_proyecto').value = nombre; 
+            document.getElementById('color_proyecto').value = color; 
+            document.getElementById('bloques_proyecto').value = bloques || '';
+            document.getElementById('btn_guardar_proyecto').innerHTML = "Actualizar"; 
+            document.getElementById('btn_guardar_proyecto').style.backgroundColor = "#f97316"; 
+        }
+
+        async function guardarProyecto() {
+            let nombre = document.getElementById('nombre_proyecto').value.trim(); 
+            let color = document.getElementById('color_proyecto').value; 
+            let bloques = document.getElementById('bloques_proyecto').value.trim().toUpperCase();
+            if (!nombre) return;
+            if (idProyectoEditando) await supabaseClient.from('catalogo_proyectos').update({ nombre, color, bloques }).eq('id', idProyectoEditando);
+            else await supabaseClient.from('catalogo_proyectos').insert([{ nombre, color, bloques }]);
+            
+            idProyectoEditando = null; 
+            document.getElementById('nombre_proyecto').value = ''; 
+            document.getElementById('bloques_proyecto').value = '';
+            document.getElementById('btn_guardar_proyecto').innerHTML = "Agregar"; 
+            document.getElementById('btn_guardar_proyecto').style.backgroundColor = "#3b82f6";
+            cargarListaProyectos();
+        }
+
+        async function cargarListaProyectos() {
+            const { data } = await supabaseClient.from('catalogo_proyectos').select('*').order('nombre', { ascending: true }); 
+            const tbody = document.getElementById('tabla_proyectos'); 
+            tbody.innerHTML = ""; 
+            if(data) data.forEach(item => {
+                let bloquesBadge = item.bloques ? item.bloques : '<em>Ninguno</em>';
+                tbody.innerHTML += `<tr><td><span class="color-dot" style="background-color: ${item.color};"></span><strong>${item.nombre}</strong></td>
+                <td>${bloquesBadge}</td>
+                <td style="text-align: center;"><button class="btn-edit" onclick="prepararEdicionProyecto('${item.id}', '${item.nombre}', '${item.color}', '${item.bloques || ''}')">✏️</button>
+                <button class="btn-delete" onclick="eliminarDato('catalogo_proyectos', '${item.id}', '${item.nombre}')">🗑️</button></td></tr>`;
+            });
+        }
+
+        function prepararEdicionEstado(id, nombre, orden) {
+            idEstadoEditando = id; 
+            document.getElementById('nombre_estado').value = nombre; 
+            document.getElementById('orden_estado').value = orden;
+            document.getElementById('btn_guardar_estado').innerHTML = "Actualizar"; 
+            document.getElementById('btn_guardar_estado').style.backgroundColor = "#f97316"; 
+        }
+
+        async function guardarEstado() {
+            let nombre = document.getElementById('nombre_estado').value.trim(); 
+            let ordenDeseado = parseInt(document.getElementById('orden_estado').value);
+            if (!nombre) return;
+            let btn = document.getElementById('btn_guardar_estado'); 
+            btn.innerHTML = "Reordenando..."; 
+            btn.disabled = true;
+            
+            const { data: estadosDb } = await supabaseClient.from('catalogo_estados').select('*').order('orden', { ascending: true });
+            let otrosEstados = idEstadoEditando ? estadosDb.filter(e => e.id !== idEstadoEditando) : estadosDb;
+            let maxOrden = otrosEstados.length > 0 ? Math.max(...otrosEstados.map(e => e.orden)) : 0;
+            if (isNaN(ordenDeseado) || ordenDeseado <= 0) ordenDeseado = maxOrden + 1;
+            
+            let nuevaSecuencia = []; let indexRelativo = 1; let insertado = false;
+            for (let i = 0; i < otrosEstados.length; i++) {
+                if (indexRelativo === ordenDeseado && !insertado) { nuevaSecuencia.push({ isTarget: true, nombre: nombre, orden: indexRelativo }); insertado = true; indexRelativo++; }
+                nuevaSecuencia.push({ id: otrosEstados[i].id, nombre: otrosEstados[i].nombre, orden: indexRelativo }); indexRelativo++;
+            }
+            if (!insertado) nuevaSecuencia.push({ isTarget: true, nombre: nombre, orden: ordenDeseado > indexRelativo ? indexRelativo : ordenDeseado });
+            
+            for (let item of nuevaSecuencia) {
+                if (item.isTarget) {
+                    if (idEstadoEditando) await supabaseClient.from('catalogo_estados').update({ nombre: item.nombre, orden: item.orden }).eq('id', idEstadoEditando);
+                    else await supabaseClient.from('catalogo_estados').insert([{ nombre: item.nombre, orden: item.orden }]);
+                } else {
+                    let oldItem = otrosEstados.find(e => e.id === item.id);
+                    if (oldItem && oldItem.orden !== item.orden) await supabaseClient.from('catalogo_estados').update({ orden: item.orden }).eq('id', item.id);
+                }
+            }
+            
+            idEstadoEditando = null; 
+            document.getElementById('nombre_estado').value = ''; 
+            document.getElementById('orden_estado').value = '';
+            btn.innerHTML = "Agregar"; 
+            btn.style.backgroundColor = "#8b5cf6"; 
+            btn.disabled = false; 
+            cargarEstados();
+        }
+
+        async function cargarEstados() {
+            const { data } = await supabaseClient.from('catalogo_estados').select('*').order('orden', { ascending: true }); 
+            const tbody = document.getElementById('tabla_estados'); 
+            tbody.innerHTML = ""; 
+            if(data) data.forEach(item => { 
+                tbody.innerHTML += `<tr><td><span class="badge-orden">${item.orden}</span></td><td><strong>${item.nombre}</strong></td>
+                <td style="text-align: center;"><button class="btn-edit" onclick="prepararEdicionEstado('${item.id}', '${item.nombre}', '${item.orden}')">✏️</button>
+                <button class="btn-delete" onclick="eliminarDato('catalogo_estados', '${item.id}', '${item.nombre}')">🗑️</button></td></tr>`;
+            });
+        }
+
+        async function eliminarDato(tabla, id, identificador) {
+            const result = await Swal.fire({
+                title: '¿Estás seguro?',
+                html: `Estás a punto de borrar:<br><b>${identificador}</b>`,
+                icon: 'error',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#94a3b8',
+                confirmButtonText: 'Sí, borrar'
+            });
+
+            if (result.isConfirmed) {
+                await supabaseClient.from(tabla).delete().eq('id', id);
+                if (tabla === 'catalogo_proyectos') cargarListaProyectos(); 
+                else if (tabla === 'catalogo_estados') cargarEstados(); 
+                else cargarLista(tabla, tabla === 'catalogo_espacios' ? 'tabla_espacios' : 'tabla_productos');
+            }
+        }
+    </script>
+</body>
+</html>

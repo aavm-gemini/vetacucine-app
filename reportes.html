@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reportes y Búsqueda - VetaCucine</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        :root { --tema-primario: #3b82f6; --tema-fondo: #f8fafc; }
+        
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: var(--tema-fondo); color: #334155; overflow: hidden; transition: background-color 0.5s ease; }
+        .app-container { display: flex; height: 100vh; width: 100vw; }
+        
+        .sidebar { width: 250px; background-color: #1e293b; color: white; display: flex; flex-direction: column; transition: 0.3s; box-shadow: 2px 0 10px rgba(0,0,0,0.1); z-index: 10; }
+        .sidebar-header { padding: 25px 20px; font-size: 22px; font-weight: bold; border-bottom: 1px solid #334155; text-align: center; letter-spacing: 1px; color: white; }
+        .sidebar-header span { color: #3b82f6; }
+        
+        .nav-links { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; flex-grow: 1; margin-top: 15px; }
+        .nav-links li { margin: 0; }
+        .nav-links a { display: block; padding: 16px 25px; color: #cbd5e1; text-decoration: none; font-size: 15px; border-left: 4px solid transparent; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
+        .nav-links a:hover { background-color: #334155; color: white; }
+        .nav-links a.active { background-color: #0f172a; border-left-color: #3b82f6; color: white; font-weight: bold; }
+        
+        .main-content { flex: 1; padding: 25px; overflow-y: auto; background-color: var(--tema-fondo); scroll-behavior: smooth; }
+
+        .header-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+        .header-title { margin: 0; color: #1e293b; font-size: 24px; }
+        .perfil-usuario { display: flex; align-items: center; gap: 15px; }
+        .mensaje-bienvenida { font-size: 14px; color: #475569; }
+        .mensaje-bienvenida span { font-weight: bold; color: #1e293b; }
+        .foto-perfil { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid var(--tema-primario); }
+        .btn-salir { background-color: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-left: 5px; }
+        .btn-salir:hover { background-color: #fef2f2; }
+
+        .filter-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid var(--tema-primario); margin-bottom: 20px; max-width: 1200px; margin-left: auto; margin-right: auto; transition: border-top 0.5s ease; }
+        .filter-row { display: flex; gap: 15px; flex-wrap: wrap; align-items: end; margin-bottom: 15px; }
+        .filter-row:last-child { margin-bottom: 0; }
+        .filter-group { flex: 1; min-width: 130px; }
+        .filter-group label { display: block; font-size: 12px; font-weight: bold; color: #64748b; margin-bottom: 5px; }
+        .filter-group input, .filter-group select { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; font-size: 13px; }
+        input:disabled { background-color: #f1f5f9; color: #94a3b8; cursor: not-allowed; border-color: #e2e8f0; }
+        
+        .btn-buscar { background-color: var(--tema-primario); color: white; border: none; padding: 9px 25px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s; height: 35px; }
+        .btn-buscar:hover { filter: brightness(0.85); transform: scale(0.98); }
+        .btn-limpiar { background-color: #e2e8f0; color: #475569; border: none; padding: 9px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; height: 35px; }
+        .btn-limpiar:hover { background-color: #cbd5e1; }
+        
+        .btn-exportar { background-color: #10b981; color: white; border: none; padding: 9px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; height: 35px; display: none; margin-left: auto; }
+        .btn-exportar:hover { background-color: #059669; transform: scale(0.98); }
+
+        .table-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); max-width: 1200px; margin: 0 auto; overflow-x: auto; margin-bottom: 40px; }
+        .resultados-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+        .resultados-header h3 { margin: 0; font-size: 18px; color: #334155; }
+        .contador { background-color: var(--tema-fondo); color: var(--tema-primario); border: 1px solid var(--tema-primario); padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; transition: 0.5s; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+        th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; vertical-align: middle; }
+        th { background-color: #f8fafc; color: #475569; }
+        tr:hover td { background-color: #f1f5f9; }
+        th:nth-child(1) { width: 9%; } th:nth-child(2) { width: 9%; } th:nth-child(3) { width: 17%; } th:nth-child(4) { width: 11%; } 
+        th:nth-child(5) { width: 22%; } th:nth-child(6) { width: 22%; } th:nth-child(7) { width: 10%; text-align: center; } 
+        .texto-truncado { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+        .badge-estado { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; white-space: nowrap; border: 1px solid #94a3b8; color: #475569; background-color: white; }
+        .badge-bloqueo { background-color: #fee2e2; color: #ef4444; border-color: #ef4444; }
+        .badge-completado { background-color: #475569; color: white; border-color: #475569; }
+        .estado-vacio { text-align: center; padding: 40px; color: #94a3b8; font-style: italic; }
+
+        @media (max-width: 768px) { 
+            body { overflow: auto; }
+            .app-container { flex-direction: column; height: auto; }
+            .sidebar { width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .sidebar-header { padding: 15px; }
+            .nav-links { flex-direction: row; margin-top: 0; justify-content: space-around; background-color: #0f172a; }
+            .nav-links a { padding: 10px 5px; font-size: 12px; border-left: none; border-bottom: 3px solid transparent; flex-direction: column; gap: 4px; text-align: center; }
+            .nav-links a.active { border-left: none; border-bottom-color: #3b82f6; }
+            .main-content { padding: 15px; height: auto; overflow-y: visible; }
+            .filter-row { flex-direction: column; gap: 10px; align-items: stretch; }
+            .header-top { flex-direction: column; align-items: flex-start; }
+            .btn-exportar { margin-left: 0; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <nav class="sidebar">
+            <div class="sidebar-header">Veta<span>Cucine</span></div>
+            <ul class="nav-links">
+                <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <li><a href="index.html">📝 Ingreso Muebles</a></li>
+                <li><a href="reportes.html" class="active">🔍 Buscar y Reportes</a></li>
+                <li><a href="admin.html">⚙️ Administrador</a></li>
+            </ul>
+        </nav>
+
+        <div class="main-content">
+            
+            <div class="header-top">
+                <h2 class="header-title">Buscador y Reportes</h2>
+                
+                <div class="perfil-usuario">
+                    <div class="mensaje-bienvenida">Hola, <span id="nombreUsuario">Cargando...</span></div>
+                    <img id="fotoUsuario" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Foto" class="foto-perfil">
+                    <button class="btn-salir" onclick="cerrarSesion()">Salir</button>
+                </div>
+            </div>
+
+            <div class="filter-card">
+                <div class="filter-row">
+                    <div class="filter-group"><label>Proyecto</label><select id="filtro_proyecto" onchange="cambiarTema()"><option value="Todos">Todos los Proyectos</option></select></div>
+                    <div class="filter-group"><label>Estado</label><select id="filtro_estado"><option value="Todos">Cualquier Estado</option></select></div>
+                    <div class="filter-group"><label>Producto</label><select id="filtro_producto"><option value="Todos">Todos los Productos</option></select></div>
+                </div>
+
+                <div class="filter-row">
+                    <div class="filter-group" style="flex: 0.5;"><label>Piso</label><input type="text" id="filtro_piso" placeholder="Ej: 9" onkeypress="manejarEnter(event)"></div>
+                    <div class="filter-group" style="flex: 0.5;">
+                        <label>Bloque</label>
+                        <input type="text" id="filtro_bloque" list="bloques_disponibles" placeholder="Ej: A" onkeypress="manejarEnter(event)" style="text-transform: uppercase;">
+                        <datalist id="bloques_disponibles"></datalist>
+                    </div>
+                    <div class="filter-group" style="flex: 1;"><label>Suite</label><input type="text" id="filtro_suite" placeholder="Ej: MIAMI o 1" onkeypress="manejarEnter(event)" style="text-transform: uppercase;"></div>
+                </div>
+
+                <div class="filter-row">
+                    <div class="filter-group"><label>Búsqueda Libre</label><input type="text" id="filtro_texto" placeholder="Ej: bisagra, 025..." onkeypress="manejarEnter(event)"></div>
+                    <div class="filter-group" style="flex: 0.5;"><label>Desde Fecha</label><input type="date" id="filtro_fecha_inicio" title="Déjalo vacío para buscar desde el inicio"></div>
+                    <div class="filter-group" style="flex: 0.5;"><label>Hasta Fecha</label><input type="date" id="filtro_fecha_fin"></div>
+                    
+                    <button class="btn-buscar" onclick="ejecutarBusqueda()">🔍 Buscar</button>
+                    <button class="btn-limpiar" onclick="limpiarFiltros()">Limpiar</button>
+                </div>
+            </div>
+
+            <div class="table-card">
+                <div class="resultados-header">
+                    <h3>Resultados de Búsqueda</h3>
+                    <div>
+                        <span class="contador" id="contador_resultados">0 registros encontrados</span>
+                        <button id="btn_exportar" class="btn-exportar" onclick="exportarExcel()">📥 Exportar a Excel</button>
+                    </div>
+                </div>
+                <table id="tablaResultados">
+                    <thead>
+                        <tr><th>Fecha</th><th>Cód. Int.</th><th>Ubicación</th><th>Mueble</th><th>Observaciones</th><th>Modificaciones</th><th style="text-align: center;">Estado</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="7" class="estado-vacio">Usa los filtros de arriba y haz clic en "Buscar" para traer registros.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://pnrntmkcisgymyvmzson.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBucm50bWtjaXNneW15dm16c29uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNzAwODQsImV4cCI6MjEwNDc0NjA4NH0.fdW9mj9rkO0rxHXB8rBeJc6a32QSQxtvsNtu9_rL6yc';
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+        
+        window.estadosCargados = []; 
+        window.proyectosCargados = []; 
+        window.datosParaExportar = []; 
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // --- LECTURA DE ROL Y OCULTAMIENTO DEL MENÚ ---
+            const correoUsuario = session.user.email;
+            const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol').eq('email', correoUsuario).single();
+            const rolUsuario = empleado ? empleado.rol : 'Operador'; 
+
+            if (rolUsuario !== 'Administrador') {
+                const linkAdmin = document.querySelector('a[href="admin.html"]');
+                if (linkAdmin) linkAdmin.parentElement.style.display = 'none';
+            }
+
+            const nombreCompleto = session.user.user_metadata.full_name;
+            const urlFoto = session.user.user_metadata.avatar_url;
+            document.getElementById('nombreUsuario').innerText = nombreCompleto.split(' ')[0];
+            document.getElementById('fotoUsuario').src = urlFoto;
+
+            const offsetZonaHoraria = (new Date()).getTimezoneOffset() * 60000;
+            document.getElementById('filtro_fecha_fin').value = (new Date(Date.now() - offsetZonaHoraria)).toISOString().split('T')[0];
+            document.getElementById('filtro_fecha_inicio').value = ""; 
+            await cargarSelectores();
+        });
+
+        async function cerrarSesion() {
+            await supabaseClient.auth.signOut();
+            window.location.href = 'login.html';
+        }
+
+        function cambiarTema() {
+            let nombreProyecto = document.getElementById('filtro_proyecto').value;
+            let inputBloque = document.getElementById('filtro_bloque');
+            let datalist = document.getElementById('bloques_disponibles');
+            
+            datalist.innerHTML = "";
+
+            if (nombreProyecto === "Todos") {
+                inputBloque.disabled = false; inputBloque.placeholder = "Ej: A";
+                document.documentElement.style.setProperty('--tema-primario', '#3b82f6');
+                document.documentElement.style.setProperty('--tema-fondo', '#f8fafc');
+            } else {
+                let proyectoReal = window.proyectosCargados.find(p => p.nombre === nombreProyecto);
+                
+                if (proyectoReal && proyectoReal.bloques) {
+                    inputBloque.disabled = false; inputBloque.placeholder = "Selecciona o escribe";
+                    let arrayBloques = proyectoReal.bloques.split(',').map(b => b.trim()).filter(b => b !== "");
+                    arrayBloques.forEach(b => { datalist.innerHTML += `<option value="${b}"></option>`; });
+                } else {
+                    inputBloque.value = ""; inputBloque.disabled = true; inputBloque.placeholder = "No aplica";
+                }
+
+                if (proyectoReal && proyectoReal.color) {
+                    let colorHex = proyectoReal.color;
+                    document.documentElement.style.setProperty('--tema-primario', colorHex);
+                    document.documentElement.style.setProperty('--tema-fondo', colorHex + '15');
+                }
+            }
+        }
+
+        function manejarEnter(e) { if (e.key === 'Enter') ejecutarBusqueda(); }
+
+        async function cargarSelectores() {
+            const { data: proyectos } = await supabaseClient.from('catalogo_proyectos').select('*').order('nombre');
+            if (proyectos) { window.proyectosCargados = proyectos; const sel = document.getElementById('filtro_proyecto'); proyectos.forEach(p => { sel.innerHTML += `<option value="${p.nombre}">${p.nombre}</option>`; }); }
+
+            const { data: estados } = await supabaseClient.from('catalogo_estados').select('*').order('orden', { ascending: true });
+            if (estados) { window.estadosCargados = estados; const sel = document.getElementById('filtro_estado'); estados.forEach(e => { sel.innerHTML += `<option value="${e.nombre}">${e.nombre}</option>`; }); }
+
+            const { data: productos } = await supabaseClient.from('catalogo_productos').select('*').order('sigla', { ascending: true });
+            if (productos) { const sel = document.getElementById('filtro_producto'); productos.forEach(p => { sel.innerHTML += `<option value="${p.sigla}">${p.sigla} - ${p.nombre}</option>`; }); }
+        }
+
+        function limpiarFiltros() {
+            document.getElementById('filtro_proyecto').value = "Todos"; document.getElementById('filtro_estado').value = "Todos"; document.getElementById('filtro_producto').value = "Todos"; 
+            document.getElementById('filtro_piso').value = ""; document.getElementById('filtro_bloque').value = ""; document.getElementById('filtro_suite').value = ""; document.getElementById('filtro_texto').value = "";
+            const offsetZonaHoraria = (new Date()).getTimezoneOffset() * 60000; document.getElementById('filtro_fecha_fin').value = (new Date(Date.now() - offsetZonaHoraria)).toISOString().split('T')[0]; document.getElementById('filtro_fecha_inicio').value = "";
+            cambiarTema(); 
+            document.querySelector("#tablaResultados tbody").innerHTML = '<tr><td colspan="7" class="estado-vacio">Filtros limpiados. Haz clic en Buscar.</td></tr>';
+            document.getElementById('contador_resultados').innerText = "0 registros encontrados";
+            
+            document.getElementById('btn_exportar').style.display = 'none';
+            window.datosParaExportar = [];
+        }
+
+        async function ejecutarBusqueda() {
+            let proyecto = document.getElementById('filtro_proyecto').value; let estado = document.getElementById('filtro_estado').value; let producto = document.getElementById('filtro_producto').value;
+            let piso = document.getElementById('filtro_piso').value.trim().toUpperCase(); let bloque = document.getElementById('filtro_bloque').value.trim().toUpperCase(); 
+            let suite = document.getElementById('filtro_suite').value.trim().toUpperCase(); let texto = document.getElementById('filtro_texto').value.trim().toLowerCase();
+            let fechaInicio = document.getElementById('filtro_fecha_inicio').value; let fechaFin = document.getElementById('filtro_fecha_fin').value;
+
+            document.querySelector("#tablaResultados tbody").innerHTML = '<tr><td colspan="7" class="estado-vacio">Buscando en la base de datos... ⏳</td></tr>';
+
+            let query = supabaseClient.from('registros_produccion').select('*').order('fecha', { ascending: false });
+
+            if (proyecto !== "Todos") query = query.eq('proyecto', proyecto);
+            if (estado !== "Todos") query = query.eq('estado', estado);
+            if (producto !== "Todos") query = query.eq('producto', producto); 
+            if (fechaInicio) query = query.gte('fecha', fechaInicio);
+            if (fechaFin) query = query.lte('fecha', fechaFin);
+
+            const { data, error } = await query;
+            if (error) { alert("Error buscando datos: " + error.message); return; }
+
+            let datosFiltrados = data;
+            if (piso !== "") datosFiltrados = datosFiltrados.filter(fila => (fila.piso || "").toUpperCase() === piso);
+            if (bloque !== "") datosFiltrados = datosFiltrados.filter(fila => (fila.bloque || "").toUpperCase() === bloque);
+            if (suite !== "") datosFiltrados = datosFiltrados.filter(fila => (fila.suite || "").toUpperCase() === suite);
+            if (texto !== "") {
+                datosFiltrados = datosFiltrados.filter(fila => {
+                    let codigo = (fila.codigo_proyecto || "").toLowerCase(); let obs = (fila.observaciones || "").toLowerCase(); let mod = (fila.modificaciones || "").toLowerCase();
+                    return codigo.includes(texto) || obs.includes(texto) || mod.includes(texto);
+                });
+            }
+            
+            window.datosParaExportar = datosFiltrados;
+            if (datosFiltrados.length > 0) {
+                document.getElementById('btn_exportar').style.display = 'inline-block';
+            } else {
+                document.getElementById('btn_exportar').style.display = 'none';
+            }
+
+            pintarTabla(datosFiltrados);
+        }
+
+        function pintarTabla(data) {
+            const tbody = document.querySelector("#tablaResultados tbody"); tbody.innerHTML = ""; 
+            document.getElementById('contador_resultados').innerText = `${data.length} registros encontrados`;
+            if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="7" class="estado-vacio">No se encontró ningún mueble con estos filtros.</td></tr>'; return; }
+
+            let maxOrdenEstado = (window.estadosCargados && window.estadosCargados.length > 0) ? Math.max(...window.estadosCargados.map(e => e.orden)) : 1;
+
+            data.forEach(fila => {
+                let partes = fila.fecha ? fila.fecha.split('T')[0].split('-') : [];
+                let fechaCorta = partes.length ? `${partes[2]}-${partes[1]}-${partes[0].substring(2)}` : "";
+                let inicialProyecto = fila.proyecto ? (fila.proyecto.substring(0, 4).charAt(0).toUpperCase() + fila.proyecto.substring(1, 4).toLowerCase()) : "Pry";
+                let bloqueDisplay = fila.bloque || "";
+                let ubicacionVisual = (!isNaN(fila.suite) && fila.suite.trim() !== "") ? `${inicialProyecto} / P${fila.piso}${bloqueDisplay}-S${fila.suite}` : `${inicialProyecto} / P${fila.piso}${bloqueDisplay}-${fila.suite}`;
+                
+                let nombreEstado = fila.estado || 'Nuevo'; let objEstado = window.estadosCargados.find(e => e.nombre === nombreEstado); let ordenActual = objEstado ? objEstado.orden : 1;
+                let claseBadge = "badge-estado";
+                if (nombreEstado.toLowerCase().includes('bloque')) claseBadge += " badge-bloqueo";
+                else if (ordenActual === maxOrdenEstado) claseBadge += " badge-completado";
+
+                let obsText = fila.observaciones || ''; let modText = fila.modificaciones || '';
+                tbody.innerHTML += `<tr>
+                        <td style="font-weight:bold;">${fechaCorta}</td><td><strong>${fila.codigo_proyecto || '-'}</strong></td><td>${ubicacionVisual}</td><td>${fila.producto} (${fila.espacio})</td>
+                        <td title="${obsText}"><span class="texto-truncado">${obsText}</span></td><td title="${modText}"><span class="texto-truncado">${modText}</span></td>
+                        <td style="text-align: center;"><span class="${claseBadge}">${nombreEstado}</span></td>
+                    </tr>`;
+            });
+        }
+
+        function exportarExcel() {
+            if (!window.datosParaExportar || window.datosParaExportar.length === 0) {
+                alert("No hay datos para exportar.");
+                return;
+            }
+
+            let datosLimpios = window.datosParaExportar.map(fila => {
+                let fechaCorta = fila.fecha ? fila.fecha.split('T')[0] : "";
+                
+                return {
+                    "Fecha": fechaCorta,
+                    "Código Interno": fila.codigo_proyecto || "N/A",
+                    "Proyecto": fila.proyecto,
+                    "Piso": fila.piso,
+                    "Bloque": fila.bloque || "N/A",
+                    "Suite": fila.suite,
+                    "Espacio": fila.espacio,
+                    "Producto": fila.producto,
+                    "Estado": fila.estado,
+                    "Observaciones": fila.observaciones || "",
+                    "Modificaciones": fila.modificaciones || ""
+                };
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(datosLimpios);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte Producción");
+
+            const anchos = [
+                { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 10 }, 
+                { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 40 }, { wch: 40 }
+            ];
+            worksheet['!cols'] = anchos;
+
+            let fechaHoy = new Date().toISOString().split('T')[0];
+            XLSX.writeFile(workbook, `VetaCucine_Reporte_${fechaHoy}.xlsx`);
+        }
+    </script>
+</body>
+</html>

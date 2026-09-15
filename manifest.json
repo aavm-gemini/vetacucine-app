@@ -1,0 +1,20 @@
+{
+  "name": "VetaCucine Producción",
+  "short_name": "VetaCucine",
+  "start_url": "./login.html",
+  "display": "standalone",
+  "background_color": "#f1f5f9",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "icono.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icono.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
