@@ -9,7 +9,8 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <style>
-        :root { --tema-primario: #3b82f6; --tema-fondo: #f8fafc; }
+        /* Agregamos el rgb por defecto para que funcione la transparencia */
+        :root { --tema-primario: #3b82f6; --tema-rgb: 59, 130, 246; --tema-fondo: #f8fafc; }
         
         body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: var(--tema-fondo); color: #334155; overflow: hidden; transition: background-color 0.5s ease; }
         .app-container { display: flex; height: 100vh; width: 100vw; }
@@ -65,9 +66,7 @@
         th:nth-child(5) { width: 19%; } th:nth-child(6) { width: 19%; } th:nth-child(7) { width: 10%; text-align: center; } th:nth-child(8) { width: 6%; text-align: center; }
 
         .texto-truncado { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
-        .badge-estado { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; white-space: nowrap; border: 1px solid #94a3b8; color: #475569; background-color: white; }
-        .badge-bloqueo { background-color: #fee2e2; color: #ef4444; border-color: #ef4444; }
-        .badge-completado { background-color: #475569; color: white; border-color: #475569; }
+        .badge-estado { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; white-space: nowrap; transition: 0.3s; }
         .estado-vacio { text-align: center; padding: 40px; color: #94a3b8; font-style: italic; }
 
         .btn-accion { background-color: transparent; border: none; font-size: 15px; cursor: pointer; padding: 2px 4px; margin: 0; line-height: 1; opacity: 0; transition: 0.2s; }
@@ -204,6 +203,12 @@
             window.location.href = 'login.html';
         }
 
+        // Nueva función para calcular los RGB
+        function hexToRgb(hex) {
+            let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : null;
+        }
+
         function cambiarTema() {
             let nombreProyecto = document.getElementById('filtro_proyecto').value;
             let inputBloque = document.getElementById('filtro_bloque');
@@ -214,6 +219,7 @@
             if (nombreProyecto === "Todos") {
                 inputBloque.disabled = false; inputBloque.placeholder = "Ej: A";
                 document.documentElement.style.setProperty('--tema-primario', '#3b82f6');
+                document.documentElement.style.setProperty('--tema-rgb', '59, 130, 246');
                 document.documentElement.style.setProperty('--tema-fondo', '#f8fafc');
             } else {
                 let proyectoReal = window.proyectosCargados.find(p => p.nombre === nombreProyecto);
@@ -228,8 +234,10 @@
 
                 if (proyectoReal && proyectoReal.color) {
                     let colorHex = proyectoReal.color;
+                    let colorRgb = hexToRgb(colorHex);
                     document.documentElement.style.setProperty('--tema-primario', colorHex);
                     document.documentElement.style.setProperty('--tema-fondo', colorHex + '15');
+                    if (colorRgb) document.documentElement.style.setProperty('--tema-rgb', colorRgb);
                 }
             }
         }
@@ -289,7 +297,6 @@
                 });
             }
 
-            // --- ORDENAMIENTO NATURAL (PISO Y SUITE) ---
             datosFiltrados.sort((a, b) => {
                 const parseAlphaNum = (str) => {
                     if (!str) return [999999, ""];
@@ -339,17 +346,28 @@
                 let bloqueDisplay = fila.bloque || "";
                 let ubicacionVisual = (!isNaN(fila.suite) && fila.suite.trim() !== "") ? `${inicialProyecto} / P${fila.piso}${bloqueDisplay}-S${fila.suite}` : `${inicialProyecto} / P${fila.piso}${bloqueDisplay}-${fila.suite}`;
                 
-                let nombreEstado = fila.estado || 'Nuevo'; let objEstado = window.estadosCargados.find(e => e.nombre === nombreEstado); let ordenActual = objEstado ? objEstado.orden : 1;
-                let claseBadge = "badge-estado";
-                if (nombreEstado.toLowerCase().includes('bloque')) claseBadge += " badge-bloqueo";
-                else if (ordenActual === maxOrdenEstado) claseBadge += " badge-completado";
+                let nombreEstado = fila.estado || 'Nuevo'; 
+                let objEstado = window.estadosCargados.find(e => e.nombre === nombreEstado); 
+                let ordenActual = objEstado ? objEstado.orden : 1;
+                
+                let esBloqueo = nombreEstado.toLowerCase().includes('bloque'); 
+                let estiloBadge = "";
+
+                if (esBloqueo) { 
+                    estiloBadge = "background-color: #fee2e2; color: #ef4444; border: 1px solid #ef4444;"; 
+                } 
+                else {
+                    let opacidad = Math.max(0.15, (ordenActual / maxOrdenEstado)); 
+                    let textColor = opacidad > 0.6 ? "white" : "var(--tema-primario)";
+                    estiloBadge = `background-color: rgba(var(--tema-rgb), ${opacidad}); color: ${textColor}; border: 1px solid var(--tema-primario);`;
+                }
 
                 let obsText = fila.observaciones || ''; let modText = fila.modificaciones || '';
                 
                 tbody.innerHTML += `<tr>
                         <td style="font-weight:bold;">${fechaCorta}</td><td><strong>${fila.codigo_proyecto || '-'}</strong></td><td>${ubicacionVisual}</td><td>${fila.producto} (${fila.espacio})</td>
                         <td title="${obsText}"><span class="texto-truncado">${obsText}</span></td><td title="${modText}"><span class="texto-truncado">${modText}</span></td>
-                        <td style="text-align: center;"><span class="${claseBadge}">${nombreEstado}</span></td>
+                        <td style="text-align: center;"><span class="badge-estado" style="${estiloBadge}">${nombreEstado}</span></td>
                         <td style="text-align: center;">
                             <button class="btn-accion" onclick="editarDesdeReporte('${fila.id}')">✏️</button>
                             <button class="btn-accion" onclick="eliminarDesdeReporte('${fila.id}', '${fila.codigo_proyecto || '-'}', '${ubicacionVisual}')">🗑️</button>
