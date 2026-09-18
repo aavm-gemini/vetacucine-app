@@ -73,7 +73,6 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- SIDEBAR -->
         <nav class="sidebar">
             <div class="sidebar-header">Veta<span>Cucine</span></div>
             <ul class="nav-links">
@@ -81,11 +80,10 @@
                 <li><a href="taller.html">🏭 Panel Operador</a></li>
                 <li><a href="index.html">📝 Ingreso Muebles</a></li>
                 <li><a href="reportes.html">🔍 Buscar y Reportes</a></li>
-                <li><a href="admin.html" class="active">⚙️ Administrador</a></li>
+                <li><a href="admin.html" class="active" id="link-admin">⚙️ Administrador</a></li>
             </ul>
         </nav>
 
-        <!-- CONTENIDO -->
         <div class="main-content">
             <div class="header-top">
                 <div class="header-admin">
@@ -102,11 +100,10 @@
 
             <div class="dashboard-grid">
                 
-                <!-- PANEL: METAS DE PRODUCCIÓN CON LÓGICA DE EXCEPCIONES -->
                 <div class="panel panel-full" style="border-top-color: #ec4899;">
                     <h3>🎯 Control de Metas (Reglas y Excepciones)</h3>
                     <div class="form-row">
-                        <div class="form-group"><label>Proyecto</label><select id="meta_proyecto"><option value="">Cargando...</option></select></div>
+                        <div class="form-group"><label>Proyecto (o Bloque)</label><select id="meta_proyecto"><option value="">Cargando...</option></select></div>
                         <div class="form-group" style="flex: 0.6;">
                             <label>Piso (Vacío = TODOS)</label>
                             <input type="text" id="meta_piso" placeholder="Deja vacío para general" style="text-transform: uppercase;">
@@ -116,12 +113,11 @@
                         <button class="btn-add" style="background-color: #ec4899;" onclick="guardarMeta()">Fijar Meta</button>
                     </div>
                     <table>
-                        <thead><tr><th>Proyecto</th><th>Aplica a Piso</th><th>Producto</th><th>Cantidad Requerida</th><th style="width: 30px;"></th></tr></thead>
+                        <thead><tr><th>Proyecto / Bloque</th><th>Aplica a Piso</th><th>Producto</th><th>Cantidad Requerida</th><th style="width: 30px;"></th></tr></thead>
                         <tbody id="tabla_metas"></tbody>
                     </table>
                 </div>
 
-                <!-- PANEL PROYECTOS -->
                 <div class="panel" style="border-top-color: #3b82f6;">
                     <h3>Catálogo de Proyectos</h3>
                     <div class="form-row">
@@ -136,7 +132,6 @@
                     </table>
                 </div>
 
-                <!-- PANEL ESTADOS CON PILOTO AUTOMÁTICO -->
                 <div class="panel" style="border-top-color: #8b5cf6;">
                     <h3>Flujo de Estados (Piloto Automático)</h3>
                     <div class="form-row">
@@ -154,7 +149,6 @@
                     </table>
                 </div>
 
-                <!-- PANEL PRODUCTOS -->
                 <div class="panel" style="border-top-color: #f59e0b;">
                     <h3>Catálogo de Productos</h3>
                     <div class="form-row">
@@ -168,7 +162,6 @@
                     </table>
                 </div>
 
-                <!-- PANEL ESPACIOS -->
                 <div class="panel" style="border-top-color: #10b981;">
                     <h3>Catálogo de Espacios</h3>
                     <div class="form-row">
@@ -212,7 +205,6 @@
             document.getElementById('nombreUsuario').innerText = nombreCompleto.split(' ')[0];
             document.getElementById('fotoUsuario').src = urlFoto;
 
-            // Cargar datos
             cargarListaProyectos(); 
             cargarLista('catalogo_espacios', 'tabla_espacios');
             cargarLista('catalogo_productos', 'tabla_productos'); 
@@ -220,10 +212,7 @@
             cargarMetas();
         });
 
-        async function cerrarSesion() {
-            await supabaseClient.auth.signOut();
-            window.location.href = 'login.html';
-        }
+        async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; }
 
         async function agregarDato(tabla, idInputSigla, idInputNombre) {
             let sigla = document.getElementById(idInputSigla).value.trim().toUpperCase(); 
@@ -252,7 +241,6 @@
             }
         }
 
-        /* --- LOGICA PROYECTOS --- */
         function prepararEdicionProyecto(id, nombre, color, bloques) {
             idProyectoEditando = id; document.getElementById('nombre_proyecto').value = nombre; 
             document.getElementById('color_proyecto').value = color; document.getElementById('bloques_proyecto').value = bloques || '';
@@ -279,7 +267,16 @@
                 const selProy = document.getElementById('meta_proyecto');
                 selProy.innerHTML = '<option value="">Selecciona...</option>';
                 data.forEach(item => {
-                    selProy.innerHTML += `<option value="${item.nombre}">${item.nombre}</option>`;
+                    // DESGLOSAMOS LOS BLOQUES EN EL SELECTOR DE METAS
+                    if (item.bloques && item.bloques.trim() !== "") {
+                        let arrayBloques = item.bloques.split(',').map(b => b.trim()).filter(b => b !== "");
+                        arrayBloques.forEach(b => {
+                            selProy.innerHTML += `<option value="${item.nombre} - Bloque ${b}">${item.nombre} - Bloque ${b}</option>`;
+                        });
+                    } else {
+                        selProy.innerHTML += `<option value="${item.nombre}">${item.nombre}</option>`;
+                    }
+
                     let bloquesBadge = item.bloques ? item.bloques : '<em>Ninguno</em>';
                     tbody.innerHTML += `<tr><td><span class="color-dot" style="background-color: ${item.color};"></span><strong>${item.nombre}</strong></td>
                     <td>${bloquesBadge}</td><td style="text-align: center;"><button class="btn-edit" onclick="prepararEdicionProyecto('${item.id}', '${item.nombre}', '${item.color}', '${item.bloques || ''}')">✏️</button>
@@ -288,7 +285,6 @@
             }
         }
 
-        /* --- LOGICA ESTADOS --- */
         function prepararEdicionEstado(id, nombre, orden, sigEstado) {
             idEstadoEditando = id; document.getElementById('nombre_estado').value = nombre; 
             document.getElementById('orden_estado').value = orden; document.getElementById('estado_siguiente').value = sigEstado || '';
@@ -351,13 +347,10 @@
             }
         }
 
-        /* --- LÓGICA METAS DE PRODUCCIÓN CON EXCEPCIONES --- */
         async function guardarMeta() {
             let proyecto = document.getElementById('meta_proyecto').value;
-            // EL TRUCO ESTÁ AQUÍ: Si lo deja vacío, asumimos "TODOS"
             let pisoRaw = document.getElementById('meta_piso').value.trim().toUpperCase();
             let piso = pisoRaw === "" ? "TODOS" : pisoRaw; 
-            
             let producto = document.getElementById('meta_producto').value;
             let cantidad = parseInt(document.getElementById('meta_cantidad').value);
 
@@ -378,7 +371,6 @@
             const tbody = document.getElementById('tabla_metas'); tbody.innerHTML = "";
             if (data) {
                 data.forEach(item => {
-                    // Si el piso es "TODOS", le ponemos una etiqueta visual bonita
                     let pisoDisplay = item.piso === "TODOS" ? '<span class="badge-todos">🏢 TODOS LOS PISOS</span>' : `Piso <strong>${item.piso}</strong>`;
                     
                     tbody.innerHTML += `<tr><td><strong>${item.proyecto}</strong></td><td>${pisoDisplay}</td>
@@ -388,7 +380,6 @@
             }
         }
 
-        /* --- BORRADO GENERAL --- */
         async function eliminarDato(tabla, id, identificador) {
             const result = await Swal.fire({
                 title: '¿Estás seguro?', html: `Estás a punto de borrar:<br><b>${identificador}</b>`,

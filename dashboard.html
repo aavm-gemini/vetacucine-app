@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - VetaCucine</title>
     
-    <!-- Librerías -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -47,13 +46,12 @@
         .border-red { border-left-color: #ef4444; } .border-red .numero { color: #ef4444; }
         .border-green { border-left-color: #10b981; } .border-green .numero { color: #10b981; }
 
-        /* Tarjeta Clickable para Alertas */
         .clickable-card { cursor: pointer; transition: 0.2s ease; }
         .clickable-card:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(239, 68, 68, 0.15); }
         .clickable-card::after { content: "👆 Clic para ver"; position: absolute; top: 15px; right: 15px; font-size: 10px; color: #ef4444; font-weight: bold; background: #fee2e2; padding: 3px 8px; border-radius: 10px; opacity: 0; transition: 0.2s; }
         .clickable-card:hover::after { opacity: 1; }
 
-        /* --- NUEVO: SECCIÓN DE AVANCE DE METAS --- */
+        /* --- CONTROL DE METAS --- */
         .progreso-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-bottom: 25px; border-top: 5px solid #ec4899; }
         .progreso-card h3 { margin-top: 0; font-size: 16px; color: #334155; margin-bottom: 15px; }
         .filtros-progreso { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; }
@@ -71,16 +69,12 @@
         .chart-container h3 { margin-top: 0; margin-bottom: 20px; font-size: 16px; color: #334155; text-align: center; }
         .canvas-wrapper { position: relative; height: 250px; width: 100%; }
 
-        /* Estilo para la tabla de alertas dentro del SweetAlert */
         .tabla-alertas { width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; margin-top: 10px; }
         .tabla-alertas th, .tabla-alertas td { border-bottom: 1px solid #e2e8f0; padding: 8px; }
         .tabla-alertas th { background-color: #fee2e2; color: #991b1b; }
         .obs-peligro { color: #ef4444; font-weight: bold; }
 
-        @media (max-width: 900px) {
-            .stats-grid { grid-template-columns: 1fr; }
-            .charts-grid { grid-template-columns: 1fr; }
-        }
+        @media (max-width: 900px) { .stats-grid { grid-template-columns: 1fr; } .charts-grid { grid-template-columns: 1fr; } }
         @media (max-width: 768px) { 
             body { overflow: auto; }
             .app-container { flex-direction: column; height: auto; }
@@ -108,7 +102,6 @@
             </ul>
         </nav>
 
-        <!-- CONTENIDO PRINCIPAL -->
         <div class="main-content">
             <div class="header-top">
                 <h2 class="header-title">Tablero de Producción</h2>
@@ -119,14 +112,12 @@
                 </div>
             </div>
 
-            <!-- CONTADORES -->
             <div class="stats-grid">
                 <div class="stat-card border-blue">
                     <h4>Muebles en Sistema</h4>
                     <p class="numero" id="total_muebles">0</p>
                 </div>
                 
-                <!-- ESTA ES LA TARJETA INTERACTIVA DE ALERTAS -->
                 <div class="stat-card border-red clickable-card" onclick="verAlertasDetalladas()">
                     <h4>Alertas (Bloqueados)</h4>
                     <p class="numero" id="total_alertas">0</p>
@@ -138,31 +129,26 @@
                 </div>
             </div>
 
-            <!-- NUEVO: CONTROL DE AVANCE DE METAS -->
             <div class="progreso-card">
                 <h3>🎯 Medidor de Progreso (Metas vs. Realidad)</h3>
                 
-                <!-- Filtros dinámicos -->
                 <div class="filtros-progreso">
                     <select id="sel_proy" onchange="actualizarFiltrosMetas()"><option value="">Selecciona Proyecto...</option></select>
                     <select id="sel_piso" onchange="calcularAvance()"><option value="">Selecciona Piso...</option></select>
                     <select id="sel_prod" onchange="calcularAvance()"><option value="">Selecciona Producto...</option></select>
                 </div>
 
-                <!-- Barra visual -->
                 <div class="barra-container">
                     <div id="bar_verde" class="segmento-verde" style="width: 0%;"></div>
                     <div id="bar_amarillo" class="segmento-amarillo" style="width: 0%;"></div>
                     <div id="bar_rojo" class="segmento-rojo" style="width: 0%;"></div>
                 </div>
                 
-                <!-- Leyenda de texto -->
                 <div class="leyenda-progreso" id="texto_progreso">
                     Selecciona un proyecto, piso y producto para ver el progreso real.
                 </div>
             </div>
 
-            <!-- GRÁFICAS -->
             <div class="charts-grid">
                 <div class="chart-container">
                     <h3>Distribución por Estado</h3>
@@ -188,9 +174,9 @@
         let myChartEstados = null;
         let myChartProyectos = null;
         
-        // Variables globales para guardar la data y cruzarla
         window.mueblesCargados = [];
         window.metasCargadas = [];
+        window.productosCargadosGlobal = [];
         window.estadoFinalGlobal = "";
 
         document.addEventListener("DOMContentLoaded", async () => {
@@ -214,13 +200,9 @@
             await cargarDatosDashboard();
         });
 
-        async function cerrarSesion() {
-            await supabaseClient.auth.signOut();
-            window.location.href = 'login.html';
-        }
+        async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; }
 
         async function cargarDatosDashboard() {
-            // 1. Obtener estado final
             const { data: estadosCat } = await supabaseClient.from('catalogo_estados').select('*').order('orden', { ascending: true });
             if (estadosCat && estadosCat.length > 0) {
                 let maxOrden = Math.max(...estadosCat.map(e => e.orden));
@@ -228,20 +210,34 @@
                 if(estadoObjeto) window.estadoFinalGlobal = estadoObjeto.nombre;
             }
 
-            // 2. Traer todos los muebles y guardarlos globalmente
             const { data: muebles } = await supabaseClient.from('registros_produccion').select('*');
             if (muebles) window.mueblesCargados = muebles;
 
-            // 3. Traer metas de producción
             const { data: metas } = await supabaseClient.from('metas_produccion').select('*');
             if (metas) window.metasCargadas = metas;
 
-            // 4. Llenar el primer selector de metas (Proyectos)
-            let proySelect = document.getElementById('sel_proy');
-            let proyectosUnicos = [...new Set(window.metasCargadas.map(m => m.proyecto))];
-            proyectosUnicos.forEach(p => proySelect.innerHTML += `<option value="${p}">${p}</option>`);
+            const { data: prodCat } = await supabaseClient.from('catalogo_productos').select('*');
+            if (prodCat) window.productosCargadosGlobal = prodCat;
 
-            // --- CÁLCULO DE TARJETAS SUPERIORES ---
+            const { data: proyectosCat } = await supabaseClient.from('catalogo_proyectos').select('*').order('nombre');
+            let proySelect = document.getElementById('sel_proy');
+            let coloresProyectos = {};
+            
+            if (proyectosCat) {
+                proyectosCat.forEach(item => {
+                    coloresProyectos[item.nombre] = item.color || '#3b82f6';
+                    // Desglosar bloques en el selector
+                    if (item.bloques && item.bloques.trim() !== "") {
+                        let arrayBloques = item.bloques.split(',').map(b => b.trim()).filter(b => b !== "");
+                        arrayBloques.forEach(b => {
+                            proySelect.innerHTML += `<option value="${item.nombre} - Bloque ${b}">${item.nombre} - Bloque ${b}</option>`;
+                        });
+                    } else {
+                        proySelect.innerHTML += `<option value="${item.nombre}">${item.nombre}</option>`;
+                    }
+                });
+            }
+
             const total = window.mueblesCargados.length;
             const alertas = window.mueblesCargados.filter(m => m.estado && m.estado.toLowerCase().includes('bloque')).length;
             const completados = window.mueblesCargados.filter(m => m.estado === window.estadoFinalGlobal).length;
@@ -250,11 +246,7 @@
             animarContador('total_alertas', alertas);
             animarContador('total_completados', completados);
 
-            // --- GRÁFICAS ---
-            let conteoEstados = {}; let conteoProyectos = {}; let coloresProyectos = {};
-            const { data: proyectosCat } = await supabaseClient.from('catalogo_proyectos').select('nombre, color');
-            if (proyectosCat) proyectosCat.forEach(p => { coloresProyectos[p.nombre] = p.color || '#3b82f6'; });
-
+            let conteoEstados = {}; let conteoProyectos = {};
             window.mueblesCargados.forEach(m => {
                 let estado = m.estado || 'Sin Estado'; conteoEstados[estado] = (conteoEstados[estado] || 0) + 1;
                 let proyecto = m.proyecto || 'Sin Proyecto'; conteoProyectos[proyecto] = (conteoProyectos[proyecto] || 0) + 1;
@@ -264,11 +256,7 @@
             dibujarGraficaProyectos(conteoProyectos, coloresProyectos);
         }
 
-        // ==========================================
-        // NUEVA FUNCIÓN: VER ALERTAS DETALLADAS (LA LUPA)
-        // ==========================================
         function verAlertasDetalladas() {
-            // Filtramos solo los bloqueados de nuestra lista global
             let bloqueados = window.mueblesCargados.filter(m => m.estado && m.estado.toLowerCase().includes('bloque'));
             
             if(bloqueados.length === 0) {
@@ -276,40 +264,26 @@
                 return;
             }
 
-            // Construimos una tabla HTML para meterla en la alerta
             let htmlTabla = `<table class="tabla-alertas">
-                <thead><tr><th>Cód.</th><th>Ubicación</th><th>Problema / Observación</th></tr></thead>
+                <thead><tr><th>Cód.</th><th>Ubicación</th><th>Observación</th></tr></thead>
                 <tbody>`;
             
             bloqueados.forEach(m => {
-                let ubi = `${m.proyecto} - Piso ${m.piso}`;
+                let blqStr = m.bloque ? ` - Blq ${m.bloque}` : '';
+                let ubi = `${m.proyecto} - Piso ${m.piso}${blqStr}`;
                 let obs = m.observaciones ? m.observaciones : '<em>Sin detalles escritos</em>';
-                htmlTabla += `<tr>
-                    <td><strong>${m.codigo_proyecto || 'S/N'}</strong></td>
-                    <td>${ubi}</td>
-                    <td class="obs-peligro">${obs}</td>
-                </tr>`;
+                htmlTabla += `<tr><td><strong>${m.codigo_proyecto || 'S/N'}</strong></td><td>${ubi}</td><td class="obs-peligro">${obs}</td></tr>`;
             });
             htmlTabla += `</tbody></table>`;
 
-            Swal.fire({
-                title: '🛑 Muebles Bloqueados',
-                html: htmlTabla,
-                width: '700px',
-                confirmButtonText: 'Cerrar',
-                confirmButtonColor: '#475569'
-            });
+            Swal.fire({ title: '🛑 Muebles Bloqueados', html: htmlTabla, width: '700px', confirmButtonText: 'Cerrar', confirmButtonColor: '#475569' });
         }
 
-        // ==========================================
-        // NUEVAS FUNCIONES: TERMÓMETRO DE METAS
-        // ==========================================
         function actualizarFiltrosMetas() {
             let proySeleccionado = document.getElementById('sel_proy').value;
             let pisoSelect = document.getElementById('sel_piso');
             let prodSelect = document.getElementById('sel_prod');
             
-            // Limpiar y resetear
             pisoSelect.innerHTML = '<option value="">Selecciona Piso...</option>';
             prodSelect.innerHTML = '<option value="">Selecciona Producto...</option>';
             document.getElementById('texto_progreso').innerHTML = "Selecciona piso y producto para ver el progreso.";
@@ -317,19 +291,21 @@
 
             if (!proySeleccionado) return;
 
-            // Filtrar metas que pertenecen a este proyecto
             let metasDelProyecto = window.metasCargadas.filter(m => m.proyecto === proySeleccionado);
             
-            // Llenar pisos disponibles (Reconociendo el "TODOS")
             let pisosUnicos = [...new Set(metasDelProyecto.map(m => m.piso))];
             pisosUnicos.forEach(p => {
                 let etiqueta = p === "TODOS" ? "TODOS LOS PISOS" : `Piso ${p}`;
                 pisoSelect.innerHTML += `<option value="${p}">${etiqueta}</option>`;
             });
 
-            // Llenar productos disponibles
-            let prodUnicos = [...new Set(metasDelProyecto.map(m => m.producto))];
-            prodUnicos.forEach(p => prodSelect.innerHTML += `<option value="${p}">${p}</option>`);
+            if (window.productosCargadosGlobal) {
+                 window.productosCargadosGlobal.forEach(p => prodSelect.innerHTML += `<option value="${p.sigla}">${p.sigla}</option>`);
+            }
+
+            if(pisosUnicos.length === 0) {
+                document.getElementById('texto_progreso').innerHTML = "<span style='color:#ef4444;'>⚠️ Este proyecto no tiene metas configuradas en el Administrador.</span>";
+            }
         }
 
         function calcularAvance() {
@@ -339,55 +315,45 @@
 
             if(!proy || !piso || !prod) { resetearBarra(); return; }
 
-            // Buscamos cuál fue la meta que configuró el Admin
             let meta = window.metasCargadas.find(m => m.proyecto === proy && m.piso === piso && m.producto === prod);
             
             if(!meta) {
-                document.getElementById('texto_progreso').innerHTML = "<span style='color:#ef4444;'>⚠️ No configuraste una meta para esta combinación exacta en el Administrador.</span>";
+                document.getElementById('texto_progreso').innerHTML = "<span style='color:#ef4444;'>⚠️ No hay meta registrada para este Piso y Producto.</span>";
                 resetearBarra();
                 return;
             }
 
             let metaTotal = meta.cantidad_esperada;
 
-            // Ahora cruzamos contra los muebles reales que existen
-            let mueblesReales = window.mueblesCargados.filter(m => m.proyecto === proy && m.producto === prod);
-            // Si la meta no es general (TODOS), entonces filtramos estrictamente por el piso
+            let mueblesReales = window.mueblesCargados.filter(m => {
+                // El truco para cruzar la data con la regla visual
+                let nombreArmado = m.bloque ? `${m.proyecto} - Bloque ${m.bloque}` : m.proyecto;
+                return nombreArmado === proy && m.producto === prod;
+            });
+
             if(piso !== "TODOS") {
                 mueblesReales = mueblesReales.filter(m => (m.piso || "").toUpperCase() === piso);
             }
 
-            // Calculamos el estatus de las piezas reales
             let terminadas = mueblesReales.filter(m => m.estado === window.estadoFinalGlobal).length;
             let bloqueadas = mueblesReales.filter(m => m.estado && m.estado.toLowerCase().includes('bloque')).length;
             let enProceso = mueblesReales.length - terminadas - bloqueadas;
-            
-            // Faltantes para llegar a la meta
             let faltantes = metaTotal - (terminadas + enProceso + bloqueadas);
-            if (faltantes < 0) faltantes = 0; // Por si fabricaron más de la cuenta
+            if (faltantes < 0) faltantes = 0; 
 
-            // Matemáticas para los anchos de la barra (en %)
             let pctVerde = (terminadas / metaTotal) * 100;
             let pctAmarillo = (enProceso / metaTotal) * 100;
             let pctRojo = (bloqueadas / metaTotal) * 100;
 
-            // Evitar que la barra se pase del 100% visualmente
             if(pctVerde + pctAmarillo + pctRojo > 100) {
                 let factor = 100 / (pctVerde + pctAmarillo + pctRojo);
                 pctVerde *= factor; pctAmarillo *= factor; pctRojo *= factor;
             }
 
-            // Pintar la barra
-            document.getElementById('bar_verde').style.width = `${pctVerde}%`;
-            document.getElementById('bar_verde').innerHTML = terminadas > 0 ? `${terminadas}` : '';
-            
-            document.getElementById('bar_amarillo').style.width = `${pctAmarillo}%`;
-            document.getElementById('bar_amarillo').innerHTML = enProceso > 0 ? `${enProceso}` : '';
+            document.getElementById('bar_verde').style.width = `${pctVerde}%`; document.getElementById('bar_verde').innerHTML = terminadas > 0 ? `${terminadas}` : '';
+            document.getElementById('bar_amarillo').style.width = `${pctAmarillo}%`; document.getElementById('bar_amarillo').innerHTML = enProceso > 0 ? `${enProceso}` : '';
+            document.getElementById('bar_rojo').style.width = `${pctRojo}%`; document.getElementById('bar_rojo').innerHTML = bloqueadas > 0 ? `${bloqueadas}` : '';
 
-            document.getElementById('bar_rojo').style.width = `${pctRojo}%`;
-            document.getElementById('bar_rojo').innerHTML = bloqueadas > 0 ? `${bloqueadas}` : '';
-
-            // Pintar leyenda de texto explicativo
             document.getElementById('texto_progreso').innerHTML = `
                 <span>Meta Total: ${metaTotal} unds.</span>
                 <span style="color:#10b981;">✅ ${terminadas} Terminadas</span>
@@ -402,46 +368,28 @@
             document.getElementById('bar_rojo').style.width = `0%`; document.getElementById('bar_rojo').innerHTML = '';
         }
 
-        // ==========================================
-        // CÓDIGO DE LAS GRÁFICAS DE PASTEL Y BARRAS
-        // ==========================================
         function animarContador(idElemento, valorFinal) {
-            let actual = 0;
-            const elemento = document.getElementById(idElemento);
+            let actual = 0; const elemento = document.getElementById(idElemento);
             const incremento = Math.max(1, Math.floor(valorFinal / 20));
-            const intervalo = setInterval(() => {
-                actual += incremento;
-                if (actual >= valorFinal) { actual = valorFinal; clearInterval(intervalo); }
-                elemento.innerText = actual;
-            }, 30);
+            const intervalo = setInterval(() => { actual += incremento; if (actual >= valorFinal) { actual = valorFinal; clearInterval(intervalo); } elemento.innerText = actual; }, 30);
         }
 
         function dibujarGraficaEstados(datos) {
             const ctx = document.getElementById('chartEstados').getContext('2d');
             if (myChartEstados) myChartEstados.destroy();
-            const etiquetas = Object.keys(datos);
-            const valores = Object.values(datos);
+            const etiquetas = Object.keys(datos); const valores = Object.values(datos);
             const colores = ['#94a3b8', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#14b8a6'];
 
-            myChartEstados = new Chart(ctx, {
-                type: 'doughnut',
-                data: { labels: etiquetas, datasets: [{ data: valores, backgroundColor: colores.slice(0, etiquetas.length), borderWidth: 2 }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { boxWidth: 15, font: { size: 11 } } } }, cutout: '60%' }
-            });
+            myChartEstados = new Chart(ctx, { type: 'doughnut', data: { labels: etiquetas, datasets: [{ data: valores, backgroundColor: colores.slice(0, etiquetas.length), borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { boxWidth: 15, font: { size: 11 } } } }, cutout: '60%' } });
         }
 
         function dibujarGraficaProyectos(datos, diccionarioColores) {
             const ctx = document.getElementById('chartProyectos').getContext('2d');
             if (myChartProyectos) myChartProyectos.destroy();
-            const etiquetas = Object.keys(datos);
-            const valores = Object.values(datos);
+            const etiquetas = Object.keys(datos); const valores = Object.values(datos);
             const coloresBarra = etiquetas.map(lbl => diccionarioColores[lbl] || '#3b82f6');
 
-            myChartProyectos = new Chart(ctx, {
-                type: 'bar',
-                data: { labels: etiquetas, datasets: [{ label: 'Cant. de Muebles', data: valores, backgroundColor: coloresBarra, borderRadius: 4 }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } }, x: { grid: { display: false } } } }
-            });
+            myChartProyectos = new Chart(ctx, { type: 'bar', data: { labels: etiquetas, datasets: [{ label: 'Cant. de Muebles', data: valores, backgroundColor: coloresBarra, borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } }, x: { grid: { display: false } } } } });
         }
     </script>
 </body>
