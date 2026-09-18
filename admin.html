@@ -173,14 +173,9 @@
                 return;
             }
 
-            // 2. CONTROL ESTRICTO DE ROLES CON EL DETECTOR INCLUIDO
+            // 2. CONTROL ESTRICTO DE ROLES
             const correoUsuario = session.user.email;
             const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol').eq('email', correoUsuario).single();
-            
-            // --- INICIO DEL DETECTOR ---
-            alert("1. Correo que detecta la App: [" + correoUsuario + "]\n2. Respuesta de Supabase: [" + (empleado ? empleado.rol : "Nulo / No encontrado") + "]");
-            // --- FIN DEL DETECTOR ---
-
             const rolUsuario = empleado ? empleado.rol : 'Operador'; // Si no tiene rol escrito, asume Operador
 
             if (rolUsuario !== 'Administrador') {
