@@ -24,7 +24,6 @@
         /* --- ÁREA DE TRABAJO PRINCIPAL --- */
         .main-content { flex: 1; padding: 25px; overflow-y: auto; background-color: #f1f5f9; scroll-behavior: smooth; }
 
-        /* --- NUEVA CABECERA Y PERFIL --- */
         .header-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
         .perfil-usuario { display: flex; align-items: center; gap: 15px; }
         .mensaje-bienvenida { font-size: 14px; color: #475569; }
@@ -38,13 +37,14 @@
         .header-admin span { background-color: #ef4444; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; vertical-align: middle; margin-left: 10px; }
         .dashboard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; max-width: 1100px; margin: 0 auto; }
         .panel { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #475569; }
+        .panel-full { grid-column: 1 / -1; }
         h3 { color: #334155; margin-top: 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; font-size: 16px; }
-        .form-row { display: flex; gap: 10px; margin-bottom: 15px; align-items: end; }
-        .form-group { flex: 1; }
+        .form-row { display: flex; gap: 10px; margin-bottom: 15px; align-items: end; flex-wrap: wrap; }
+        .form-group { flex: 1; min-width: 120px; }
         label { display: block; font-size: 12px; font-weight: bold; color: #64748b; margin-bottom: 4px; }
-        input { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; }
+        input, select { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; font-size: 13px; }
         input[type="color"] { padding: 2px; cursor: pointer; height: 33px; }
-        .btn-add { background-color: #475569; color: white; border: none; padding: 9px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-add { background-color: #475569; color: white; border: none; padding: 9px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; white-space: nowrap; }
         .btn-add:hover { filter: brightness(0.8); }
         table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
         th, td { border-bottom: 1px solid #e2e8f0; padding: 10px 8px; text-align: left; }
@@ -54,8 +54,9 @@
         .btn-delete:hover, .btn-edit:hover { transform: scale(1.2); }
         .color-dot { display: inline-block; width: 16px; height: 16px; border-radius: 50%; vertical-align: middle; margin-right: 8px; border: 1px solid #ccc; }
         .badge-orden { background-color: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .badge-auto { background-color: #dbeafe; color: #2563eb; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 5px; }
 
-        @media (max-width: 1000px) { .dashboard-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 1000px) { .dashboard-grid { grid-template-columns: 1fr; } .panel-full { grid-column: 1; } }
         @media (max-width: 768px) { 
             body { overflow: auto; }
             .app-container { flex-direction: column; height: auto; }
@@ -87,7 +88,7 @@
             <div class="header-top">
                 <div class="header-admin">
                     <h2 style="margin: 0;">Panel de Configuración <span>ACCESO RESTRINGIDO</span></h2>
-                    <p style="color: #64748b; margin: 0; font-size: 14px; margin-top: 5px;">Administración de catálogos y datos fijos del sistema</p>
+                    <p style="color: #64748b; margin: 0; font-size: 14px; margin-top: 5px;">Administración de catálogos y automatización</p>
                 </div>
                 
                 <div class="perfil-usuario">
@@ -98,6 +99,23 @@
             </div>
 
             <div class="dashboard-grid">
+                
+                <!-- NUEVO PANEL: METAS DE PRODUCCIÓN -->
+                <div class="panel panel-full" style="border-top-color: #ec4899;">
+                    <h3>🎯 Control de Metas (Master Plan por Piso)</h3>
+                    <div class="form-row">
+                        <div class="form-group"><label>Proyecto</label><select id="meta_proyecto"><option value="">Cargando...</option></select></div>
+                        <div class="form-group" style="flex: 0.5;"><label>Piso</label><input type="text" id="meta_piso" placeholder="Ej: 9" style="text-transform: uppercase;"></div>
+                        <div class="form-group"><label>Producto</label><select id="meta_producto"><option value="">Cargando...</option></select></div>
+                        <div class="form-group" style="flex: 0.5;"><label>Cant. Total</label><input type="number" id="meta_cantidad" placeholder="Ej: 9" min="1"></div>
+                        <button class="btn-add" style="background-color: #ec4899;" onclick="guardarMeta()">Fijar Meta</button>
+                    </div>
+                    <table>
+                        <thead><tr><th>Proyecto</th><th>Piso</th><th>Producto</th><th>Cantidad Requerida</th><th style="width: 30px;"></th></tr></thead>
+                        <tbody id="tabla_metas"></tbody>
+                    </table>
+                </div>
+
                 <!-- PANEL PROYECTOS -->
                 <div class="panel" style="border-top-color: #3b82f6;">
                     <h3>Catálogo de Proyectos</h3>
@@ -113,17 +131,21 @@
                     </table>
                 </div>
 
-                <!-- PANEL ESPACIOS -->
-                <div class="panel" style="border-top-color: #10b981;">
-                    <h3>Catálogo de Espacios</h3>
+                <!-- PANEL ESTADOS CON PILOTO AUTOMÁTICO -->
+                <div class="panel" style="border-top-color: #8b5cf6;">
+                    <h3>Flujo de Estados (Piloto Automático)</h3>
                     <div class="form-row">
-                        <div class="form-group" style="flex: 0.4;"><label>Sigla</label><input type="text" id="sigla_espacio" placeholder="HP" style="text-transform: uppercase;"></div>
-                        <div class="form-group"><label>Nombre</label><input type="text" id="nombre_espacio" placeholder="Hab. Principal"></div>
-                        <button class="btn-add" style="background-color: #10b981;" onclick="agregarDato('catalogo_espacios', 'sigla_espacio', 'nombre_espacio')">Agregar</button>
+                        <div class="form-group" style="flex: 0.2;"><label>Orden</label><input type="number" id="orden_estado" placeholder="1" min="1"></div>
+                        <div class="form-group" style="flex: 0.4;"><label>Estado Actual</label><input type="text" id="nombre_estado" placeholder="Ej: En Corte"></div>
+                        <div class="form-group" style="flex: 0.4;">
+                            <label>Al completarse salta a:</label>
+                            <select id="estado_siguiente"><option value="">Cargando...</option></select>
+                        </div>
+                        <button id="btn_guardar_estado" class="btn-add" style="background-color: #8b5cf6;" onclick="guardarEstado()">Agregar</button>
                     </div>
                     <table>
-                        <thead><tr><th>Sigla</th><th>Nombre</th><th style="width: 30px;"></th></tr></thead>
-                        <tbody id="tabla_espacios"></tbody>
+                        <thead><tr><th>Ord.</th><th>Estado</th><th>Salta a</th><th style="width: 50px; text-align: center;">Acc.</th></tr></thead>
+                        <tbody id="tabla_estados"></tbody>
                     </table>
                 </div>
 
@@ -141,19 +163,20 @@
                     </table>
                 </div>
 
-                <!-- PANEL ESTADOS -->
-                <div class="panel" style="border-top-color: #8b5cf6;">
-                    <h3>Catálogo de Estados</h3>
+                <!-- PANEL ESPACIOS -->
+                <div class="panel" style="border-top-color: #10b981;">
+                    <h3>Catálogo de Espacios</h3>
                     <div class="form-row">
-                        <div class="form-group" style="flex: 0.2;"><label>Orden</label><input type="number" id="orden_estado" placeholder="1" min="1"></div>
-                        <div class="form-group" style="flex: 0.8;"><label>Nombre del Estado</label><input type="text" id="nombre_estado" placeholder="Ej: Bloqueo"></div>
-                        <button id="btn_guardar_estado" class="btn-add" style="background-color: #8b5cf6;" onclick="guardarEstado()">Agregar</button>
+                        <div class="form-group" style="flex: 0.4;"><label>Sigla</label><input type="text" id="sigla_espacio" placeholder="HP" style="text-transform: uppercase;"></div>
+                        <div class="form-group"><label>Nombre</label><input type="text" id="nombre_espacio" placeholder="Hab. Principal"></div>
+                        <button class="btn-add" style="background-color: #10b981;" onclick="agregarDato('catalogo_espacios', 'sigla_espacio', 'nombre_espacio')">Agregar</button>
                     </div>
                     <table>
-                        <thead><tr><th>Orden</th><th>Estado</th><th style="width: 50px; text-align: center;">Acción</th></tr></thead>
-                        <tbody id="tabla_estados"></tbody>
+                        <thead><tr><th>Sigla</th><th>Nombre</th><th style="width: 30px;"></th></tr></thead>
+                        <tbody id="tabla_espacios"></tbody>
                     </table>
                 </div>
+
             </div>
         </div>
     </div>
@@ -166,41 +189,30 @@
         let idProyectoEditando = null; let idEstadoEditando = null;
 
         document.addEventListener("DOMContentLoaded", async () => {
-            // 1. Guardia de Seguridad
             const { data: { session } } = await supabaseClient.auth.getSession();
-            if (!session) {
-                window.location.href = 'login.html';
-                return;
-            }
+            if (!session) { window.location.href = 'login.html'; return; }
 
-            // 2. CONTROL ESTRICTO DE ROLES
             const correoUsuario = session.user.email;
             const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol').eq('email', correoUsuario).single();
-            const rolUsuario = empleado ? empleado.rol : 'Operador'; // Si no tiene rol escrito, asume Operador
+            const rolUsuario = empleado ? empleado.rol.trim() : 'Operador'; 
 
             if (rolUsuario !== 'Administrador') {
-                // Lo pateamos al dashboard con una alerta
-                await Swal.fire({ 
-                    icon: 'error', 
-                    title: 'Acceso Denegado', 
-                    text: 'No tienes permisos de Administrador para ver esta página.', 
-                    confirmButtonColor: '#ef4444' 
-                });
+                await Swal.fire({ icon: 'error', title: 'Acceso Denegado', text: 'No tienes permisos de Administrador para ver esta página.', confirmButtonColor: '#ef4444' });
                 window.location.href = 'dashboard.html';
                 return;
             }
 
-            // 3. Inyección de datos
             const nombreCompleto = session.user.user_metadata.full_name;
             const urlFoto = session.user.user_metadata.avatar_url;
             document.getElementById('nombreUsuario').innerText = nombreCompleto.split(' ')[0];
             document.getElementById('fotoUsuario').src = urlFoto;
 
-            // 4. Cargar listas
+            // Cargar datos
             cargarListaProyectos(); 
             cargarLista('catalogo_espacios', 'tabla_espacios');
             cargarLista('catalogo_productos', 'tabla_productos'); 
             cargarEstados(); 
+            cargarMetas();
         });
 
         async function cerrarSesion() {
@@ -214,8 +226,7 @@
             if (!sigla || !nombre) { Swal.fire('Faltan datos', 'Completa los campos.', 'warning'); return; }
             const { error } = await supabaseClient.from(tabla).insert([{ sigla, nombre }]);
             if (!error) { 
-                document.getElementById(idInputSigla).value = ''; 
-                document.getElementById(idInputNombre).value = ''; 
+                document.getElementById(idInputSigla).value = ''; document.getElementById(idInputNombre).value = ''; 
                 cargarLista(tabla, tabla === 'catalogo_espacios' ? 'tabla_espacios' : 'tabla_productos'); 
             }
         }
@@ -224,18 +235,24 @@
             const { data } = await supabaseClient.from(tabla).select('*').order('sigla', { ascending: true }); 
             const tbody = document.getElementById(idTbody); 
             tbody.innerHTML = ""; 
-            if(data) data.forEach(item => { 
-                tbody.innerHTML += `<tr><td><strong>${item.sigla}</strong></td><td>${item.nombre}</td><td><button class="btn-delete" onclick="eliminarDato('${tabla}', '${item.id}', '${item.sigla}')">🗑️</button></td></tr>`; 
-            });
+            if(data) {
+                data.forEach(item => { 
+                    tbody.innerHTML += `<tr><td><strong>${item.sigla}</strong></td><td>${item.nombre}</td><td><button class="btn-delete" onclick="eliminarDato('${tabla}', '${item.id}', '${item.sigla}')">🗑️</button></td></tr>`; 
+                });
+                // Si es tabla productos, actualizamos el selector de metas
+                if(tabla === 'catalogo_productos') {
+                    const selProd = document.getElementById('meta_producto');
+                    selProd.innerHTML = '<option value="">Selecciona...</option>';
+                    data.forEach(p => selProd.innerHTML += `<option value="${p.sigla}">${p.sigla} - ${p.nombre}</option>`);
+                }
+            }
         }
 
+        /* --- LOGICA PROYECTOS --- */
         function prepararEdicionProyecto(id, nombre, color, bloques) {
-            idProyectoEditando = id; 
-            document.getElementById('nombre_proyecto').value = nombre; 
-            document.getElementById('color_proyecto').value = color; 
-            document.getElementById('bloques_proyecto').value = bloques || '';
-            document.getElementById('btn_guardar_proyecto').innerHTML = "Actualizar"; 
-            document.getElementById('btn_guardar_proyecto').style.backgroundColor = "#f97316"; 
+            idProyectoEditando = id; document.getElementById('nombre_proyecto').value = nombre; 
+            document.getElementById('color_proyecto').value = color; document.getElementById('bloques_proyecto').value = bloques || '';
+            document.getElementById('btn_guardar_proyecto').innerHTML = "Actualizar"; document.getElementById('btn_guardar_proyecto').style.backgroundColor = "#f97316"; 
         }
 
         async function guardarProyecto() {
@@ -246,42 +263,41 @@
             if (idProyectoEditando) await supabaseClient.from('catalogo_proyectos').update({ nombre, color, bloques }).eq('id', idProyectoEditando);
             else await supabaseClient.from('catalogo_proyectos').insert([{ nombre, color, bloques }]);
             
-            idProyectoEditando = null; 
-            document.getElementById('nombre_proyecto').value = ''; 
-            document.getElementById('bloques_proyecto').value = '';
-            document.getElementById('btn_guardar_proyecto').innerHTML = "Agregar"; 
-            document.getElementById('btn_guardar_proyecto').style.backgroundColor = "#3b82f6";
+            idProyectoEditando = null; document.getElementById('nombre_proyecto').value = ''; document.getElementById('bloques_proyecto').value = '';
+            document.getElementById('btn_guardar_proyecto').innerHTML = "Agregar"; document.getElementById('btn_guardar_proyecto').style.backgroundColor = "#3b82f6";
             cargarListaProyectos();
         }
 
         async function cargarListaProyectos() {
             const { data } = await supabaseClient.from('catalogo_proyectos').select('*').order('nombre', { ascending: true }); 
-            const tbody = document.getElementById('tabla_proyectos'); 
-            tbody.innerHTML = ""; 
-            if(data) data.forEach(item => {
-                let bloquesBadge = item.bloques ? item.bloques : '<em>Ninguno</em>';
-                tbody.innerHTML += `<tr><td><span class="color-dot" style="background-color: ${item.color};"></span><strong>${item.nombre}</strong></td>
-                <td>${bloquesBadge}</td>
-                <td style="text-align: center;"><button class="btn-edit" onclick="prepararEdicionProyecto('${item.id}', '${item.nombre}', '${item.color}', '${item.bloques || ''}')">✏️</button>
-                <button class="btn-delete" onclick="eliminarDato('catalogo_proyectos', '${item.id}', '${item.nombre}')">🗑️</button></td></tr>`;
-            });
+            const tbody = document.getElementById('tabla_proyectos'); tbody.innerHTML = ""; 
+            if(data) {
+                const selProy = document.getElementById('meta_proyecto');
+                selProy.innerHTML = '<option value="">Selecciona...</option>';
+                data.forEach(item => {
+                    selProy.innerHTML += `<option value="${item.nombre}">${item.nombre}</option>`;
+                    let bloquesBadge = item.bloques ? item.bloques : '<em>Ninguno</em>';
+                    tbody.innerHTML += `<tr><td><span class="color-dot" style="background-color: ${item.color};"></span><strong>${item.nombre}</strong></td>
+                    <td>${bloquesBadge}</td><td style="text-align: center;"><button class="btn-edit" onclick="prepararEdicionProyecto('${item.id}', '${item.nombre}', '${item.color}', '${item.bloques || ''}')">✏️</button>
+                    <button class="btn-delete" onclick="eliminarDato('catalogo_proyectos', '${item.id}', '${item.nombre}')">🗑️</button></td></tr>`;
+                });
+            }
         }
 
-        function prepararEdicionEstado(id, nombre, orden) {
-            idEstadoEditando = id; 
-            document.getElementById('nombre_estado').value = nombre; 
-            document.getElementById('orden_estado').value = orden;
-            document.getElementById('btn_guardar_estado').innerHTML = "Actualizar"; 
-            document.getElementById('btn_guardar_estado').style.backgroundColor = "#f97316"; 
+        /* --- LOGICA ESTADOS CON PILOTO AUTOMÁTICO --- */
+        function prepararEdicionEstado(id, nombre, orden, sigEstado) {
+            idEstadoEditando = id; document.getElementById('nombre_estado').value = nombre; 
+            document.getElementById('orden_estado').value = orden; document.getElementById('estado_siguiente').value = sigEstado || '';
+            document.getElementById('btn_guardar_estado').innerHTML = "Actualizar"; document.getElementById('btn_guardar_estado').style.backgroundColor = "#f97316"; 
         }
 
         async function guardarEstado() {
             let nombre = document.getElementById('nombre_estado').value.trim(); 
             let ordenDeseado = parseInt(document.getElementById('orden_estado').value);
+            let estadoSig = document.getElementById('estado_siguiente').value;
             if (!nombre) return;
-            let btn = document.getElementById('btn_guardar_estado'); 
-            btn.innerHTML = "Reordenando..."; 
-            btn.disabled = true;
+            
+            let btn = document.getElementById('btn_guardar_estado'); btn.innerHTML = "Guardando..."; btn.disabled = true;
             
             const { data: estadosDb } = await supabaseClient.from('catalogo_estados').select('*').order('orden', { ascending: true });
             let otrosEstados = idEstadoEditando ? estadosDb.filter(e => e.id !== idEstadoEditando) : estadosDb;
@@ -297,49 +313,84 @@
             
             for (let item of nuevaSecuencia) {
                 if (item.isTarget) {
-                    if (idEstadoEditando) await supabaseClient.from('catalogo_estados').update({ nombre: item.nombre, orden: item.orden }).eq('id', idEstadoEditando);
-                    else await supabaseClient.from('catalogo_estados').insert([{ nombre: item.nombre, orden: item.orden }]);
+                    if (idEstadoEditando) await supabaseClient.from('catalogo_estados').update({ nombre: item.nombre, orden: item.orden, estado_siguiente: estadoSig }).eq('id', idEstadoEditando);
+                    else await supabaseClient.from('catalogo_estados').insert([{ nombre: item.nombre, orden: item.orden, estado_siguiente: estadoSig }]);
                 } else {
                     let oldItem = otrosEstados.find(e => e.id === item.id);
                     if (oldItem && oldItem.orden !== item.orden) await supabaseClient.from('catalogo_estados').update({ orden: item.orden }).eq('id', item.id);
                 }
             }
             
-            idEstadoEditando = null; 
-            document.getElementById('nombre_estado').value = ''; 
-            document.getElementById('orden_estado').value = '';
-            btn.innerHTML = "Agregar"; 
-            btn.style.backgroundColor = "#8b5cf6"; 
-            btn.disabled = false; 
+            idEstadoEditando = null; document.getElementById('nombre_estado').value = ''; document.getElementById('orden_estado').value = '';
+            document.getElementById('estado_siguiente').value = '';
+            btn.innerHTML = "Agregar"; btn.style.backgroundColor = "#8b5cf6"; btn.disabled = false; 
             cargarEstados();
         }
 
         async function cargarEstados() {
             const { data } = await supabaseClient.from('catalogo_estados').select('*').order('orden', { ascending: true }); 
             const tbody = document.getElementById('tabla_estados'); 
+            const selSiguiente = document.getElementById('estado_siguiente');
             tbody.innerHTML = ""; 
-            if(data) data.forEach(item => { 
-                tbody.innerHTML += `<tr><td><span class="badge-orden">${item.orden}</span></td><td><strong>${item.nombre}</strong></td>
-                <td style="text-align: center;"><button class="btn-edit" onclick="prepararEdicionEstado('${item.id}', '${item.nombre}', '${item.orden}')">✏️</button>
-                <button class="btn-delete" onclick="eliminarDato('catalogo_estados', '${item.id}', '${item.nombre}')">🗑️</button></td></tr>`;
-            });
+            
+            // Llenar el selector de "Estado Siguiente"
+            selSiguiente.innerHTML = '<option value="">Ninguno (Fin del proceso)</option>';
+            if(data) {
+                data.forEach(item => { selSiguiente.innerHTML += `<option value="${item.nombre}">${item.nombre}</option>`; });
+                
+                data.forEach(item => { 
+                    let badgeAuto = item.estado_siguiente ? `<span class="badge-auto">➡️ ${item.estado_siguiente}</span>` : '<em>Ninguno</em>';
+                    tbody.innerHTML += `<tr><td><span class="badge-orden">${item.orden}</span></td><td><strong>${item.nombre}</strong></td>
+                    <td>${badgeAuto}</td>
+                    <td style="text-align: center;"><button class="btn-edit" onclick="prepararEdicionEstado('${item.id}', '${item.nombre}', '${item.orden}', '${item.estado_siguiente || ''}')">✏️</button>
+                    <button class="btn-delete" onclick="eliminarDato('catalogo_estados', '${item.id}', '${item.nombre}')">🗑️</button></td></tr>`;
+                });
+            }
         }
 
+        /* --- LÓGICA METAS DE PRODUCCIÓN --- */
+        async function guardarMeta() {
+            let proyecto = document.getElementById('meta_proyecto').value;
+            let piso = document.getElementById('meta_piso').value.trim().toUpperCase();
+            let producto = document.getElementById('meta_producto').value;
+            let cantidad = parseInt(document.getElementById('meta_cantidad').value);
+
+            if (!proyecto || !piso || !producto || isNaN(cantidad)) {
+                Swal.fire('Campos incompletos', 'Selecciona el proyecto, producto y escribe el piso y cantidad.', 'warning'); return;
+            }
+
+            const { error } = await supabaseClient.from('metas_produccion').insert([{ proyecto, piso, producto, cantidad_esperada: cantidad }]);
+            if (!error) {
+                document.getElementById('meta_piso').value = ''; document.getElementById('meta_cantidad').value = '';
+                cargarMetas();
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Meta guardada', showConfirmButton: false, timer: 1500 });
+            }
+        }
+
+        async function cargarMetas() {
+            const { data } = await supabaseClient.from('metas_produccion').select('*').order('proyecto').order('piso');
+            const tbody = document.getElementById('tabla_metas'); tbody.innerHTML = "";
+            if (data) {
+                data.forEach(item => {
+                    tbody.innerHTML += `<tr><td><strong>${item.proyecto}</strong></td><td>Piso ${item.piso}</td>
+                    <td>${item.producto}</td><td><strong>${item.cantidad_esperada} unds.</strong></td>
+                    <td><button class="btn-delete" onclick="eliminarDato('metas_produccion', '${item.id}', 'Meta del Piso ${item.piso}')">🗑️</button></td></tr>`;
+                });
+            }
+        }
+
+        /* --- BORRADO GENERAL --- */
         async function eliminarDato(tabla, id, identificador) {
             const result = await Swal.fire({
-                title: '¿Estás seguro?',
-                html: `Estás a punto de borrar:<br><b>${identificador}</b>`,
-                icon: 'error',
-                showCancelButton: true,
-                confirmButtonColor: '#ef4444',
-                cancelButtonColor: '#94a3b8',
-                confirmButtonText: 'Sí, borrar'
+                title: '¿Estás seguro?', html: `Estás a punto de borrar:<br><b>${identificador}</b>`,
+                icon: 'error', showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Sí, borrar'
             });
 
             if (result.isConfirmed) {
                 await supabaseClient.from(tabla).delete().eq('id', id);
                 if (tabla === 'catalogo_proyectos') cargarListaProyectos(); 
                 else if (tabla === 'catalogo_estados') cargarEstados(); 
+                else if (tabla === 'metas_produccion') cargarMetas();
                 else cargarLista(tabla, tabla === 'catalogo_espacios' ? 'tabla_espacios' : 'tabla_productos');
             }
         }
