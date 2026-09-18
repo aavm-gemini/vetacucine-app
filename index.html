@@ -105,19 +105,17 @@
 <body>
 
     <div class="app-container">
-        <!-- SIDEBAR -->
         <nav class="sidebar">
             <div class="sidebar-header">Veta<span>Cucine</span></div>
            <ul class="nav-links">
                 <li><a href="dashboard.html">📊 Dashboard</a></li>
                 <li><a href="taller.html">🏭 Panel Operador</a></li>
-                <li><a href="index.html">📝 Ingreso Muebles</a></li>
+                <li><a href="index.html" class="active">📝 Ingreso Muebles</a></li>
                 <li><a href="reportes.html">🔍 Buscar y Reportes</a></li>
                 <li><a href="admin.html" id="link-admin">⚙️ Administrador</a></li>
             </ul>
         </nav>
 
-        <!-- ÁREA DE TRABAJO PRINCIPAL -->
         <div class="main-content">
             
             <div class="header-top">
@@ -223,20 +221,16 @@
             await cargarCatalogos(); 
             await cargarTabla();
 
-            // === MAGIA: LEER SI VENIMOS DE LA PÁGINA DE REPORTES ===
             const urlParams = new URLSearchParams(window.location.search);
             const editId = urlParams.get('edit');
             
             if (editId) {
-                // Buscamos ese mueble específico en la base de datos
                 const { data: regEdit } = await supabaseClient.from('registros_produccion').select('*').eq('id', editId).single();
                 
                 if (regEdit) {
-                    // Lo inyectamos en nuestra lista local si no estaba
                     if (!window.registrosDescargados.find(r => r.id === regEdit.id)) {
                         window.registrosDescargados.push(regEdit);
                     }
-                    // Y llamamos a la función de editar automáticamente
                     cargarParaEditar(regEdit.id);
                 }
             }
@@ -386,15 +380,29 @@
                 await supabaseClient.from('registros_produccion').insert([{ fecha, codigo_proyecto, proyecto, piso, bloque, suite, espacio, producto, observaciones, modificaciones, estado, id_generado }]);
             }
             
-            document.getElementById('piso').value = ''; document.getElementById('bloque').value = ''; document.getElementById('suite').value = ''; document.getElementById('observaciones').value = ''; document.getElementById('modificaciones').value = '';
-            document.getElementById('piso').focus(); btn.innerHTML = "Guardar Mueble"; btn.classList.remove('btn-editando'); btn.disabled = false; 
+            // --- TRUCO DE PRODUCTIVIDAD (Limpia solo el código y las notas) ---
+            document.getElementById('codigo_proyecto').value = ''; 
+            document.getElementById('observaciones').value = ''; 
+            document.getElementById('modificaciones').value = '';
+            
+            document.getElementById('codigo_proyecto').focus(); 
+            btn.innerHTML = "Guardar Mueble"; btn.classList.remove('btn-editando'); btn.disabled = false; 
             
             await cargarTabla();
             
-            // LIMPIAR LA DIRECCIÓN WEB SI VENÍAMOS DE REPORTES PARA QUE NO SE QUEDE PEGADO
+            // Limpiar URL si veníamos de editar en Reportes
             window.history.replaceState({}, document.title, window.location.pathname);
             
-            Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'El mueble se registró correctamente.', timer: 1500, showConfirmButton: false });
+            // --- NOTIFICACIÓN TOAST (Silenciosa) ---
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: '¡Mueble guardado!',
+                showConfirmButton: false,
+                timer: 2000,
+                timerProgressBar: true
+            });
         }
 
         async function eliminarRegistro(id, codigo, mueble) {
