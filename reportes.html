@@ -9,7 +9,6 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <style>
-        /* Agregamos el rgb por defecto para que funcione la transparencia */
         :root { --tema-primario: #3b82f6; --tema-rgb: 59, 130, 246; --tema-fondo: #f8fafc; }
         
         body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: var(--tema-fondo); color: #334155; overflow: hidden; transition: background-color 0.5s ease; }
@@ -42,7 +41,7 @@
         .filter-group { flex: 1; min-width: 130px; }
         .filter-group label { display: block; font-size: 12px; font-weight: bold; color: #64748b; margin-bottom: 5px; }
         .filter-group input, .filter-group select { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; font-size: 13px; }
-        input:disabled { background-color: #f1f5f9; color: #94a3b8; cursor: not-allowed; border-color: #e2e8f0; }
+        input:disabled, select:disabled { background-color: #f1f5f9; color: #94a3b8; cursor: not-allowed; border-color: #e2e8f0; }
         
         .btn-buscar { background-color: var(--tema-primario); color: white; border: none; padding: 9px 25px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s; height: 35px; }
         .btn-buscar:hover { filter: brightness(0.85); transform: scale(0.98); }
@@ -124,11 +123,15 @@
 
                 <div class="filter-row">
                     <div class="filter-group" style="flex: 0.5;"><label>Piso</label><input type="text" id="filtro_piso" placeholder="Ej: 9" onkeypress="manejarEnter(event)"></div>
+                    
+                    <!-- NUEVO: Ahora el bloque es un SELECT real, no un Datalist -->
                     <div class="filter-group" style="flex: 0.5;">
                         <label>Bloque</label>
-                        <input type="text" id="filtro_bloque" list="bloques_disponibles" placeholder="Ej: A" onkeypress="manejarEnter(event)" style="text-transform: uppercase;">
-                        <datalist id="bloques_disponibles"></datalist>
+                        <select id="filtro_bloque" onkeypress="manejarEnter(event)">
+                            <option value="">Cualquier Bloque</option>
+                        </select>
                     </div>
+
                     <div class="filter-group" style="flex: 1;"><label>Suite</label><input type="text" id="filtro_suite" placeholder="Ej: MIAMI o 1" onkeypress="manejarEnter(event)" style="text-transform: uppercase;"></div>
                 </div>
 
@@ -203,7 +206,6 @@
             window.location.href = 'login.html';
         }
 
-        // Nueva función para calcular los RGB
         function hexToRgb(hex) {
             let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
             return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : null;
@@ -211,25 +213,45 @@
 
         function cambiarTema() {
             let nombreProyecto = document.getElementById('filtro_proyecto').value;
-            let inputBloque = document.getElementById('filtro_bloque');
-            let datalist = document.getElementById('bloques_disponibles');
+            let selBloque = document.getElementById('filtro_bloque');
             
-            datalist.innerHTML = "";
+            // Llenamos el select desde cero cada vez
+            selBloque.innerHTML = '<option value="">Cualquier Bloque</option>';
 
             if (nombreProyecto === "Todos") {
-                inputBloque.disabled = false; inputBloque.placeholder = "Ej: A";
+                selBloque.disabled = false;
                 document.documentElement.style.setProperty('--tema-primario', '#3b82f6');
                 document.documentElement.style.setProperty('--tema-rgb', '59, 130, 246');
                 document.documentElement.style.setProperty('--tema-fondo', '#f8fafc');
+
+                // Si está en TODOS, buscamos qué bloques existen en toda la base de proyectos
+                let todosLosBloques = new Set();
+                if (window.proyectosCargados) {
+                    window.proyectosCargados.forEach(p => {
+                        if (p.bloques) {
+                            p.bloques.split(',').forEach(b => {
+                                if (b.trim() !== "") todosLosBloques.add(b.trim().toUpperCase());
+                            });
+                        }
+                    });
+                }
+                let arrayBloques = Array.from(todosLosBloques).sort();
+                arrayBloques.forEach(b => {
+                    selBloque.innerHTML += `<option value="${b}">Bloque ${b}</option>`;
+                });
+
             } else {
                 let proyectoReal = window.proyectosCargados.find(p => p.nombre === nombreProyecto);
                 
-                if (proyectoReal && proyectoReal.bloques) {
-                    inputBloque.disabled = false; inputBloque.placeholder = "Selecciona o escribe";
-                    let arrayBloques = proyectoReal.bloques.split(',').map(b => b.trim()).filter(b => b !== "");
-                    arrayBloques.forEach(b => { datalist.innerHTML += `<option value="${b}"></option>`; });
+                if (proyectoReal && proyectoReal.bloques && proyectoReal.bloques.trim() !== "") {
+                    selBloque.disabled = false;
+                    let arrayBloques = proyectoReal.bloques.split(',').map(b => b.trim().toUpperCase()).filter(b => b !== "");
+                    arrayBloques.forEach(b => { 
+                        selBloque.innerHTML += `<option value="${b}">Bloque ${b}</option>`; 
+                    });
                 } else {
-                    inputBloque.value = ""; inputBloque.disabled = true; inputBloque.placeholder = "No aplica";
+                    selBloque.innerHTML = '<option value="">No aplica</option>';
+                    selBloque.disabled = true;
                 }
 
                 if (proyectoReal && proyectoReal.color) {
@@ -253,6 +275,9 @@
 
             const { data: productos } = await supabaseClient.from('catalogo_productos').select('*').order('sigla', { ascending: true });
             if (productos) { const sel = document.getElementById('filtro_producto'); productos.forEach(p => { sel.innerHTML += `<option value="${p.sigla}">${p.sigla} - ${p.nombre}</option>`; }); }
+
+            // Llenamos el select de Bloques por primera vez
+            cambiarTema();
         }
 
         function limpiarFiltros() {
