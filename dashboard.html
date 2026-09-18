@@ -4,18 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - VetaCucine</title>
-    <!-- Librería de Supabase -->
+    
+    <!-- Librerías -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Librería para Gráficos -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- LIBRERÍA DE ALERTAS AÑADIDA PARA EL AVISO "SIN CONEXIÓN" -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
-        :root { --tema-primario: #3b82f6; --tema-fondo: #f8fafc; }
-        
-        /* --- ESTRUCTURA DEL MENÚ LATERAL (SIDEBAR) --- */
-        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: var(--tema-fondo); color: #334155; overflow: hidden; }
+        /* --- ESTRUCTURA GENERAL Y MENÚ LATERAL --- */
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f8fafc; overflow: hidden; }
         .app-container { display: flex; height: 100vh; width: 100vw; }
         
         .sidebar { width: 250px; background-color: #1e293b; color: white; display: flex; flex-direction: column; transition: 0.3s; box-shadow: 2px 0 10px rgba(0,0,0,0.1); z-index: 10; }
@@ -29,38 +26,38 @@
         .nav-links a.active { background-color: #0f172a; border-left-color: #3b82f6; color: white; font-weight: bold; }
         
         /* --- ÁREA DE TRABAJO PRINCIPAL --- */
-        .main-content { flex: 1; padding: 30px; overflow-y: auto; background-color: var(--tema-fondo); }
-        
-        /* --- CABECERA SUPERIOR --- */
+        .main-content { flex: 1; padding: 25px; overflow-y: auto; scroll-behavior: smooth; }
+
         .header-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
         .header-title { margin: 0; color: #1e293b; font-size: 24px; }
-        
         .perfil-usuario { display: flex; align-items: center; gap: 15px; }
         .mensaje-bienvenida { font-size: 14px; color: #475569; }
         .mensaje-bienvenida span { font-weight: bold; color: #1e293b; }
-        .foto-perfil { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid var(--tema-primario); }
+        .foto-perfil { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid #3b82f6; }
         .btn-salir { background-color: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-left: 5px; }
         .btn-salir:hover { background-color: #fef2f2; }
 
-        /* --- TARJETAS DE INDICADORES (KPIs) --- */
-        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
-        .kpi-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-left: 5px solid #cbd5e1; display: flex; flex-direction: column; justify-content: center; }
-        .kpi-card h4 { margin: 0; font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
-        .kpi-card .numero { font-size: 36px; font-weight: bold; color: #1e293b; margin-top: 5px; }
+        /* --- TARJETAS DEL DASHBOARD --- */
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 25px; }
+        .stat-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); border-left: 5px solid #ccc; display: flex; flex-direction: column; justify-content: center; }
+        .stat-card h4 { margin: 0; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+        .stat-card .numero { font-size: 36px; font-weight: bold; margin: 0; line-height: 1; }
         
-        .kpi-total { border-left-color: #3b82f6; }
-        .kpi-bloqueo { border-left-color: #ef4444; }
-        .kpi-bloqueo .numero { color: #ef4444; }
-        .kpi-completado { border-left-color: #10b981; }
-        .kpi-completado .numero { color: #10b981; }
+        .border-blue { border-left-color: #3b82f6; } .border-blue .numero { color: #1e3a8a; }
+        .border-red { border-left-color: #ef4444; } .border-red .numero { color: #ef4444; }
+        .border-green { border-left-color: #10b981; } .border-green .numero { color: #10b981; }
 
-        /* --- GRÁFICOS --- */
-        .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .chart-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        .chart-container h3 { margin-top: 0; font-size: 16px; color: #475569; text-align: center; margin-bottom: 15px; }
+        /* --- GRÁFICAS --- */
+        .charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        .chart-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
+        .chart-container h3 { margin-top: 0; margin-bottom: 20px; font-size: 16px; color: #334155; text-align: center; }
         .canvas-wrapper { position: relative; height: 300px; width: 100%; }
 
-        @media (max-width: 1000px) { .charts-grid { grid-template-columns: 1fr; } .kpi-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 900px) {
+            .stats-grid { grid-template-columns: 1fr; }
+            .charts-grid { grid-template-columns: 1fr; }
+        }
+
         @media (max-width: 768px) { 
             body { overflow: auto; }
             .app-container { flex-direction: column; height: auto; }
@@ -75,7 +72,6 @@
     </style>
 </head>
 <body>
-
     <div class="app-container">
         <!-- SIDEBAR -->
         <nav class="sidebar">
@@ -84,16 +80,14 @@
                 <li><a href="dashboard.html" class="active">📊 Dashboard</a></li>
                 <li><a href="index.html">📝 Ingreso Muebles</a></li>
                 <li><a href="reportes.html">🔍 Buscar y Reportes</a></li>
-                <li><a href="admin.html">⚙️ Administrador</a></li>
+                <li><a href="admin.html" id="link-admin">⚙️ Administrador</a></li>
             </ul>
         </nav>
 
         <!-- CONTENIDO PRINCIPAL -->
         <div class="main-content">
-            
             <div class="header-top">
                 <h2 class="header-title">Tablero de Producción</h2>
-                
                 <div class="perfil-usuario">
                     <div class="mensaje-bienvenida">Hola, <span id="nombreUsuario">Cargando...</span></div>
                     <img id="fotoUsuario" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Foto" class="foto-perfil">
@@ -101,32 +95,34 @@
                 </div>
             </div>
 
-            <div class="kpi-grid">
-                <div class="kpi-card kpi-total">
+            <!-- CONTADORES -->
+            <div class="stats-grid">
+                <div class="stat-card border-blue">
                     <h4>Muebles en Sistema</h4>
-                    <div class="numero" id="kpi_total">0</div>
+                    <p class="numero" id="total_muebles">0</p>
                 </div>
-                <div class="kpi-card kpi-bloqueo">
+                <div class="stat-card border-red">
                     <h4>Alertas (Bloqueados)</h4>
-                    <div class="numero" id="kpi_bloqueos">0</div>
+                    <p class="numero" id="total_alertas">0</p>
                 </div>
-                <div class="kpi-card kpi-completado">
+                <div class="stat-card border-green">
                     <h4>Muebles Completados</h4>
-                    <div class="numero" id="kpi_completados">0</div>
+                    <p class="numero" id="total_completados">0</p>
                 </div>
             </div>
 
+            <!-- GRÁFICAS -->
             <div class="charts-grid">
                 <div class="chart-container">
                     <h3>Distribución por Estado</h3>
                     <div class="canvas-wrapper">
-                        <canvas id="graficoEstados"></canvas>
+                        <canvas id="chartEstados"></canvas>
                     </div>
                 </div>
                 <div class="chart-container">
                     <h3>Muebles por Proyecto</h3>
                     <div class="canvas-wrapper">
-                        <canvas id="graficoProyectos"></canvas>
+                        <canvas id="chartProyectos"></canvas>
                     </div>
                 </div>
             </div>
@@ -137,30 +133,38 @@
         const supabaseUrl = 'https://pnrntmkcisgymyvmzson.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBucm50bWtjaXNneW15dm16c29uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNzAwODQsImV4cCI6MjEwNDc0NjA4NH0.fdW9mj9rkO0rxHXB8rBeJc6a32QSQxtvsNtu9_rL6yc';
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
-        
+
+        let myChartEstados = null;
+        let myChartProyectos = null;
+
         document.addEventListener("DOMContentLoaded", async () => {
+            // 1. Verificación de sesión
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (!session) {
                 window.location.href = 'login.html';
                 return;
             }
 
-            // --- LECTURA DE ROL Y OCULTAMIENTO DEL MENÚ ---
+            // 2. Control de Roles (CON EL TRIM SALVAVIDAS)
             const correoUsuario = session.user.email;
             const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol').eq('email', correoUsuario).single();
-            const rolUsuario = empleado ? empleado.rol : 'Operador'; 
+            
+            // Usamos .trim() para limpiar espacios ocultos en la base de datos
+            const rolUsuario = (empleado && empleado.rol) ? empleado.rol.trim() : 'Operador'; 
 
             if (rolUsuario !== 'Administrador') {
-                const linkAdmin = document.querySelector('a[href="admin.html"]');
+                const linkAdmin = document.getElementById('link-admin');
                 if (linkAdmin) linkAdmin.parentElement.style.display = 'none';
             }
 
+            // 3. Inyectar datos del perfil
             const nombreCompleto = session.user.user_metadata.full_name;
             const urlFoto = session.user.user_metadata.avatar_url;
             document.getElementById('nombreUsuario').innerText = nombreCompleto.split(' ')[0];
             document.getElementById('fotoUsuario').src = urlFoto;
 
-            await cargarDashboard();
+            // 4. Cargar la data del tablero
+            await cargarDatosDashboard();
         });
 
         async function cerrarSesion() {
@@ -168,90 +172,116 @@
             window.location.href = 'login.html';
         }
 
-        async function cargarDashboard() {
-            const { data: estadosCat } = await supabaseClient.from('catalogo_estados').select('*');
-            const { data: proyectosCat } = await supabaseClient.from('catalogo_proyectos').select('*');
-            const { data: registros, error } = await supabaseClient.from('registros_produccion').select('*');
-            
-            if (error) { console.error(error); return; }
-            if (!registros || registros.length === 0) return;
-
-            let totalMuebles = registros.length;
-            let totalBloqueados = 0;
-            let totalCompletados = 0;
-
-            let maxOrdenEstado = 1;
+        async function cargarDatosDashboard() {
+            // Obtener el catálogo de estados para saber cuál es el estado final (Completado)
+            const { data: estadosCat } = await supabaseClient.from('catalogo_estados').select('*').order('orden', { ascending: true });
+            let maxOrden = 1;
+            let nombreEstadoFinal = "";
             if (estadosCat && estadosCat.length > 0) {
-                maxOrdenEstado = Math.max(...estadosCat.map(e => e.orden));
+                maxOrden = Math.max(...estadosCat.map(e => e.orden));
+                let estadoObjeto = estadosCat.find(e => e.orden === maxOrden);
+                if(estadoObjeto) nombreEstadoFinal = estadoObjeto.nombre;
             }
 
-            registros.forEach(reg => {
-                let nombreEstado = reg.estado || '';
-                if (nombreEstado.toLowerCase().includes('bloque')) {
-                    totalBloqueados++;
-                } else {
-                    let objEstado = estadosCat.find(e => e.nombre === nombreEstado);
-                    if (objEstado && objEstado.orden === maxOrdenEstado) {
-                        totalCompletados++;
-                    }
-                }
-            });
+            // Obtener todos los muebles registrados
+            const { data: muebles } = await supabaseClient.from('registros_produccion').select('*');
+            if (!muebles) return;
 
-            document.getElementById('kpi_total').innerText = totalMuebles;
-            document.getElementById('kpi_bloqueos').innerText = totalBloqueados;
-            document.getElementById('kpi_completados').innerText = totalCompletados;
+            // --- CÁLCULO DE TARJETAS SUPERIORES ---
+            const total = muebles.length;
+            const alertas = muebles.filter(m => m.estado && m.estado.toLowerCase().includes('bloque')).length;
+            const completados = muebles.filter(m => m.estado === nombreEstadoFinal).length;
 
+            // Animación simple de contadores
+            animarContador('total_muebles', total);
+            animarContador('total_alertas', alertas);
+            animarContador('total_completados', completados);
+
+            // --- PROCESAMIENTO PARA GRÁFICAS ---
             let conteoEstados = {};
-            registros.forEach(reg => {
-                let est = reg.estado || 'Nuevo';
-                conteoEstados[est] = (conteoEstados[est] || 0) + 1;
+            let conteoProyectos = {};
+            let coloresProyectos = {};
+
+            // Traer colores de los proyectos
+            const { data: proyectosCat } = await supabaseClient.from('catalogo_proyectos').select('nombre, color');
+            if (proyectosCat) {
+                proyectosCat.forEach(p => { coloresProyectos[p.nombre] = p.color || '#3b82f6'; });
+            }
+
+            muebles.forEach(m => {
+                // Conteo por estado
+                let estado = m.estado || 'Sin Estado';
+                conteoEstados[estado] = (conteoEstados[estado] || 0) + 1;
+                
+                // Conteo por proyecto
+                let proyecto = m.proyecto || 'Sin Proyecto';
+                conteoProyectos[proyecto] = (conteoProyectos[proyecto] || 0) + 1;
             });
 
-            let labelsEstados = Object.keys(conteoEstados);
-            let dataEstados = Object.values(conteoEstados);
-            let coloresEstados = labelsEstados.map(nombre => {
-                if (nombre.toLowerCase().includes('bloque')) return '#ef4444'; 
-                let obj = estadosCat.find(e => e.nombre === nombre);
-                if (obj && obj.orden === maxOrdenEstado) return '#10b981'; 
-                return '#94a3b8'; 
-            });
+            dibujarGraficaEstados(conteoEstados);
+            dibujarGraficaProyectos(conteoProyectos, coloresProyectos);
+        }
 
-            const ctxEstados = document.getElementById('graficoEstados').getContext('2d');
-            new Chart(ctxEstados, {
+        function animarContador(idElemento, valorFinal) {
+            let actual = 0;
+            const elemento = document.getElementById(idElemento);
+            const incremento = Math.max(1, Math.floor(valorFinal / 20));
+            const intervalo = setInterval(() => {
+                actual += incremento;
+                if (actual >= valorFinal) {
+                    actual = valorFinal;
+                    clearInterval(intervalo);
+                }
+                elemento.innerText = actual;
+            }, 30);
+        }
+
+        function dibujarGraficaEstados(datos) {
+            const ctx = document.getElementById('chartEstados').getContext('2d');
+            if (myChartEstados) myChartEstados.destroy();
+
+            const etiquetas = Object.keys(datos);
+            const valores = Object.values(datos);
+            
+            // Colores bonitos y dinámicos para los estados
+            const colores = ['#94a3b8', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#14b8a6'];
+
+            myChartEstados = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: labelsEstados,
+                    labels: etiquetas,
                     datasets: [{
-                        data: dataEstados,
-                        backgroundColor: coloresEstados,
-                        borderWidth: 1
+                        data: valores,
+                        backgroundColor: colores.slice(0, etiquetas.length),
+                        borderWidth: 2,
+                        hoverOffset: 4
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: false }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top', labels: { boxWidth: 15, font: { size: 11 } } } },
+                    cutout: '60%'
+                }
             });
+        }
 
-            let conteoProyectos = {};
-            registros.forEach(reg => {
-                let proy = reg.proyecto || 'Sin Proyecto';
-                conteoProyectos[proy] = (conteoProyectos[proy] || 0) + 1;
-            });
+        function dibujarGraficaProyectos(datos, diccionarioColores) {
+            const ctx = document.getElementById('chartProyectos').getContext('2d');
+            if (myChartProyectos) myChartProyectos.destroy();
 
-            let labelsProyectos = Object.keys(conteoProyectos);
-            let dataProyectos = Object.values(conteoProyectos);
-            let coloresProyectos = labelsProyectos.map(nombre => {
-                let obj = proyectosCat.find(p => p.nombre === nombre);
-                return obj ? obj.color : '#cbd5e1'; 
-            });
+            const etiquetas = Object.keys(datos);
+            const valores = Object.values(datos);
+            const coloresBarra = etiquetas.map(lbl => diccionarioColores[lbl] || '#3b82f6');
 
-            const ctxProyectos = document.getElementById('graficoProyectos').getContext('2d');
-            new Chart(ctxProyectos, {
+            myChartProyectos = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: labelsProyectos,
+                    labels: etiquetas,
                     datasets: [{
-                        label: 'Cant. Muebles',
-                        data: dataProyectos,
-                        backgroundColor: coloresProyectos,
+                        label: 'Cant. de Muebles',
+                        data: valores,
+                        backgroundColor: coloresBarra,
                         borderRadius: 4
                     }]
                 },
@@ -259,43 +289,13 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true } }
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } },
+                        x: { grid: { display: false } }
+                    }
                 }
             });
         }
-
-        // ==========================================
-        // DETECTOR DE CONEXIÓN A INTERNET
-        // ==========================================
-        window.addEventListener('offline', () => {
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'error',
-                title: 'Sin conexión a Internet',
-                text: 'El sistema está trabajando fuera de línea.',
-                showConfirmButton: false,
-                background: '#fee2e2', 
-                color: '#ef4444',      
-                iconColor: '#ef4444'
-            });
-        });
-
-        window.addEventListener('online', () => {
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'success',
-                title: 'Conexión restaurada',
-                text: 'Ya puedes guardar datos en la nube.',
-                showConfirmButton: false,
-                timer: 4000,           
-                timerProgressBar: true,
-                background: '#dcfce7', 
-                color: '#16a34a',      
-                iconColor: '#16a34a'
-            });
-        });
     </script>
 </body>
 </html>
