@@ -6,7 +6,6 @@
     <title>Reportes y Búsqueda - VetaCucine</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- LIBRERÍA DE ALERTAS AÑADIDA PARA PODER BORRAR -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <style>
@@ -94,21 +93,19 @@
 <body>
 
     <div class="app-container">
-        <!-- SIDEBAR -->
         <nav class="sidebar">
             <div class="sidebar-header">Veta<span>Cucine</span></div>
-            <ul class="nav-links">
+               <ul class="nav-links">
                 <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <li><a href="taller.html">🏭 Panel Operador</a></li>
                 <li><a href="index.html">📝 Ingreso Muebles</a></li>
                 <li><a href="reportes.html" class="active">🔍 Buscar y Reportes</a></li>
-                <li><a href="admin.html">⚙️ Administrador</a></li>
+                <li><a href="admin.html" id="link-admin">⚙️ Administrador</a></li>
             </ul>
         </nav>
 
-        <!-- CONTENIDO -->
         <div class="main-content">
             
-            <!-- CABECERA CON PERFIL -->
             <div class="header-top">
                 <h2 class="header-title">Buscador y Reportes</h2>
                 
