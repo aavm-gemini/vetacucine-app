@@ -382,7 +382,6 @@
                 await supabaseClient.from('registros_produccion').insert([{ fecha, codigo_proyecto, proyecto, piso, bloque, suite, espacio, producto, observaciones, modificaciones, estado, id_generado }]);
             }
             
-            // --- TRUCO DE PRODUCTIVIDAD (Limpia solo el código y las notas) ---
             document.getElementById('codigo_proyecto').value = ''; 
             document.getElementById('observaciones').value = ''; 
             document.getElementById('modificaciones').value = '';
@@ -392,10 +391,8 @@
             
             await cargarTabla();
             
-            // Limpiar URL si veníamos de editar en Reportes
             window.history.replaceState({}, document.title, window.location.pathname);
             
-            // --- NOTIFICACIÓN TOAST (Silenciosa) ---
             Swal.fire({
                 toast: true,
                 position: 'top-end',
@@ -427,15 +424,12 @@
         }
 
         async function cargarTabla() {
-            // Se le ordena a Supabase traer los más nuevos primero
             const { data } = await supabaseClient.from('registros_produccion')
                 .select('*')
                 .order('id', { ascending: false })
-                .limit(30);
+                .limit(20);
                 
             if (data) { 
-                // Por seguridad local, orden matemático estricto
-                data.sort((a, b) => b.id - a.id);
                 window.registrosDescargados = data; 
                 renderizarTabla(data); 
             }
@@ -474,9 +468,6 @@
             });
         }
 
-        // ==========================================
-        // DETECTOR DE CONEXIÓN A INTERNET
-        // ==========================================
         window.addEventListener('offline', () => {
             Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Sin conexión a Internet', text: 'El sistema está trabajando fuera de línea.', showConfirmButton: false, background: '#fee2e2', color: '#ef4444', iconColor: '#ef4444' });
         });
