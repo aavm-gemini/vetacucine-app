@@ -10,7 +10,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
-        /* --- ESTRUCTURA GENERAL Y MENÚ LATERAL --- */
         body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f8fafc; overflow: hidden; }
         .app-container { display: flex; height: 100vh; width: 100vw; }
         
@@ -24,7 +23,6 @@
         .nav-links a:hover { background-color: #334155; color: white; }
         .nav-links a.active { background-color: #0f172a; border-left-color: #3b82f6; color: white; font-weight: bold; }
         
-        /* --- ÁREA DE TRABAJO PRINCIPAL --- */
         .main-content { flex: 1; padding: 25px; overflow-y: auto; scroll-behavior: smooth; }
 
         .header-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
@@ -36,7 +34,6 @@
         .btn-salir { background-color: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-left: 5px; }
         .btn-salir:hover { background-color: #fef2f2; }
 
-        /* --- TARJETAS DEL DASHBOARD --- */
         .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 25px; }
         .stat-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); border-left: 5px solid #ccc; display: flex; flex-direction: column; justify-content: center; position: relative; }
         .stat-card h4 { margin: 0; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
@@ -51,12 +48,9 @@
         .clickable-card::after { content: "👆 Clic para ver"; position: absolute; top: 15px; right: 15px; font-size: 10px; color: #ef4444; font-weight: bold; background: #fee2e2; padding: 3px 8px; border-radius: 10px; opacity: 0; transition: 0.2s; }
         .clickable-card:hover::after { opacity: 1; }
 
-        /* --- CONTROL DE METAS --- */
         .progreso-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-bottom: 25px; border-top: 5px solid #ec4899; }
         .progreso-card h3 { margin-top: 0; font-size: 16px; color: #334155; margin-bottom: 15px; }
         .filtros-progreso { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; }
-        
-        /* Ajuste para el nuevo input de piso */
         .filtros-progreso select, .filtros-progreso input { flex: 1; min-width: 150px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px; outline: none; }
         .filtros-progreso input { text-transform: uppercase; }
         
@@ -66,7 +60,6 @@
         .segmento-rojo { background: #ef4444; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: bold; transition: width 0.5s ease; white-space: nowrap; overflow: hidden;}
         .leyenda-progreso { display: flex; justify-content: space-between; font-size: 13px; color: #475569; font-weight: bold; flex-wrap: wrap; gap: 10px; }
 
-        /* --- GRÁFICAS --- */
         .charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 40px; }
         .chart-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
         .chart-container h3 { margin-top: 0; margin-bottom: 20px; font-size: 16px; color: #334155; text-align: center; }
@@ -127,7 +120,7 @@
                 </div>
                 
                 <div class="stat-card border-green">
-                    <h4>Muebles Completados</h4>
+                    <h4>Muebles Completados / Enviados</h4>
                     <p class="numero" id="total_completados">0</p>
                 </div>
             </div>
@@ -137,15 +130,14 @@
                 
                 <div class="filtros-progreso">
                     <select id="sel_proy" onchange="actualizarFiltrosMetas()"><option value="">Selecciona Proyecto...</option></select>
-                    <!-- NUEVO: Input libre para el piso -->
                     <input type="text" id="sel_piso" placeholder="Piso (Vacío = TODOS)" onkeyup="calcularAvance()">
                     <select id="sel_prod" onchange="calcularAvance()"><option value="">Selecciona Producto...</option></select>
                 </div>
 
                 <div class="barra-container">
-                    <div id="bar_verde" class="segmento-verde" style="width: 0%;"></div>
-                    <div id="bar_amarillo" class="segmento-amarillo" style="width: 0%;"></div>
-                    <div id="bar_rojo" class="segmento-rojo" style="width: 0%;"></div>
+                    <div id="bar_verde" class="segmento-verde" style="width: 0%;" title="Completados/Enviados"></div>
+                    <div id="bar_amarillo" class="segmento-amarillo" style="width: 0%;" title="En Planta"></div>
+                    <div id="bar_rojo" class="segmento-rojo" style="width: 0%;" title="Bloqueados"></div>
                 </div>
                 
                 <div class="leyenda-progreso" id="texto_progreso">
@@ -181,7 +173,7 @@
         window.mueblesCargados = [];
         window.metasCargadas = [];
         window.productosCargadosGlobal = [];
-        window.estadoFinalGlobal = "";
+        window.estadosFinales = []; 
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -209,9 +201,12 @@
         async function cargarDatosDashboard() {
             const { data: estadosCat } = await supabaseClient.from('catalogo_estados').select('*').order('orden', { ascending: true });
             if (estadosCat && estadosCat.length > 0) {
-                let maxOrden = Math.max(...estadosCat.map(e => e.orden));
-                let estadoObjeto = estadosCat.find(e => e.orden === maxOrden);
-                if(estadoObjeto) window.estadoFinalGlobal = estadoObjeto.nombre;
+                window.estadosFinales = estadosCat.filter(e => 
+                    !e.estado_siguiente || 
+                    e.estado_siguiente.trim() === '' || 
+                    e.nombre.toLowerCase().includes('enviad') || 
+                    e.nombre.toLowerCase().includes('instalad')
+                ).map(e => e.nombre);
             }
 
             const { data: muebles } = await supabaseClient.from('registros_produccion').select('*');
@@ -243,7 +238,7 @@
 
             const total = window.mueblesCargados.length;
             const alertas = window.mueblesCargados.filter(m => m.estado && m.estado.toLowerCase().includes('bloque')).length;
-            const completados = window.mueblesCargados.filter(m => m.estado === window.estadoFinalGlobal).length;
+            const completados = window.mueblesCargados.filter(m => window.estadosFinales.includes(m.estado)).length;
 
             animarContador('total_muebles', total);
             animarContador('total_alertas', alertas);
@@ -261,7 +256,6 @@
 
         function verAlertasDetalladas() {
             let bloqueados = window.mueblesCargados.filter(m => m.estado && m.estado.toLowerCase().includes('bloque'));
-            
             if(bloqueados.length === 0) {
                 Swal.fire({ icon: 'success', title: '¡Todo perfecto!', text: 'No hay muebles bloqueados en planta en este momento.', confirmButtonColor: '#10b981' });
                 return;
@@ -273,7 +267,7 @@
             
             bloqueados.forEach(m => {
                 let blqStr = m.bloque ? ` - Blq ${m.bloque}` : '';
-                let ubi = `${m.proyecto} - Piso ${m.piso}${blqStr}`;
+                let ubi = `${m.proyecto} - P${m.piso}${blqStr}`;
                 let obs = m.observaciones ? m.observaciones : '<em>Sin detalles escritos</em>';
                 htmlTabla += `<tr><td><strong>${m.codigo_proyecto || 'S/N'}</strong></td><td>${ubi}</td><td class="obs-peligro">${obs}</td></tr>`;
             });
@@ -286,9 +280,8 @@
             let proySeleccionado = document.getElementById('sel_proy').value;
             let prodSelect = document.getElementById('sel_prod');
             
-            // Limpiamos los productos para cargarlos de nuevo
             prodSelect.innerHTML = '<option value="">Selecciona Producto...</option>';
-            document.getElementById('sel_piso').value = ""; // Limpia el buscador de piso
+            document.getElementById('sel_piso').value = ""; 
             resetearBarra();
 
             if (!proySeleccionado) {
@@ -304,64 +297,101 @@
         function calcularAvance() {
             let proy = document.getElementById('sel_proy').value;
             let pisoRaw = document.getElementById('sel_piso').value.trim().toUpperCase();
-            let piso = pisoRaw === "" ? "TODOS" : pisoRaw; // Si escribe algo, usa eso. Si no, asume TODOS.
+            let piso = pisoRaw === "" ? "TODOS" : pisoRaw; 
             let prod = document.getElementById('sel_prod').value;
 
             if(!proy || !prod) { resetearBarra(); return; }
 
-            // 1. Buscamos si existe la meta exacta para el piso que escribió
-            let meta = window.metasCargadas.find(m => m.proyecto === proy && m.piso === piso && m.producto === prod);
-            
+            let metaTotal = 0;
             let usoMetaGeneral = false;
-            // 2. Si escribió un piso específico pero no hay meta para ese piso, usamos la meta de "TODOS"
-            if(!meta && piso !== "TODOS") {
-                meta = window.metasCargadas.find(m => m.proyecto === proy && m.piso === "TODOS" && m.producto === prod);
-                usoMetaGeneral = true;
+            let mensajeAviso = "";
+
+            // --- LÓGICA DE METAS DINÁMICAS ---
+            if (piso === "TODOS") {
+                let metaGral = window.metasCargadas.find(m => m.proyecto === proy && m.piso === "TODOS" && m.producto === prod);
+                
+                // Encontrar pisos activos para este proyecto
+                let mueblesDelProy = window.mueblesCargados.filter(m => {
+                    let nombreArmado = m.bloque ? `${m.proyecto} - Bloque ${m.bloque}` : m.proyecto;
+                    return nombreArmado === proy;
+                });
+                
+                let pisosActivos = [...new Set(mueblesDelProy.map(m => (m.piso || "").toUpperCase()))];
+
+                if (pisosActivos.length === 0) {
+                    if (metaGral) metaTotal = metaGral.cantidad_esperada;
+                } else {
+                    pisosActivos.forEach(p => {
+                        let metaEsp = window.metasCargadas.find(m => m.proyecto === proy && m.piso === p && m.producto === prod);
+                        if (metaEsp) {
+                            metaTotal += metaEsp.cantidad_esperada;
+                        } else if (metaGral) {
+                            metaTotal += metaGral.cantidad_esperada;
+                            usoMetaGeneral = true;
+                        }
+                    });
+                }
+
+                if (metaTotal === 0) {
+                    document.getElementById('texto_progreso').innerHTML = "<span style='color:#ef4444;'>⚠️ No hay meta general registrada en el Administrador.</span>";
+                    resetearBarra(); return;
+                }
+
+                if (usoMetaGeneral && pisosActivos.length > 0) {
+                    mensajeAviso = `<br><span style="color:#3b82f6; font-size:11px;">*Meta dinámica: Base multiplicada por los ${pisosActivos.length} pisos activos en fábrica.</span>`;
+                }
+
+            } else {
+                let meta = window.metasCargadas.find(m => m.proyecto === proy && m.piso === piso && m.producto === prod);
+                if (!meta) {
+                    meta = window.metasCargadas.find(m => m.proyecto === proy && m.piso === "TODOS" && m.producto === prod);
+                    usoMetaGeneral = true;
+                }
+                
+                if(!meta) {
+                    document.getElementById('texto_progreso').innerHTML = "<span style='color:#ef4444;'>⚠️ No hay meta registrada para este piso.</span>";
+                    resetearBarra(); return;
+                }
+                metaTotal = meta.cantidad_esperada;
+                if (usoMetaGeneral) {
+                    mensajeAviso = `<br><span style="color:#3b82f6; font-size:11px;">*Usando la meta general (plantilla) para el piso ${pisoRaw}.</span>`;
+                }
             }
 
-            if(!meta) {
-                document.getElementById('texto_progreso').innerHTML = "<span style='color:#ef4444;'>⚠️ No hay meta registrada para este proyecto y producto.</span>";
-                resetearBarra();
-                return;
-            }
-
-            let metaTotal = meta.cantidad_esperada;
-
-            // Filtramos los muebles que corresponden al proyecto y producto
+            // Filtramos los muebles para cruzar con la meta calculada
             let mueblesReales = window.mueblesCargados.filter(m => {
                 let nombreArmado = m.bloque ? `${m.proyecto} - Bloque ${m.bloque}` : m.proyecto;
                 return nombreArmado === proy && m.producto === prod;
             });
 
-            // Si escribió un piso específico, filtramos solo las puertas reales de ese piso
             if(piso !== "TODOS") {
                 mueblesReales = mueblesReales.filter(m => (m.piso || "").toUpperCase() === pisoRaw);
             }
 
-            let terminadas = mueblesReales.filter(m => m.estado === window.estadoFinalGlobal).length;
+            let terminadas = mueblesReales.filter(m => window.estadosFinales.includes(m.estado)).length;
             let bloqueadas = mueblesReales.filter(m => m.estado && m.estado.toLowerCase().includes('bloque')).length;
             let enProceso = mueblesReales.length - terminadas - bloqueadas;
-            let faltantes = metaTotal - (terminadas + enProceso + bloqueadas);
+            
+            // CORRECCIÓN MATEMÁTICA PARA EL DESBORDE DE LA BARRA
+            let totalReal = terminadas + enProceso + bloqueadas;
+            let baseVisual = Math.max(metaTotal, totalReal); 
+
+            let faltantes = metaTotal - totalReal;
             if (faltantes < 0) faltantes = 0; 
 
-            let pctVerde = (terminadas / metaTotal) * 100;
-            let pctAmarillo = (enProceso / metaTotal) * 100;
-            let pctRojo = (bloqueadas / metaTotal) * 100;
-
-            if(pctVerde + pctAmarillo + pctRojo > 100) {
-                let factor = 100 / (pctVerde + pctAmarillo + pctRojo);
-                pctVerde *= factor; pctAmarillo *= factor; pctRojo *= factor;
-            }
+            let pctVerde = (terminadas / baseVisual) * 100;
+            let pctAmarillo = (enProceso / baseVisual) * 100;
+            let pctRojo = (bloqueadas / baseVisual) * 100;
 
             document.getElementById('bar_verde').style.width = `${pctVerde}%`; document.getElementById('bar_verde').innerHTML = terminadas > 0 ? `${terminadas}` : '';
             document.getElementById('bar_amarillo').style.width = `${pctAmarillo}%`; document.getElementById('bar_amarillo').innerHTML = enProceso > 0 ? `${enProceso}` : '';
             document.getElementById('bar_rojo').style.width = `${pctRojo}%`; document.getElementById('bar_rojo').innerHTML = bloqueadas > 0 ? `${bloqueadas}` : '';
 
-            let mensajeAviso = usoMetaGeneral ? `<br><span style="color:#ef4444; font-size:11px;">*Mostrando aporte del Piso ${pisoRaw} a la Meta General del Proyecto.</span>` : '';
+            let avisoSobreproduccion = totalReal > metaTotal ? `<span style="color:#ef4444; margin-left:10px;">(¡Sobreproducción: +${totalReal - metaTotal}!)</span>` : '';
 
             document.getElementById('texto_progreso').innerHTML = `
-                <span style="min-width:150px;">Meta Base: ${metaTotal} unds.</span>
-                <span style="color:#10b981;">✅ ${terminadas} Terminadas</span>
+                <span style="min-width:150px;">Meta Base: ${metaTotal} unds. ${avisoSobreproduccion}</span>
+                <span style="color:#10b981;">✅ ${terminadas} Completadas</span>
                 <span style="color:#f59e0b;">⏳ ${enProceso} En Planta</span>
                 <span style="color:#94a3b8;">⚪ ${faltantes} Sin Ingresar</span>
                 ${mensajeAviso}
