@@ -55,13 +55,16 @@
         .progreso-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-bottom: 25px; border-top: 5px solid #ec4899; }
         .progreso-card h3 { margin-top: 0; font-size: 16px; color: #334155; margin-bottom: 15px; }
         .filtros-progreso { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; }
-        .filtros-progreso select { flex: 1; min-width: 150px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px; outline: none; }
+        
+        /* Ajuste para el nuevo input de piso */
+        .filtros-progreso select, .filtros-progreso input { flex: 1; min-width: 150px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px; outline: none; }
+        .filtros-progreso input { text-transform: uppercase; }
         
         .barra-container { background: #e2e8f0; border-radius: 10px; height: 25px; width: 100%; display: flex; overflow: hidden; margin-bottom: 10px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); }
         .segmento-verde { background: #10b981; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: bold; transition: width 0.5s ease; white-space: nowrap; overflow: hidden;}
         .segmento-amarillo { background: #f59e0b; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: bold; transition: width 0.5s ease; white-space: nowrap; overflow: hidden;}
         .segmento-rojo { background: #ef4444; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: bold; transition: width 0.5s ease; white-space: nowrap; overflow: hidden;}
-        .leyenda-progreso { display: flex; justify-content: space-between; font-size: 13px; color: #475569; font-weight: bold; }
+        .leyenda-progreso { display: flex; justify-content: space-between; font-size: 13px; color: #475569; font-weight: bold; flex-wrap: wrap; gap: 10px; }
 
         /* --- GRÁFICAS --- */
         .charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 40px; }
@@ -134,7 +137,8 @@
                 
                 <div class="filtros-progreso">
                     <select id="sel_proy" onchange="actualizarFiltrosMetas()"><option value="">Selecciona Proyecto...</option></select>
-                    <select id="sel_piso" onchange="calcularAvance()"><option value="">Selecciona Piso...</option></select>
+                    <!-- NUEVO: Input libre para el piso -->
+                    <input type="text" id="sel_piso" placeholder="Piso (Vacío = TODOS)" onkeyup="calcularAvance()">
                     <select id="sel_prod" onchange="calcularAvance()"><option value="">Selecciona Producto...</option></select>
                 </div>
 
@@ -145,7 +149,7 @@
                 </div>
                 
                 <div class="leyenda-progreso" id="texto_progreso">
-                    Selecciona un proyecto, piso y producto para ver el progreso real.
+                    Selecciona un proyecto y producto para ver el progreso real.
                 </div>
             </div>
 
@@ -226,7 +230,6 @@
             if (proyectosCat) {
                 proyectosCat.forEach(item => {
                     coloresProyectos[item.nombre] = item.color || '#3b82f6';
-                    // Desglosar bloques en el selector
                     if (item.bloques && item.bloques.trim() !== "") {
                         let arrayBloques = item.bloques.split(',').map(b => b.trim()).filter(b => b !== "");
                         arrayBloques.forEach(b => {
@@ -281,58 +284,58 @@
 
         function actualizarFiltrosMetas() {
             let proySeleccionado = document.getElementById('sel_proy').value;
-            let pisoSelect = document.getElementById('sel_piso');
             let prodSelect = document.getElementById('sel_prod');
             
-            pisoSelect.innerHTML = '<option value="">Selecciona Piso...</option>';
+            // Limpiamos los productos para cargarlos de nuevo
             prodSelect.innerHTML = '<option value="">Selecciona Producto...</option>';
-            document.getElementById('texto_progreso').innerHTML = "Selecciona piso y producto para ver el progreso.";
+            document.getElementById('sel_piso').value = ""; // Limpia el buscador de piso
             resetearBarra();
 
-            if (!proySeleccionado) return;
-
-            let metasDelProyecto = window.metasCargadas.filter(m => m.proyecto === proySeleccionado);
-            
-            let pisosUnicos = [...new Set(metasDelProyecto.map(m => m.piso))];
-            pisosUnicos.forEach(p => {
-                let etiqueta = p === "TODOS" ? "TODOS LOS PISOS" : `Piso ${p}`;
-                pisoSelect.innerHTML += `<option value="${p}">${etiqueta}</option>`;
-            });
+            if (!proySeleccionado) {
+                document.getElementById('texto_progreso').innerHTML = "Selecciona un proyecto y producto para ver el progreso real.";
+                return;
+            }
 
             if (window.productosCargadosGlobal) {
                  window.productosCargadosGlobal.forEach(p => prodSelect.innerHTML += `<option value="${p.sigla}">${p.sigla}</option>`);
-            }
-
-            if(pisosUnicos.length === 0) {
-                document.getElementById('texto_progreso').innerHTML = "<span style='color:#ef4444;'>⚠️ Este proyecto no tiene metas configuradas en el Administrador.</span>";
             }
         }
 
         function calcularAvance() {
             let proy = document.getElementById('sel_proy').value;
-            let piso = document.getElementById('sel_piso').value;
+            let pisoRaw = document.getElementById('sel_piso').value.trim().toUpperCase();
+            let piso = pisoRaw === "" ? "TODOS" : pisoRaw; // Si escribe algo, usa eso. Si no, asume TODOS.
             let prod = document.getElementById('sel_prod').value;
 
-            if(!proy || !piso || !prod) { resetearBarra(); return; }
+            if(!proy || !prod) { resetearBarra(); return; }
 
+            // 1. Buscamos si existe la meta exacta para el piso que escribió
             let meta = window.metasCargadas.find(m => m.proyecto === proy && m.piso === piso && m.producto === prod);
             
+            let usoMetaGeneral = false;
+            // 2. Si escribió un piso específico pero no hay meta para ese piso, usamos la meta de "TODOS"
+            if(!meta && piso !== "TODOS") {
+                meta = window.metasCargadas.find(m => m.proyecto === proy && m.piso === "TODOS" && m.producto === prod);
+                usoMetaGeneral = true;
+            }
+
             if(!meta) {
-                document.getElementById('texto_progreso').innerHTML = "<span style='color:#ef4444;'>⚠️ No hay meta registrada para este Piso y Producto.</span>";
+                document.getElementById('texto_progreso').innerHTML = "<span style='color:#ef4444;'>⚠️ No hay meta registrada para este proyecto y producto.</span>";
                 resetearBarra();
                 return;
             }
 
             let metaTotal = meta.cantidad_esperada;
 
+            // Filtramos los muebles que corresponden al proyecto y producto
             let mueblesReales = window.mueblesCargados.filter(m => {
-                // El truco para cruzar la data con la regla visual
                 let nombreArmado = m.bloque ? `${m.proyecto} - Bloque ${m.bloque}` : m.proyecto;
                 return nombreArmado === proy && m.producto === prod;
             });
 
+            // Si escribió un piso específico, filtramos solo las puertas reales de ese piso
             if(piso !== "TODOS") {
-                mueblesReales = mueblesReales.filter(m => (m.piso || "").toUpperCase() === piso);
+                mueblesReales = mueblesReales.filter(m => (m.piso || "").toUpperCase() === pisoRaw);
             }
 
             let terminadas = mueblesReales.filter(m => m.estado === window.estadoFinalGlobal).length;
@@ -354,11 +357,14 @@
             document.getElementById('bar_amarillo').style.width = `${pctAmarillo}%`; document.getElementById('bar_amarillo').innerHTML = enProceso > 0 ? `${enProceso}` : '';
             document.getElementById('bar_rojo').style.width = `${pctRojo}%`; document.getElementById('bar_rojo').innerHTML = bloqueadas > 0 ? `${bloqueadas}` : '';
 
+            let mensajeAviso = usoMetaGeneral ? `<br><span style="color:#ef4444; font-size:11px;">*Mostrando aporte del Piso ${pisoRaw} a la Meta General del Proyecto.</span>` : '';
+
             document.getElementById('texto_progreso').innerHTML = `
-                <span>Meta Total: ${metaTotal} unds.</span>
+                <span style="min-width:150px;">Meta Base: ${metaTotal} unds.</span>
                 <span style="color:#10b981;">✅ ${terminadas} Terminadas</span>
                 <span style="color:#f59e0b;">⏳ ${enProceso} En Planta</span>
                 <span style="color:#94a3b8;">⚪ ${faltantes} Sin Ingresar</span>
+                ${mensajeAviso}
             `;
         }
 
