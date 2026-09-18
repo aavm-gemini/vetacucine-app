@@ -55,6 +55,7 @@
         .color-dot { display: inline-block; width: 16px; height: 16px; border-radius: 50%; vertical-align: middle; margin-right: 8px; border: 1px solid #ccc; }
         .badge-orden { background-color: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
         .badge-auto { background-color: #dbeafe; color: #2563eb; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 5px; }
+        .badge-todos { background-color: #fce7f3; color: #db2777; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
 
         @media (max-width: 1000px) { .dashboard-grid { grid-template-columns: 1fr; } .panel-full { grid-column: 1; } }
         @media (max-width: 768px) { 
@@ -100,18 +101,21 @@
 
             <div class="dashboard-grid">
                 
-                <!-- NUEVO PANEL: METAS DE PRODUCCIÓN -->
+                <!-- PANEL: METAS DE PRODUCCIÓN CON LÓGICA DE EXCEPCIONES -->
                 <div class="panel panel-full" style="border-top-color: #ec4899;">
-                    <h3>🎯 Control de Metas (Master Plan por Piso)</h3>
+                    <h3>🎯 Control de Metas (Reglas y Excepciones)</h3>
                     <div class="form-row">
                         <div class="form-group"><label>Proyecto</label><select id="meta_proyecto"><option value="">Cargando...</option></select></div>
-                        <div class="form-group" style="flex: 0.5;"><label>Piso</label><input type="text" id="meta_piso" placeholder="Ej: 9" style="text-transform: uppercase;"></div>
+                        <div class="form-group" style="flex: 0.6;">
+                            <label>Piso (Vacío = TODOS)</label>
+                            <input type="text" id="meta_piso" placeholder="Deja vacío para general" style="text-transform: uppercase;">
+                        </div>
                         <div class="form-group"><label>Producto</label><select id="meta_producto"><option value="">Cargando...</option></select></div>
                         <div class="form-group" style="flex: 0.5;"><label>Cant. Total</label><input type="number" id="meta_cantidad" placeholder="Ej: 9" min="1"></div>
                         <button class="btn-add" style="background-color: #ec4899;" onclick="guardarMeta()">Fijar Meta</button>
                     </div>
                     <table>
-                        <thead><tr><th>Proyecto</th><th>Piso</th><th>Producto</th><th>Cantidad Requerida</th><th style="width: 30px;"></th></tr></thead>
+                        <thead><tr><th>Proyecto</th><th>Aplica a Piso</th><th>Producto</th><th>Cantidad Requerida</th><th style="width: 30px;"></th></tr></thead>
                         <tbody id="tabla_metas"></tbody>
                     </table>
                 </div>
@@ -239,7 +243,6 @@
                 data.forEach(item => { 
                     tbody.innerHTML += `<tr><td><strong>${item.sigla}</strong></td><td>${item.nombre}</td><td><button class="btn-delete" onclick="eliminarDato('${tabla}', '${item.id}', '${item.sigla}')">🗑️</button></td></tr>`; 
                 });
-                // Si es tabla productos, actualizamos el selector de metas
                 if(tabla === 'catalogo_productos') {
                     const selProd = document.getElementById('meta_producto');
                     selProd.innerHTML = '<option value="">Selecciona...</option>';
@@ -284,7 +287,7 @@
             }
         }
 
-        /* --- LOGICA ESTADOS CON PILOTO AUTOMÁTICO --- */
+        /* --- LOGICA ESTADOS --- */
         function prepararEdicionEstado(id, nombre, orden, sigEstado) {
             idEstadoEditando = id; document.getElementById('nombre_estado').value = nombre; 
             document.getElementById('orden_estado').value = orden; document.getElementById('estado_siguiente').value = sigEstado || '';
@@ -333,7 +336,6 @@
             const selSiguiente = document.getElementById('estado_siguiente');
             tbody.innerHTML = ""; 
             
-            // Llenar el selector de "Estado Siguiente"
             selSiguiente.innerHTML = '<option value="">Ninguno (Fin del proceso)</option>';
             if(data) {
                 data.forEach(item => { selSiguiente.innerHTML += `<option value="${item.nombre}">${item.nombre}</option>`; });
@@ -348,15 +350,18 @@
             }
         }
 
-        /* --- LÓGICA METAS DE PRODUCCIÓN --- */
+        /* --- LÓGICA METAS DE PRODUCCIÓN CON EXCEPCIONES --- */
         async function guardarMeta() {
             let proyecto = document.getElementById('meta_proyecto').value;
-            let piso = document.getElementById('meta_piso').value.trim().toUpperCase();
+            // EL TRUCO ESTÁ AQUÍ: Si lo deja vacío, asumimos "TODOS"
+            let pisoRaw = document.getElementById('meta_piso').value.trim().toUpperCase();
+            let piso = pisoRaw === "" ? "TODOS" : pisoRaw; 
+            
             let producto = document.getElementById('meta_producto').value;
             let cantidad = parseInt(document.getElementById('meta_cantidad').value);
 
-            if (!proyecto || !piso || !producto || isNaN(cantidad)) {
-                Swal.fire('Campos incompletos', 'Selecciona el proyecto, producto y escribe el piso y cantidad.', 'warning'); return;
+            if (!proyecto || !producto || isNaN(cantidad)) {
+                Swal.fire('Campos incompletos', 'Selecciona el proyecto, producto y la cantidad total.', 'warning'); return;
             }
 
             const { error } = await supabaseClient.from('metas_produccion').insert([{ proyecto, piso, producto, cantidad_esperada: cantidad }]);
@@ -372,9 +377,12 @@
             const tbody = document.getElementById('tabla_metas'); tbody.innerHTML = "";
             if (data) {
                 data.forEach(item => {
-                    tbody.innerHTML += `<tr><td><strong>${item.proyecto}</strong></td><td>Piso ${item.piso}</td>
+                    // Si el piso es "TODOS", le ponemos una etiqueta visual bonita
+                    let pisoDisplay = item.piso === "TODOS" ? '<span class="badge-todos">🏢 TODOS LOS PISOS</span>' : `Piso <strong>${item.piso}</strong>`;
+                    
+                    tbody.innerHTML += `<tr><td><strong>${item.proyecto}</strong></td><td>${pisoDisplay}</td>
                     <td>${item.producto}</td><td><strong>${item.cantidad_esperada} unds.</strong></td>
-                    <td><button class="btn-delete" onclick="eliminarDato('metas_produccion', '${item.id}', 'Meta del Piso ${item.piso}')">🗑️</button></td></tr>`;
+                    <td><button class="btn-delete" onclick="eliminarDato('metas_produccion', '${item.id}', 'esta regla de meta')">🗑️</button></td></tr>`;
                 });
             }
         }
