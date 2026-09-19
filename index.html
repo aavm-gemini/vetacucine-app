@@ -87,6 +87,7 @@
         .btn-accion { background-color: transparent; border: none; font-size: 15px; cursor: pointer; padding: 2px 4px; margin: 0; line-height: 1; opacity: 0; transition: 0.2s; }
         tr:hover .btn-accion { opacity: 1; } .btn-accion:hover { transform: scale(1.3); }
         .badge-estado { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; white-space: nowrap; transition: 0.3s; }
+        .estado-vacio { text-align: center; padding: 30px; color: #94a3b8; font-style: italic; }
 
         @media (max-width: 768px) { 
             body { overflow: auto; }
@@ -389,7 +390,25 @@
             document.getElementById('codigo_proyecto').focus(); 
             btn.innerHTML = "Guardar Mueble"; btn.classList.remove('btn-editando'); btn.disabled = false; 
             
+            // Recargamos la tabla desde la base de datos
             await cargarTabla();
+            
+            // --- TRUCO MAESTRO DE INTERFAZ ---
+            // Buscamos el mueble que acabas de guardar en la lista y lo "arrastramos" a la fuerza a la posición 0 (fila 1)
+            let indexGuardado = window.registrosDescargados.findIndex(r => r.id_generado === id_generado);
+            if (indexGuardado > 0) {
+                let itemVisual = window.registrosDescargados.splice(indexGuardado, 1)[0];
+                window.registrosDescargados.unshift(itemVisual);
+                renderizarTabla(window.registrosDescargados);
+            } else if (indexGuardado === -1) {
+                // Si la BD no lo trajo entre los primeros 20, lo consultamos directo y lo ponemos de primero
+                const { data: recienGuardado } = await supabaseClient.from('registros_produccion').select('*').eq('id_generado', id_generado).single();
+                if (recienGuardado) {
+                    window.registrosDescargados.unshift(recienGuardado);
+                    if(window.registrosDescargados.length > 20) window.registrosDescargados.pop();
+                    renderizarTabla(window.registrosDescargados);
+                }
+            }
             
             window.history.replaceState({}, document.title, window.location.pathname);
             
@@ -424,12 +443,18 @@
         }
 
         async function cargarTabla() {
-            // SOLUCIÓN: Ordenar estrictamente por la fecha/hora de creación interna de Supabase
-            const { data } = await supabaseClient.from('registros_produccion')
+            // Se quitó la orden "created_at" que daba error. Se usa el 'id' por defecto.
+            const { data, error } = await supabaseClient.from('registros_produccion')
                 .select('*')
-                .order('created_at', { ascending: false })
+                .order('id', { ascending: false })
                 .limit(20);
                 
+            if (error) {
+                console.error("Error BD:", error.message);
+                document.querySelector("#tablaRegistros tbody").innerHTML = `<tr><td colspan="8" class="estado-vacio" style="color:#ef4444;">Falla de Conexión: ${error.message}</td></tr>`;
+                return;
+            }
+
             if (data) { 
                 window.registrosDescargados = data; 
                 renderizarTabla(data); 
@@ -438,6 +463,11 @@
 
         function renderizarTabla(data) {
             const tbody = document.querySelector("#tablaRegistros tbody"); tbody.innerHTML = ""; 
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="estado-vacio">No hay registros de muebles aún.</td></tr>';
+                return;
+            }
+            
             let maxOrdenEstado = (window.estadosCargados && window.estadosCargados.length > 0) ? Math.max(...window.estadosCargados.map(e => e.orden)) : 1;
 
             data.forEach(fila => {
