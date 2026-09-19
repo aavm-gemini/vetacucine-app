@@ -61,7 +61,6 @@
         th { background-color: #f8fafc; color: #475569; }
         tr:hover td { background-color: #f1f5f9; }
         
-        /* Ajuste ligero de anchos para que quepan los 3 botones perfectos */
         th:nth-child(1) { width: 8%; } th:nth-child(2) { width: 9%; } th:nth-child(3) { width: 17%; } th:nth-child(4) { width: 11%; } 
         th:nth-child(5) { width: 19%; } th:nth-child(6) { width: 19%; } th:nth-child(7) { width: 9%; text-align: center; } th:nth-child(8) { width: 8%; text-align: center; }
 
@@ -69,7 +68,6 @@
         .badge-estado { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; white-space: nowrap; transition: 0.3s; }
         .estado-vacio { text-align: center; padding: 40px; color: #94a3b8; font-style: italic; }
 
-        /* Mantiene los botones en 1 sola fila sin agrandar la celda */
         .acciones-col { white-space: nowrap; text-align: center; }
         .btn-accion { background-color: transparent; border: none; font-size: 15px; cursor: pointer; padding: 2px 3px; margin: 0; line-height: 1; opacity: 0; transition: 0.2s; }
         tr:hover .btn-accion { opacity: 1; } .btn-accion:hover { transform: scale(1.3); }
@@ -398,33 +396,33 @@
         }
 
         // ===============================================
-        // NUEVA FUNCIÓN: VER LÍNEA DE TIEMPO / EXPEDIENTE
+        // CORRECCIÓN: FUNCIÓN QUE CARGA EL HISTORIAL USANDO 'fecha' MANUAL
         // ===============================================
         async function verHistorial(id_mueble, codigo, ubicacion) {
             Swal.fire({ title: 'Cargando expediente...', didOpen: () => Swal.showLoading() });
-            const { data: mueble } = await supabaseClient.from('registros_produccion').select('created_at').eq('id', id_mueble).single();
-            const { data: historial } = await supabaseClient.from('historial_trazabilidad').select('*').eq('id_mueble', id_mueble).order('created_at', { ascending: true });
+            
+            const { data: mueble } = await supabaseClient.from('registros_produccion').select('fecha').eq('id', id_mueble).single();
+            const { data: historial } = await supabaseClient.from('historial_trazabilidad').select('*').eq('id_mueble', id_mueble).order('id', { ascending: true });
             
             let html = `<div style="text-align: left; max-height: 400px; overflow-y: auto; font-size: 13px;">`;
             html += `<h4 style="margin-top:0; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Cód: ${codigo} | ${ubicacion}</h4>`;
             html += `<ul style="list-style-type: none; padding-left: 15px; border-left: 2px solid #3b82f6; margin-left: 5px;">`;
             
-            if (mueble && mueble.created_at) {
-                let d = new Date(mueble.created_at);
+            if (mueble && mueble.fecha) {
                 html += `<li style="margin-bottom: 15px; position: relative;">
                     <span style="position: absolute; left: -21px; top: 0; background: #3b82f6; width: 10px; height: 10px; border-radius: 50%;"></span>
-                    <strong>${d.toLocaleString()}</strong><br>
+                    <strong>${mueble.fecha}</strong><br>
                     ✨ <b style="color:#3b82f6;">Ingresado al Sistema</b>
                 </li>`;
             }
 
             if (historial && historial.length > 0) {
                 historial.forEach(h => {
-                    let d = new Date(h.created_at || h.fecha); 
+                    let fechaMostrada = h.created_at ? new Date(h.created_at).toLocaleString() : h.fecha || 'Fecha registrada';
                     let icono = h.tipo_registro.includes('Falla') ? '🛑' : (h.tipo_registro.includes('Edición') ? '✏️' : '▶️');
                     html += `<li style="margin-bottom: 15px; position: relative;">
                         <span style="position: absolute; left: -21px; top: 0; background: #3b82f6; width: 10px; height: 10px; border-radius: 50%;"></span>
-                        <strong>${d.toLocaleString()}</strong> - <i>${h.operador || 'Operador'}</i><br>
+                        <strong>${fechaMostrada}</strong> - <i>${h.operador || 'Operador'}</i><br>
                         ${icono} <b>${h.tipo_registro}</b> (${h.etapa})<br>
                         <span style="color: #64748b;">${h.comentarios || ''}</span>
                     </li>`;
@@ -432,7 +430,7 @@
             } else {
                 html += `<li style="margin-bottom: 15px; position: relative; color: #64748b;">
                     <span style="position: absolute; left: -21px; top: 0; background: #cbd5e1; width: 10px; height: 10px; border-radius: 50%;"></span>
-                    <i>Aún no hay movimientos registrados en el taller para esta pieza.</i>
+                    <i>Aún no hay movimientos extra registrados para esta pieza.</i>
                 </li>`;
             }
             

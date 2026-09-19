@@ -196,14 +196,11 @@
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
         
         window.registrosDescargados = []; window.proyectosCargados = []; window.estadosCargados = []; 
-        window.operadorActual = "";
+        window.operadorActual = ""; 
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
-            if (!session) {
-                window.location.href = 'login.html';
-                return;
-            }
+            if (!session) { window.location.href = 'login.html'; return; }
 
             const correoUsuario = session.user.email;
             const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol').eq('email', correoUsuario).single();
@@ -215,7 +212,7 @@
             }
 
             const nombreCompleto = session.user.user_metadata.full_name;
-            window.operadorActual = nombreCompleto;
+            window.operadorActual = nombreCompleto; 
             const urlFoto = session.user.user_metadata.avatar_url;
             document.getElementById('nombreUsuario').innerText = nombreCompleto.split(' ')[0];
             document.getElementById('fotoUsuario').src = urlFoto;
@@ -241,10 +238,7 @@
             }
         });
 
-        async function cerrarSesion() {
-            await supabaseClient.auth.signOut();
-            window.location.href = 'login.html';
-        }
+        async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; }
 
         function hexToRgb(hex) {
             let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -374,7 +368,6 @@
                     if (!result.isConfirmed) { btn.innerHTML = "Guardar Mueble"; btn.disabled = false; return; }
                 }
 
-                // === EL SUPER ESPÍA: VIGILA TODO TIPO DE CAMBIOS ===
                 let cambiosStr = [];
                 let obsAntigua = muebleAntiguo.observaciones || "";
                 let modAntigua = muebleAntiguo.modificaciones || "";
@@ -388,11 +381,10 @@
 
                 await supabaseClient.from('registros_produccion').update({ fecha, codigo_proyecto, observaciones, modificaciones, estado }).eq('id_generado', id_generado);
 
-                // Si detectó cualquier cambio, lo anota en el reloj de auditoría
                 if (cambiosStr.length > 0) {
                     await supabaseClient.from('historial_trazabilidad').insert([{
                         id_mueble: muebleAntiguo.id,
-                        etapa: estado, // Muestra el estado en el que quedó
+                        etapa: estado, 
                         operador: window.operadorActual,
                         tipo_registro: 'Edición en Sistema',
                         comentarios: `Actualizó: ${cambiosStr.join(', ')}.`
@@ -427,7 +419,6 @@
             }
             
             window.history.replaceState({}, document.title, window.location.pathname);
-            
             Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '¡Mueble guardado!', showConfirmButton: false, timer: 2000, timerProgressBar: true });
         }
 
@@ -441,29 +432,14 @@
         }
 
         async function cargarTabla() {
-            const { data, error } = await supabaseClient.from('registros_produccion')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(20);
-                
-            if (error) {
-                console.error("Error BD:", error.message);
-                document.querySelector("#tablaRegistros tbody").innerHTML = `<tr><td colspan="8" class="estado-vacio" style="color:#ef4444;">Falla de Conexión: ${error.message}</td></tr>`;
-                return;
-            }
-
-            if (data) { 
-                window.registrosDescargados = data; 
-                renderizarTabla(data); 
-            }
+            const { data, error } = await supabaseClient.from('registros_produccion').select('*').order('id', { ascending: false }).limit(20);
+            if (error) { document.querySelector("#tablaRegistros tbody").innerHTML = `<tr><td colspan="8" class="estado-vacio" style="color:#ef4444;">Falla de Conexión: ${error.message}</td></tr>`; return; }
+            if (data) { window.registrosDescargados = data; renderizarTabla(data); }
         }
 
         function renderizarTabla(data) {
             const tbody = document.querySelector("#tablaRegistros tbody"); tbody.innerHTML = ""; 
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="estado-vacio">No hay registros de muebles aún.</td></tr>';
-                return;
-            }
+            if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="8" class="estado-vacio">No hay registros de muebles aún.</td></tr>'; return; }
             
             let maxOrdenEstado = (window.estadosCargados && window.estadosCargados.length > 0) ? Math.max(...window.estadosCargados.map(e => e.orden)) : 1;
 
@@ -491,7 +467,7 @@
                     <td class="col-fecha">${fechaCorta}</td><td><strong>${fila.codigo_proyecto || '-'}</strong></td><td>${ubicacionVisual}</td><td>${fila.producto} (${fila.espacio})</td>
                     <td class="col-texto">${obsHTML}</td><td class="col-texto">${modHTML}</td>
                     <td style="text-align: center;"><span class="badge-estado" style="${estiloBadge}">${nombreEstado}</span></td>
-                    <td style="text-align: center;">
+                    <td class="acciones-col">
                         <button class="btn-accion" title="Ver Historial" onclick="verHistorial('${fila.id}', '${fila.codigo_proyecto || 'S/N'}', '${ubicacionVisual}')">⏱️</button>
                         <button class="btn-accion" title="Editar" onclick="cargarParaEditar('${fila.id}')">✏️</button>
                         <button class="btn-accion" title="Borrar" onclick="eliminarRegistro('${fila.id}', '${fila.codigo_proyecto || '-'}', '${ubicacionVisual}')">🗑️</button>
@@ -500,33 +476,34 @@
         }
 
         // ===============================================
-        // NUEVA FUNCIÓN: VER LÍNEA DE TIEMPO / EXPEDIENTE
+        // CORRECCIÓN: FUNCIÓN QUE CARGA EL HISTORIAL USANDO 'fecha' MANUAL
         // ===============================================
         async function verHistorial(id_mueble, codigo, ubicacion) {
             Swal.fire({ title: 'Cargando expediente...', didOpen: () => Swal.showLoading() });
-            const { data: mueble } = await supabaseClient.from('registros_produccion').select('created_at').eq('id', id_mueble).single();
-            const { data: historial } = await supabaseClient.from('historial_trazabilidad').select('*').eq('id_mueble', id_mueble).order('created_at', { ascending: true });
+            
+            // Consultamos la 'fecha' que ingresas manualmente
+            const { data: mueble } = await supabaseClient.from('registros_produccion').select('fecha').eq('id', id_mueble).single();
+            const { data: historial } = await supabaseClient.from('historial_trazabilidad').select('*').eq('id_mueble', id_mueble).order('id', { ascending: true });
             
             let html = `<div style="text-align: left; max-height: 400px; overflow-y: auto; font-size: 13px;">`;
             html += `<h4 style="margin-top:0; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Cód: ${codigo} | ${ubicacion}</h4>`;
             html += `<ul style="list-style-type: none; padding-left: 15px; border-left: 2px solid #3b82f6; margin-left: 5px;">`;
             
-            if (mueble && mueble.created_at) {
-                let d = new Date(mueble.created_at);
+            if (mueble && mueble.fecha) {
                 html += `<li style="margin-bottom: 15px; position: relative;">
                     <span style="position: absolute; left: -21px; top: 0; background: #3b82f6; width: 10px; height: 10px; border-radius: 50%;"></span>
-                    <strong>${d.toLocaleString()}</strong><br>
+                    <strong>${mueble.fecha}</strong><br>
                     ✨ <b style="color:#3b82f6;">Ingresado al Sistema</b>
                 </li>`;
             }
 
             if (historial && historial.length > 0) {
                 historial.forEach(h => {
-                    let d = new Date(h.created_at || h.fecha); 
+                    let fechaMostrada = h.created_at ? new Date(h.created_at).toLocaleString() : h.fecha || 'Fecha registrada';
                     let icono = h.tipo_registro.includes('Falla') ? '🛑' : (h.tipo_registro.includes('Edición') ? '✏️' : '▶️');
                     html += `<li style="margin-bottom: 15px; position: relative;">
                         <span style="position: absolute; left: -21px; top: 0; background: #3b82f6; width: 10px; height: 10px; border-radius: 50%;"></span>
-                        <strong>${d.toLocaleString()}</strong> - <i>${h.operador || 'Operador'}</i><br>
+                        <strong>${fechaMostrada}</strong> - <i>${h.operador || 'Operador'}</i><br>
                         ${icono} <b>${h.tipo_registro}</b> (${h.etapa})<br>
                         <span style="color: #64748b;">${h.comentarios || ''}</span>
                     </li>`;
