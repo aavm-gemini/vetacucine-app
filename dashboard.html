@@ -28,11 +28,11 @@
         .header-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
         .header-title { margin: 0; color: #1e293b; font-size: 24px; }
         
-        /* --- ESTILOS DE LA CAMPANITA DE NOTIFICACIONES --- */
+        /* CAMPANA Y PERFIL */
         .perfil-usuario { display: flex; align-items: center; gap: 15px; }
         .campana-notificaciones { position: relative; cursor: pointer; font-size: 22px; margin-right: 10px; transition: 0.2s; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .campana-notificaciones:hover { transform: scale(1.1); background: #f1f5f9; }
-        .badge-campana { position: absolute; top: 0px; right: -2px; background-color: #ef4444; color: white; border-radius: 50%; padding: 2px 5px; font-size: 10px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .badge-campana { position: absolute; top: 0px; right: -2px; background-color: #ef4444; color: white; border-radius: 50%; padding: 2px 5px; font-size: 10px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: none; }
         
         .mensaje-bienvenida { font-size: 14px; color: #475569; }
         .mensaje-bienvenida span { font-weight: bold; color: #1e293b; }
@@ -76,11 +76,11 @@
         .tabla-alertas th, .tabla-alertas td { border-bottom: 1px solid #e2e8f0; padding: 8px; }
         .tabla-alertas th { background-color: #f1f5f9; color: #334155; }
 
-        /* Estilos para el listado interno de notificaciones */
+        /* Estilos de notificaciones */
         .notif-item { padding: 12px; border-bottom: 1px solid #e2e8f0; font-size: 13px; display: flex; gap: 12px; align-items: start; transition: 0.2s; }
         .notif-item:hover { background-color: #f8fafc; }
         .notif-item:last-child { border-bottom: none; }
-        .notif-icon { font-size: 20px; background: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .notif-icon { font-size: 20px; background: white; border-radius: 50%; min-width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .notif-content { flex: 1; }
         .notif-time { font-size: 11px; color: #94a3b8; margin-top: 5px; font-weight: bold; }
 
@@ -118,7 +118,6 @@
             <div class="header-top">
                 <h2 class="header-title">Tablero de Producción</h2>
                 <div class="perfil-usuario">
-                    <!-- NUEVA CAMPANA DE NOTIFICACIONES -->
                     <div class="campana-notificaciones" onclick="verNotificacionesGlobales()" title="Ver actividad reciente de la planta">
                         🔔<span class="badge-campana" id="badge_notificaciones">0</span>
                     </div>
@@ -129,23 +128,20 @@
                 </div>
             </div>
 
-            <!-- TARJETAS SUPERIORES DINÁMICAS Y CLICKEABLES -->
+            <!-- TARJETAS SUPERIORES -->
             <div class="stats-grid">
                 <div class="stat-card border-blue clickable-card" onclick="verListaModal('total')">
                     <h4>Muebles en Sistema</h4>
                     <p class="numero" id="total_muebles">0</p>
                 </div>
-
                 <div class="stat-card border-purple clickable-card" onclick="verListaModal('digitalizar')">
                     <h4>Por Digitalizar</h4>
                     <p class="numero" id="total_digitalizar">0</p>
                 </div>
-                
                 <div class="stat-card border-red clickable-card" onclick="verListaModal('alertas')">
                     <h4>Alertas (Bloqueados)</h4>
                     <p class="numero" id="total_alertas">0</p>
                 </div>
-                
                 <div class="stat-card border-green clickable-card" onclick="verListaModal('completados')">
                     <h4>Completados / Enviados</h4>
                     <p class="numero" id="total_completados">0</p>
@@ -154,19 +150,16 @@
 
             <div class="progreso-card">
                 <h3>🎯 Filtro Global y Progreso (Metas vs. Realidad)</h3>
-                
                 <div class="filtros-progreso">
                     <select id="sel_proy" onchange="actualizarFiltrosMetas()"><option value="">Selecciona Proyecto...</option></select>
                     <input type="text" id="sel_piso" placeholder="Piso (Vacío = TODOS)" onkeyup="calcularAvance()">
                     <select id="sel_prod" onchange="calcularAvance()"><option value="">Selecciona Producto...</option></select>
                 </div>
-
                 <div class="barra-container">
-                    <div id="bar_verde" class="segmento-verde" style="width: 0%;" title="Completados/Enviados"></div>
-                    <div id="bar_amarillo" class="segmento-amarillo" style="width: 0%;" title="En Planta"></div>
-                    <div id="bar_rojo" class="segmento-rojo" style="width: 0%;" title="Bloqueados"></div>
+                    <div id="bar_verde" class="segmento-verde" style="width: 0%;"></div>
+                    <div id="bar_amarillo" class="segmento-amarillo" style="width: 0%;"></div>
+                    <div id="bar_rojo" class="segmento-rojo" style="width: 0%;"></div>
                 </div>
-                
                 <div class="leyenda-progreso" id="texto_progreso">
                     Selecciona un proyecto y producto para ver el progreso real.
                 </div>
@@ -203,7 +196,7 @@
         window.estadosFinales = []; 
         window.coloresProyectosGlobal = {}; 
         window.mueblesFiltradosGlobal = [];
-        window.historialGlobal = []; // Array para guardar las notificaciones
+        window.historialGlobal = []; 
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -266,27 +259,33 @@
                 });
             }
 
-            // === CARGAMOS EL HISTORIAL DE NOTIFICACIONES ===
+            // === CARGAMOS EL HISTORIAL DE NOTIFICACIONES (CORREGIDO PARA USAR ID) ===
             const { data: historialReciente } = await supabaseClient.from('historial_trazabilidad')
                 .select('*')
-                .order('created_at', { ascending: false })
-                .limit(50); // Traemos los últimos 50 eventos
+                .order('id', { ascending: false }) // ORDENAMOS POR ID, NO POR FECHA PARA EVITAR ERRORES
+                .limit(50);
             
             if (historialReciente) {
                 window.historialGlobal = historialReciente;
                 
-                // Calculamos cuántos movimientos hubo en las últimas 24 horas para el globito rojo
-                let ayer = new Date(Date.now() - 86400000);
-                let notifNuevas = historialReciente.filter(h => new Date(h.created_at) > ayer).length;
+                // === LÓGICA DE NOTIFICACIONES "NO LEÍDAS" POR USUARIO ===
+                let ultimoIdLeido = parseInt(localStorage.getItem('ultimoIdNotifVeta') || '0');
+                let notifNuevas = historialReciente.filter(h => h.id > ultimoIdLeido).length;
                 
-                document.getElementById('badge_notificaciones').innerText = notifNuevas > 99 ? '99+' : notifNuevas;
+                let badge = document.getElementById('badge_notificaciones');
+                if (notifNuevas > 0) {
+                    badge.style.display = 'block';
+                    badge.innerText = notifNuevas > 99 ? '99+' : notifNuevas;
+                } else {
+                    badge.style.display = 'none';
+                }
             }
 
             actualizarGraficasDinamicas();
         }
 
         // ========================================================
-        // FUNCIÓN: MOSTRAR LAS NOTIFICACIONES GLOBALES
+        // MOSTRAR LAS NOTIFICACIONES GLOBALES Y "MARCAR COMO LEÍDAS"
         // ========================================================
         function verNotificacionesGlobales() {
             if (!window.historialGlobal || window.historialGlobal.length === 0) {
@@ -294,32 +293,34 @@
                 return;
             }
 
+            // Al abrir, el sistema guarda en tu computadora que ya viste el último ID y apaga la campana
+            localStorage.setItem('ultimoIdNotifVeta', window.historialGlobal[0].id);
+            document.getElementById('badge_notificaciones').style.display = 'none';
+
             let html = '<div style="text-align: left; max-height: 450px; overflow-y: auto;">';
             
             window.historialGlobal.forEach(h => {
-                // Buscamos a qué mueble pertenece esta notificación
                 let mueble = window.mueblesCargados.find(m => m.id === h.id_mueble);
-                let ubicacionTexto = "Mueble eliminado/desconocido";
+                let ubicacionTexto = "Pieza eliminada/desconocida";
                 
                 if (mueble) {
                     let blqStr = mueble.bloque ? ` - Blq ${mueble.bloque}` : '';
                     ubicacionTexto = `<b>${mueble.proyecto}</b> (P${mueble.piso}${blqStr}-S${mueble.suite})`;
                 }
 
-                // Asignamos un ícono según el tipo de acción
                 let icono = '▶️';
                 if (h.tipo_registro.includes('Falla')) icono = '🛑';
                 else if (h.tipo_registro.includes('Edición')) icono = '✏️';
                 else if (h.tipo_registro.includes('Creación')) icono = '✨';
 
-                let tiempo = tiempoTranscurrido(h.created_at);
+                let tiempo = tiempoTranscurrido(h.created_at || h.fecha); // Usamos created_at, o fecha como respaldo
 
                 html += `
                 <div class="notif-item">
                     <div class="notif-icon">${icono}</div>
                     <div class="notif-content">
                         <span style="color:#3b82f6; font-weight:bold;">👤 ${h.operador || 'Operador'}</span> 
-                        <span style="color:#334155;">registró una <b>${h.tipo_registro}</b> en ${ubicacionTexto}</span><br>
+                        <span style="color:#334155;">registró: <b>${h.tipo_registro}</b> en ${ubicacionTexto}</span><br>
                         <span style="color: #64748b; font-style: italic;">"${h.comentarios || h.etapa}"</span>
                         <div class="notif-time">Hace ${tiempo}</div>
                     </div>
@@ -329,7 +330,7 @@
             html += '</div>';
 
             Swal.fire({
-                title: '🔔 Actividad Reciente (Trazabilidad)',
+                title: '🔔 Bitácora de Planta (Últimos 50)',
                 html: html,
                 width: '650px',
                 showConfirmButton: true,
@@ -338,12 +339,12 @@
             });
         }
 
-        // ========================================================
-        // FUNCIÓN: CALCULAR EL TIEMPO TIPO FACEBOOK ("Hace X min")
-        // ========================================================
         function tiempoTranscurrido(fechaDB) {
+            if (!fechaDB) return "poco tiempo";
             const ahora = new Date();
             const fechaNotif = new Date(fechaDB);
+            if(isNaN(fechaNotif)) return "un momento";
+
             const segundos = Math.floor((ahora - fechaNotif) / 1000);
             
             if (segundos < 60) return "unos segundos";
@@ -356,7 +357,7 @@
         }
 
         // ========================================================
-        // MODAL UNIVERSAL PARA CUALQUIER TARJETA
+        // RESTO DEL CÓDIGO (MODALES Y GRÁFICAS)
         // ========================================================
         function verListaModal(tipo) {
             let lista = []; let titulo = ""; let colorHex = "";
