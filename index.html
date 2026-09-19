@@ -70,8 +70,9 @@
         th { background-color: #f8fafc; color: #333; }
         tr:hover td { background-color: #f1f5f9; }
         
-        th:nth-child(1) { width: 9%; } th:nth-child(2) { width: 9%; } th:nth-child(3) { width: 17%; } th:nth-child(4) { width: 11%; } 
-        th:nth-child(5) { width: 18%; } th:nth-child(6) { width: 18%; } th:nth-child(7) { width: 12%; text-align: center; } th:nth-child(8) { width: 6%; text-align: center; }  
+        /* Ajuste ligero de anchos para que quepan los 3 botones perfectos */
+        th:nth-child(1) { width: 8%; } th:nth-child(2) { width: 9%; } th:nth-child(3) { width: 17%; } th:nth-child(4) { width: 11%; } 
+        th:nth-child(5) { width: 18%; } th:nth-child(6) { width: 18%; } th:nth-child(7) { width: 11%; text-align: center; } th:nth-child(8) { width: 8%; text-align: center; }  
 
         .col-texto { position: relative; font-size: 12px; color: #555; cursor: pointer; }
         .texto-truncado { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; display: block; }
@@ -84,7 +85,9 @@
         .col-texto:hover .tooltip-custom { visibility: visible; opacity: 1; }
         .col-fecha { white-space: nowrap; font-weight: bold; }
 
-        .btn-accion { background-color: transparent; border: none; font-size: 15px; cursor: pointer; padding: 2px 4px; margin: 0; line-height: 1; opacity: 0; transition: 0.2s; }
+        /* Mantiene los botones en 1 sola fila sin agrandar la celda */
+        .acciones-col { white-space: nowrap; text-align: center; }
+        .btn-accion { background-color: transparent; border: none; font-size: 15px; cursor: pointer; padding: 2px 3px; margin: 0; line-height: 1; opacity: 0; transition: 0.2s; }
         tr:hover .btn-accion { opacity: 1; } .btn-accion:hover { transform: scale(1.3); }
         .badge-estado { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; white-space: nowrap; transition: 0.3s; }
         .estado-vacio { text-align: center; padding: 30px; color: #94a3b8; font-style: italic; }
@@ -118,12 +121,10 @@
             </ul>
         </nav>
 
-        <!-- ÁREA DE TRABAJO PRINCIPAL -->
         <div class="main-content">
             
             <div class="header-top">
                 <h2 class="header-title">Ingreso de Producción</h2>
-                
                 <div class="perfil-usuario">
                     <div class="mensaje-bienvenida">Hola, <span id="nombreUsuario">Cargando...</span></div>
                     <img id="fotoUsuario" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Foto" class="foto-perfil">
@@ -181,7 +182,7 @@
                 <h3>Últimos Registros Ingresados</h3>
                 <table id="tablaRegistros">
                     <thead>
-                        <tr><th>Fecha</th><th>Cód. Int.</th><th>Ubicación</th><th>Mueble</th><th>Observaciones</th><th>Modificaciones</th><th style="text-align: center;">Estado</th><th>Acción</th></tr>
+                        <tr><th>Fecha</th><th>Cód. Int.</th><th>Ubicación</th><th>Mueble</th><th>Observaciones</th><th>Modificaciones</th><th style="text-align: center;">Estado</th><th style="text-align: center;">Acción</th></tr>
                     </thead>
                     <tbody></tbody>
                 </table>
@@ -195,14 +196,14 @@
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBucm50bWtjaXNneW15dm16c29uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNzAwODQsImV4cCI6MjEwNDc0NjA4NH0.fdW9mj9rkO0rxHXB8rBeJc6a32QSQxtvsNtu9_rL6yc';
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
         
-        window.registrosDescargados = []; window.proyectosCargados = []; window.estadosCargados = []; 
+        window.registrosDescargados = []; 
+        window.proyectosCargados = []; 
+        window.estadosCargados = []; 
+        window.operadorActual = ""; // Se guarda quién está conectado
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
-            if (!session) {
-                window.location.href = 'login.html';
-                return;
-            }
+            if (!session) { window.location.href = 'login.html'; return; }
 
             const correoUsuario = session.user.email;
             const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol').eq('email', correoUsuario).single();
@@ -214,6 +215,7 @@
             }
 
             const nombreCompleto = session.user.user_metadata.full_name;
+            window.operadorActual = nombreCompleto; // Guardamos el nombre para el espía
             const urlFoto = session.user.user_metadata.avatar_url;
             document.getElementById('nombreUsuario').innerText = nombreCompleto.split(' ')[0];
             document.getElementById('fotoUsuario').src = urlFoto;
@@ -229,20 +231,14 @@
             
             if (editId) {
                 const { data: regEdit } = await supabaseClient.from('registros_produccion').select('*').eq('id', editId).single();
-                
                 if (regEdit) {
-                    if (!window.registrosDescargados.find(r => r.id === regEdit.id)) {
-                        window.registrosDescargados.push(regEdit);
-                    }
+                    if (!window.registrosDescargados.find(r => r.id === regEdit.id)) { window.registrosDescargados.push(regEdit); }
                     cargarParaEditar(regEdit.id);
                 }
             }
         });
 
-        async function cerrarSesion() {
-            await supabaseClient.auth.signOut();
-            window.location.href = 'login.html';
-        }
+        async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; }
 
         function hexToRgb(hex) {
             let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -250,15 +246,12 @@
         }
 
         async function cargarCatalogos() {
-            // Se inyecta la opción vacía por defecto
             const { data: estados } = await supabaseClient.from('catalogo_estados').select('*').order('orden', { ascending: true });
             if (estados) {
                 window.estadosCargados = estados; 
                 const sel = document.getElementById('estado'); 
                 sel.innerHTML = '<option value="" disabled selected>Seleccione...</option>';
-                estados.forEach(e => { 
-                    sel.innerHTML += `<option value="${e.nombre}">${e.nombre}</option>`; 
-                });
+                estados.forEach(e => { sel.innerHTML += `<option value="${e.nombre}">${e.nombre}</option>`; });
             }
 
             const { data: proyectos } = await supabaseClient.from('catalogo_proyectos').select('*').order('nombre');
@@ -309,7 +302,6 @@
                     if(colorRgb) document.documentElement.style.setProperty('--tema-rgb', colorRgb);
                 }
             } else {
-                // Si vuelve a "Seleccione...", reseteamos estilos y bloques
                 inputBloque.value = ""; inputBloque.disabled = true; inputBloque.placeholder = "Selecciona Proyecto primero";
                 document.documentElement.style.setProperty('--tema-primario', '#475569');
                 document.documentElement.style.setProperty('--tema-fondo', '#f1f5f9');
@@ -343,15 +335,11 @@
             
             let codigo_proyecto = "000"; if (codigo_proyecto_raw !== "" && !/^0+$/.test(codigo_proyecto_raw)) codigo_proyecto = codigo_proyecto_raw;
             
-            // NUEVA VALIDACIÓN: Verifica que se hayan escogido opciones válidas en los desplegables
             if (!proyecto || !estado || !espacio || !producto) {
-                Swal.fire({ icon: 'warning', title: 'Faltan datos', text: 'Por favor selecciona Proyecto, Estado, Espacio y Producto de las listas.', confirmButtonColor: '#475569' });
-                return;
+                Swal.fire({ icon: 'warning', title: 'Faltan datos', text: 'Por favor selecciona Proyecto, Estado, Espacio y Producto de las listas.', confirmButtonColor: '#475569' }); return;
             }
-
             if (!piso || !suite) { 
-                Swal.fire({ icon: 'warning', title: 'Faltan datos', text: 'Por favor completa el piso y la suite.', confirmButtonColor: '#475569' }); 
-                return; 
+                Swal.fire({ icon: 'warning', title: 'Faltan datos', text: 'Por favor completa el piso y la suite.', confirmButtonColor: '#475569' }); return; 
             }
 
             let proyectoReal = window.proyectosCargados.find(p => p.nombre === proyecto);
@@ -371,26 +359,37 @@
             let btn = document.getElementById('btnGuardar'); btn.innerHTML = "Comprobando..."; btn.disabled = true;
 
             const { data: existente } = await supabaseClient.from('registros_produccion').select('*').eq('id_generado', id_generado);
+            
             if (existente && existente.length > 0) {
-                let ca = existente[0].codigo_proyecto || "";
+                let muebleAntiguo = existente[0];
+                let ca = muebleAntiguo.codigo_proyecto || "";
+                
                 if (!(ca.trim() === "" || /^0+$/.test(ca.trim())) && ca !== codigo_proyecto) {
-                    
-                    const result = await Swal.fire({
-                        title: '¿Reemplazar mueble?',
-                        text: `Este mueble ya está registrado como "${ca}". ¿Deseas reemplazarlo por "${codigo_proyecto}"?`,
-                        icon: 'question',
-                        showCancelButton: true,
-                        confirmButtonColor: '#3b82f6',
-                        cancelButtonColor: '#94a3b8',
-                        confirmButtonText: 'Sí, reemplazar',
-                        cancelButtonText: 'Cancelar'
-                    });
-                    
-                    if (!result.isConfirmed) { 
-                        btn.innerHTML = "Guardar Mueble"; btn.disabled = false; return; 
-                    }
+                    const result = await Swal.fire({ title: '¿Reemplazar mueble?', text: `Este mueble ya está registrado como "${ca}". ¿Deseas reemplazarlo por "${codigo_proyecto}"?`, icon: 'question', showCancelButton: true, confirmButtonColor: '#3b82f6', cancelButtonColor: '#94a3b8', confirmButtonText: 'Sí, reemplazar', cancelButtonText: 'Cancelar' });
+                    if (!result.isConfirmed) { btn.innerHTML = "Guardar Mueble"; btn.disabled = false; return; }
                 }
+
+                // === EL ESPÍA: VERIFICAR SI CAMBIÓ LA OBSERVACIÓN O MODIFICACIÓN ===
+                let cambiosStr = [];
+                let obsAntigua = muebleAntiguo.observaciones || "";
+                let modAntigua = muebleAntiguo.modificaciones || "";
+                
+                if (obsAntigua !== observaciones) cambiosStr.push("Observaciones");
+                if (modAntigua !== modificaciones) cambiosStr.push("Modificaciones");
+
                 await supabaseClient.from('registros_produccion').update({ fecha, codigo_proyecto, observaciones, modificaciones, estado }).eq('id_generado', id_generado);
+
+                // Si detectó un cambio, lo anota en el historial de trazabilidad automáticamente
+                if (cambiosStr.length > 0) {
+                    await supabaseClient.from('historial_trazabilidad').insert([{
+                        id_mueble: muebleAntiguo.id,
+                        etapa: estado,
+                        operador: window.operadorActual,
+                        tipo_registro: 'Edición de Notas',
+                        comentarios: `Actualizó: ${cambiosStr.join(' y ')}.`
+                    }]);
+                }
+
             } else {
                 await supabaseClient.from('registros_produccion').insert([{ fecha, codigo_proyecto, proyecto, piso, bloque, suite, espacio, producto, observaciones, modificaciones, estado, id_generado }]);
             }
@@ -404,31 +403,27 @@
             
             await cargarTabla();
             
-            window.history.replaceState({}, document.title, window.location.pathname);
+            // Truco para acomodar el mueble de primero en la tabla visualmente
+            let indexGuardado = window.registrosDescargados.findIndex(r => r.id_generado === id_generado);
+            if (indexGuardado > 0) {
+                let itemVisual = window.registrosDescargados.splice(indexGuardado, 1)[0];
+                window.registrosDescargados.unshift(itemVisual);
+                renderizarTabla(window.registrosDescargados);
+            } else if (indexGuardado === -1) {
+                const { data: recienGuardado } = await supabaseClient.from('registros_produccion').select('*').eq('id_generado', id_generado).single();
+                if (recienGuardado) {
+                    window.registrosDescargados.unshift(recienGuardado);
+                    if(window.registrosDescargados.length > 20) window.registrosDescargados.pop();
+                    renderizarTabla(window.registrosDescargados);
+                }
+            }
             
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'success',
-                title: '¡Mueble guardado!',
-                showConfirmButton: false,
-                timer: 2000,
-                timerProgressBar: true
-            });
+            window.history.replaceState({}, document.title, window.location.pathname);
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '¡Mueble guardado!', showConfirmButton: false, timer: 2000, timerProgressBar: true });
         }
 
         async function eliminarRegistro(id, codigo, mueble) {
-            const result = await Swal.fire({
-                title: '¿Estás seguro?',
-                html: `Estás a punto de borrar:<br><b>Cód:</b> ${codigo}<br><b>Mueble:</b> ${mueble}`,
-                icon: 'error',
-                showCancelButton: true,
-                confirmButtonColor: '#ef4444',
-                cancelButtonColor: '#94a3b8',
-                confirmButtonText: 'Sí, borrar',
-                cancelButtonText: 'Cancelar'
-            });
-
+            const result = await Swal.fire({ title: '¿Estás seguro?', html: `Estás a punto de borrar:<br><b>Cód:</b> ${codigo}<br><b>Mueble:</b> ${mueble}`, icon: 'error', showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar' });
             if (result.isConfirmed) {
                 await supabaseClient.from('registros_produccion').delete().eq('id', id); 
                 cargarTabla();
@@ -437,29 +432,14 @@
         }
 
         async function cargarTabla() {
-            const { data, error } = await supabaseClient.from('registros_produccion')
-                .select('*')
-                .order('id', { ascending: false })
-                .limit(20);
-                
-            if (error) {
-                console.error("Error BD:", error.message);
-                document.querySelector("#tablaRegistros tbody").innerHTML = `<tr><td colspan="8" class="estado-vacio" style="color:#ef4444;">Falla de Conexión: ${error.message}</td></tr>`;
-                return;
-            }
-
-            if (data) { 
-                window.registrosDescargados = data; 
-                renderizarTabla(data); 
-            }
+            const { data, error } = await supabaseClient.from('registros_produccion').select('*').order('id', { ascending: false }).limit(20);
+            if (error) { document.querySelector("#tablaRegistros tbody").innerHTML = `<tr><td colspan="8" class="estado-vacio" style="color:#ef4444;">Falla de Conexión: ${error.message}</td></tr>`; return; }
+            if (data) { window.registrosDescargados = data; renderizarTabla(data); }
         }
 
         function renderizarTabla(data) {
             const tbody = document.querySelector("#tablaRegistros tbody"); tbody.innerHTML = ""; 
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="estado-vacio">No hay registros de muebles aún.</td></tr>';
-                return;
-            }
+            if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="8" class="estado-vacio">No hay registros de muebles aún.</td></tr>'; return; }
             
             let maxOrdenEstado = (window.estadosCargados && window.estadosCargados.length > 0) ? Math.max(...window.estadosCargados.map(e => e.orden)) : 1;
 
@@ -487,17 +467,59 @@
                     <td class="col-fecha">${fechaCorta}</td><td><strong>${fila.codigo_proyecto || '-'}</strong></td><td>${ubicacionVisual}</td><td>${fila.producto} (${fila.espacio})</td>
                     <td class="col-texto">${obsHTML}</td><td class="col-texto">${modHTML}</td>
                     <td style="text-align: center;"><span class="badge-estado" style="${estiloBadge}">${nombreEstado}</span></td>
-                    <td style="text-align: center;"><button class="btn-accion" onclick="cargarParaEditar('${fila.id}')">✏️</button>
-                    <button class="btn-accion" onclick="eliminarRegistro('${fila.id}', '${fila.codigo_proyecto || '-'}', '${ubicacionVisual}')">🗑️</button></td></tr>`;
+                    <td class="acciones-col">
+                        <button class="btn-accion" title="Ver Historial" onclick="verHistorial('${fila.id}', '${fila.codigo_proyecto || 'S/N'}', '${ubicacionVisual}')">⏱️</button>
+                        <button class="btn-accion" title="Editar" onclick="cargarParaEditar('${fila.id}')">✏️</button>
+                        <button class="btn-accion" title="Borrar" onclick="eliminarRegistro('${fila.id}', '${fila.codigo_proyecto || '-'}', '${ubicacionVisual}')">🗑️</button>
+                    </td></tr>`;
             });
         }
 
-        window.addEventListener('offline', () => {
-            Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Sin conexión a Internet', text: 'El sistema está trabajando fuera de línea.', showConfirmButton: false, background: '#fee2e2', color: '#ef4444', iconColor: '#ef4444' });
-        });
-        window.addEventListener('online', () => {
-            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Conexión restaurada', text: 'Ya puedes guardar datos.', showConfirmButton: false, timer: 4000, timerProgressBar: true, background: '#dcfce7', color: '#16a34a', iconColor: '#16a34a' });
-        });
+        // ===============================================
+        // NUEVA FUNCIÓN: VER LÍNEA DE TIEMPO / EXPEDIENTE
+        // ===============================================
+        async function verHistorial(id_mueble, codigo, ubicacion) {
+            Swal.fire({ title: 'Cargando expediente...', didOpen: () => Swal.showLoading() });
+            const { data: mueble } = await supabaseClient.from('registros_produccion').select('created_at').eq('id', id_mueble).single();
+            const { data: historial } = await supabaseClient.from('historial_trazabilidad').select('*').eq('id_mueble', id_mueble).order('created_at', { ascending: true });
+            
+            let html = `<div style="text-align: left; max-height: 400px; overflow-y: auto; font-size: 13px;">`;
+            html += `<h4 style="margin-top:0; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Cód: ${codigo} | ${ubicacion}</h4>`;
+            html += `<ul style="list-style-type: none; padding-left: 15px; border-left: 2px solid #3b82f6; margin-left: 5px;">`;
+            
+            if (mueble && mueble.created_at) {
+                let d = new Date(mueble.created_at);
+                html += `<li style="margin-bottom: 15px; position: relative;">
+                    <span style="position: absolute; left: -21px; top: 0; background: #3b82f6; width: 10px; height: 10px; border-radius: 50%;"></span>
+                    <strong>${d.toLocaleString()}</strong><br>
+                    ✨ <b style="color:#3b82f6;">Ingresado al Sistema</b>
+                </li>`;
+            }
+
+            if (historial && historial.length > 0) {
+                historial.forEach(h => {
+                    let d = new Date(h.created_at || h.fecha); 
+                    let icono = h.tipo_registro.includes('Falla') ? '🛑' : (h.tipo_registro.includes('Edición') ? '✏️' : '▶️');
+                    html += `<li style="margin-bottom: 15px; position: relative;">
+                        <span style="position: absolute; left: -21px; top: 0; background: #3b82f6; width: 10px; height: 10px; border-radius: 50%;"></span>
+                        <strong>${d.toLocaleString()}</strong> - <i>${h.operador || 'Operador'}</i><br>
+                        ${icono} <b>${h.tipo_registro}</b> (${h.etapa})<br>
+                        <span style="color: #64748b;">${h.comentarios || ''}</span>
+                    </li>`;
+                });
+            } else {
+                html += `<li style="margin-bottom: 15px; position: relative; color: #64748b;">
+                    <span style="position: absolute; left: -21px; top: 0; background: #cbd5e1; width: 10px; height: 10px; border-radius: 50%;"></span>
+                    <i>Aún no hay movimientos registrados en el taller para esta pieza.</i>
+                </li>`;
+            }
+            
+            html += `</ul></div>`;
+            Swal.fire({ title: '⏱️ Historial del Mueble', html: html, width: '600px', confirmButtonText: 'Cerrar', confirmButtonColor: '#475569' });
+        }
+
+        window.addEventListener('offline', () => { Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Sin conexión a Internet', showConfirmButton: false, background: '#fee2e2' }); });
+        window.addEventListener('online', () => { Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Conexión restaurada', showConfirmButton: false, timer: 4000 }); });
     </script>
 </body>
 </html>
