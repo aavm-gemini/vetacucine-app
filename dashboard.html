@@ -27,7 +27,13 @@
 
         .header-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
         .header-title { margin: 0; color: #1e293b; font-size: 24px; }
+        
+        /* --- ESTILOS DE LA CAMPANITA DE NOTIFICACIONES --- */
         .perfil-usuario { display: flex; align-items: center; gap: 15px; }
+        .campana-notificaciones { position: relative; cursor: pointer; font-size: 22px; margin-right: 10px; transition: 0.2s; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .campana-notificaciones:hover { transform: scale(1.1); background: #f1f5f9; }
+        .badge-campana { position: absolute; top: 0px; right: -2px; background-color: #ef4444; color: white; border-radius: 50%; padding: 2px 5px; font-size: 10px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        
         .mensaje-bienvenida { font-size: 14px; color: #475569; }
         .mensaje-bienvenida span { font-weight: bold; color: #1e293b; }
         .foto-perfil { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid #3b82f6; }
@@ -70,6 +76,14 @@
         .tabla-alertas th, .tabla-alertas td { border-bottom: 1px solid #e2e8f0; padding: 8px; }
         .tabla-alertas th { background-color: #f1f5f9; color: #334155; }
 
+        /* Estilos para el listado interno de notificaciones */
+        .notif-item { padding: 12px; border-bottom: 1px solid #e2e8f0; font-size: 13px; display: flex; gap: 12px; align-items: start; transition: 0.2s; }
+        .notif-item:hover { background-color: #f8fafc; }
+        .notif-item:last-child { border-bottom: none; }
+        .notif-icon { font-size: 20px; background: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .notif-content { flex: 1; }
+        .notif-time { font-size: 11px; color: #94a3b8; margin-top: 5px; font-weight: bold; }
+
         @media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
         @media (max-width: 768px) { 
@@ -104,6 +118,11 @@
             <div class="header-top">
                 <h2 class="header-title">Tablero de Producción</h2>
                 <div class="perfil-usuario">
+                    <!-- NUEVA CAMPANA DE NOTIFICACIONES -->
+                    <div class="campana-notificaciones" onclick="verNotificacionesGlobales()" title="Ver actividad reciente de la planta">
+                        🔔<span class="badge-campana" id="badge_notificaciones">0</span>
+                    </div>
+                    
                     <div class="mensaje-bienvenida">Hola, <span id="nombreUsuario">Cargando...</span></div>
                     <img id="fotoUsuario" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Foto" class="foto-perfil">
                     <button class="btn-salir" onclick="cerrarSesion()">Salir</button>
@@ -183,8 +202,8 @@
         window.productosCargadosGlobal = [];
         window.estadosFinales = []; 
         window.coloresProyectosGlobal = {}; 
-        
         window.mueblesFiltradosGlobal = [];
+        window.historialGlobal = []; // Array para guardar las notificaciones
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -212,12 +231,7 @@
         async function cargarDatosDashboard() {
             const { data: estadosCat } = await supabaseClient.from('catalogo_estados').select('*').order('orden', { ascending: true });
             if (estadosCat && estadosCat.length > 0) {
-                window.estadosFinales = estadosCat.filter(e => 
-                    !e.estado_siguiente || 
-                    e.estado_siguiente.trim() === '' || 
-                    e.nombre.toLowerCase().includes('enviad') || 
-                    e.nombre.toLowerCase().includes('instalad')
-                ).map(e => e.nombre);
+                window.estadosFinales = estadosCat.filter(e => !e.estado_siguiente || e.estado_siguiente.trim() === '' || e.nombre.toLowerCase().includes('enviad') || e.nombre.toLowerCase().includes('instalad')).map(e => e.nombre);
             }
 
             const { data: muebles } = await supabaseClient.from('registros_produccion').select('*');
@@ -229,15 +243,12 @@
             const { data: metas } = await supabaseClient.from('metas_produccion').select('*');
             if (metas) window.metasCargadas = metas;
 
-            // CARGAMOS LOS PRODUCTOS DESDE EL INICIO
             const { data: prodCat } = await supabaseClient.from('catalogo_productos').select('*');
             if (prodCat) {
                 window.productosCargadosGlobal = prodCat;
                 let prodSelect = document.getElementById('sel_prod');
                 prodSelect.innerHTML = '<option value="">Selecciona Producto...</option>';
-                prodCat.forEach(p => {
-                    prodSelect.innerHTML += `<option value="${p.sigla}">${p.sigla} - ${p.nombre}</option>`;
-                });
+                prodCat.forEach(p => { prodSelect.innerHTML += `<option value="${p.sigla}">${p.sigla} - ${p.nombre}</option>`; });
             }
 
             const { data: proyectosCat } = await supabaseClient.from('catalogo_proyectos').select('*').order('nombre');
@@ -248,266 +259,198 @@
                     window.coloresProyectosGlobal[item.nombre] = item.color || '#3b82f6';
                     if (item.bloques && item.bloques.trim() !== "") {
                         let arrayBloques = item.bloques.split(',').map(b => b.trim()).filter(b => b !== "");
-                        arrayBloques.forEach(b => {
-                            proySelect.innerHTML += `<option value="${item.nombre} - Bloque ${b}">${item.nombre} - Bloque ${b}</option>`;
-                        });
+                        arrayBloques.forEach(b => { proySelect.innerHTML += `<option value="${item.nombre} - Bloque ${b}">${item.nombre} - Bloque ${b}</option>`; });
                     } else {
                         proySelect.innerHTML += `<option value="${item.nombre}">${item.nombre}</option>`;
                     }
                 });
             }
 
+            // === CARGAMOS EL HISTORIAL DE NOTIFICACIONES ===
+            const { data: historialReciente } = await supabaseClient.from('historial_trazabilidad')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(50); // Traemos los últimos 50 eventos
+            
+            if (historialReciente) {
+                window.historialGlobal = historialReciente;
+                
+                // Calculamos cuántos movimientos hubo en las últimas 24 horas para el globito rojo
+                let ayer = new Date(Date.now() - 86400000);
+                let notifNuevas = historialReciente.filter(h => new Date(h.created_at) > ayer).length;
+                
+                document.getElementById('badge_notificaciones').innerText = notifNuevas > 99 ? '99+' : notifNuevas;
+            }
+
             actualizarGraficasDinamicas();
+        }
+
+        // ========================================================
+        // FUNCIÓN: MOSTRAR LAS NOTIFICACIONES GLOBALES
+        // ========================================================
+        function verNotificacionesGlobales() {
+            if (!window.historialGlobal || window.historialGlobal.length === 0) {
+                Swal.fire({ icon: 'info', title: 'Sin actividad', text: 'No hay registros recientes en la planta.', confirmButtonColor: '#3b82f6' });
+                return;
+            }
+
+            let html = '<div style="text-align: left; max-height: 450px; overflow-y: auto;">';
+            
+            window.historialGlobal.forEach(h => {
+                // Buscamos a qué mueble pertenece esta notificación
+                let mueble = window.mueblesCargados.find(m => m.id === h.id_mueble);
+                let ubicacionTexto = "Mueble eliminado/desconocido";
+                
+                if (mueble) {
+                    let blqStr = mueble.bloque ? ` - Blq ${mueble.bloque}` : '';
+                    ubicacionTexto = `<b>${mueble.proyecto}</b> (P${mueble.piso}${blqStr}-S${mueble.suite})`;
+                }
+
+                // Asignamos un ícono según el tipo de acción
+                let icono = '▶️';
+                if (h.tipo_registro.includes('Falla')) icono = '🛑';
+                else if (h.tipo_registro.includes('Edición')) icono = '✏️';
+                else if (h.tipo_registro.includes('Creación')) icono = '✨';
+
+                let tiempo = tiempoTranscurrido(h.created_at);
+
+                html += `
+                <div class="notif-item">
+                    <div class="notif-icon">${icono}</div>
+                    <div class="notif-content">
+                        <span style="color:#3b82f6; font-weight:bold;">👤 ${h.operador || 'Operador'}</span> 
+                        <span style="color:#334155;">registró una <b>${h.tipo_registro}</b> en ${ubicacionTexto}</span><br>
+                        <span style="color: #64748b; font-style: italic;">"${h.comentarios || h.etapa}"</span>
+                        <div class="notif-time">Hace ${tiempo}</div>
+                    </div>
+                </div>`;
+            });
+            
+            html += '</div>';
+
+            Swal.fire({
+                title: '🔔 Actividad Reciente (Trazabilidad)',
+                html: html,
+                width: '650px',
+                showConfirmButton: true,
+                confirmButtonText: 'Cerrar Panel',
+                confirmButtonColor: '#475569'
+            });
+        }
+
+        // ========================================================
+        // FUNCIÓN: CALCULAR EL TIEMPO TIPO FACEBOOK ("Hace X min")
+        // ========================================================
+        function tiempoTranscurrido(fechaDB) {
+            const ahora = new Date();
+            const fechaNotif = new Date(fechaDB);
+            const segundos = Math.floor((ahora - fechaNotif) / 1000);
+            
+            if (segundos < 60) return "unos segundos";
+            let min = Math.floor(segundos / 60);
+            if (min < 60) return min + " min";
+            let hr = Math.floor(min / 60);
+            if (hr < 24) return hr + (hr === 1 ? " hora" : " horas");
+            let dias = Math.floor(hr / 24);
+            return dias + (dias === 1 ? " día" : " días");
         }
 
         // ========================================================
         // MODAL UNIVERSAL PARA CUALQUIER TARJETA
         // ========================================================
         function verListaModal(tipo) {
-            let lista = [];
-            let titulo = "";
-            let colorHex = "";
+            let lista = []; let titulo = ""; let colorHex = "";
 
-            if (tipo === 'total') {
-                lista = window.mueblesFiltradosGlobal;
-                titulo = "📋 Todos los Muebles en el Filtro Actual";
-                colorHex = "#3b82f6";
-            } else if (tipo === 'digitalizar') {
-                lista = window.mueblesFiltradosGlobal.filter(m => m.estado && m.estado.toLowerCase() === 'por digitalizar');
-                titulo = "📐 Pendientes por Digitalizar";
-                colorHex = "#8b5cf6";
-            } else if (tipo === 'alertas') {
-                lista = window.mueblesFiltradosGlobal.filter(m => m.estado && m.estado.toLowerCase().includes('bloque'));
-                titulo = "🛑 Muebles Bloqueados (Alertas)";
-                colorHex = "#ef4444";
-            } else if (tipo === 'completados') {
-                lista = window.mueblesFiltradosGlobal.filter(m => window.estadosFinales.includes(m.estado));
-                titulo = "✅ Muebles Completados / Enviados";
-                colorHex = "#10b981";
-            }
+            if (tipo === 'total') { lista = window.mueblesFiltradosGlobal; titulo = "📋 Todos los Muebles en el Filtro Actual"; colorHex = "#3b82f6"; } 
+            else if (tipo === 'digitalizar') { lista = window.mueblesFiltradosGlobal.filter(m => m.estado && m.estado.toLowerCase() === 'por digitalizar'); titulo = "📐 Pendientes por Digitalizar"; colorHex = "#8b5cf6"; } 
+            else if (tipo === 'alertas') { lista = window.mueblesFiltradosGlobal.filter(m => m.estado && m.estado.toLowerCase().includes('bloque')); titulo = "🛑 Muebles Bloqueados (Alertas)"; colorHex = "#ef4444"; } 
+            else if (tipo === 'completados') { lista = window.mueblesFiltradosGlobal.filter(m => window.estadosFinales.includes(m.estado)); titulo = "✅ Muebles Completados / Enviados"; colorHex = "#10b981"; }
 
-            if(lista.length === 0) {
-                Swal.fire({ icon: 'info', title: 'Lista vacía', text: 'No hay muebles en esta categoría con los filtros actuales.', confirmButtonColor: colorHex });
-                return;
-            }
+            if(lista.length === 0) { Swal.fire({ icon: 'info', title: 'Lista vacía', text: 'No hay muebles en esta categoría con los filtros actuales.', confirmButtonColor: colorHex }); return; }
 
             let htmlTabla = `<div style="max-height: 400px; overflow-y: auto; text-align: left;">
                 <table class="tabla-alertas" style="width: 100%;">
-                <thead style="position: sticky; top: 0; z-index: 1;">
-                <tr><th>Cód.</th><th>Ubicación</th><th>Producto</th><th>Estado/Obs.</th></tr>
-                </thead><tbody>`;
+                <thead style="position: sticky; top: 0; z-index: 1;"><tr><th>Cód.</th><th>Ubicación</th><th>Producto</th><th>Estado/Obs.</th></tr></thead><tbody>`;
             
             lista.forEach(m => {
                 let blqStr = m.bloque ? ` - Blq ${m.bloque}` : '';
                 let ubi = `${m.proyecto} - P${m.piso}${blqStr}`;
                 let colorObs = m.estado.toLowerCase().includes('bloque') ? '#ef4444' : '#64748b';
                 let extra = m.observaciones ? `<br><small style="color:${colorObs};"><i>${m.observaciones}</i></small>` : '';
-                
-                htmlTabla += `<tr>
-                    <td><strong>${m.codigo_proyecto || 'S/N'}</strong></td>
-                    <td>${ubi}<br><small>Suite ${m.suite}</small></td>
-                    <td>${m.producto}</td>
-                    <td><span style="font-weight:bold; color:${colorHex}">${m.estado}</span>${extra}</td>
-                </tr>`;
+                htmlTabla += `<tr><td><strong>${m.codigo_proyecto || 'S/N'}</strong></td><td>${ubi}<br><small>Suite ${m.suite}</small></td><td>${m.producto}</td><td><span style="font-weight:bold; color:${colorHex}">${m.estado}</span>${extra}</td></tr>`;
             });
             htmlTabla += `</tbody></table></div>`;
 
             Swal.fire({ title: titulo, html: htmlTabla, width: '800px', confirmButtonText: 'Cerrar', confirmButtonColor: '#475569' });
         }
 
-        // ========================================================
-        // ACTUALIZACIÓN DE FILTROS AL CAMBIAR PROYECTO
-        // ========================================================
         function actualizarFiltrosMetas() {
-            document.getElementById('sel_piso').value = ""; 
-            resetearBarra();
-            actualizarGraficasDinamicas();
-            calcularAvance(); // Dispara la validación visual y textos
+            document.getElementById('sel_piso').value = ""; resetearBarra(); actualizarGraficasDinamicas(); calcularAvance();
         }
 
         function actualizarGraficasDinamicas() {
-            let proy = document.getElementById('sel_proy').value;
-            let pisoRaw = document.getElementById('sel_piso').value.trim().toUpperCase();
-            let prod = document.getElementById('sel_prod').value;
-
+            let proy = document.getElementById('sel_proy').value; let pisoRaw = document.getElementById('sel_piso').value.trim().toUpperCase(); let prod = document.getElementById('sel_prod').value;
             let mueblesFiltrados = window.mueblesCargados;
 
-            if (proy) {
-                mueblesFiltrados = mueblesFiltrados.filter(m => {
-                    let nombreArmado = m.bloque ? `${m.proyecto} - Bloque ${m.bloque}` : m.proyecto;
-                    return nombreArmado === proy;
-                });
-            }
-            if (pisoRaw && pisoRaw !== "TODOS") {
-                mueblesFiltrados = mueblesFiltrados.filter(m => (m.piso || "").toUpperCase() === pisoRaw);
-            }
-            if (prod) {
-                mueblesFiltrados = mueblesFiltrados.filter(m => m.producto === prod);
-            }
+            if (proy) mueblesFiltrados = mueblesFiltrados.filter(m => { let nombreArmado = m.bloque ? `${m.proyecto} - Bloque ${m.bloque}` : m.proyecto; return nombreArmado === proy; });
+            if (pisoRaw && pisoRaw !== "TODOS") mueblesFiltrados = mueblesFiltrados.filter(m => (m.piso || "").toUpperCase() === pisoRaw);
+            if (prod) mueblesFiltrados = mueblesFiltrados.filter(m => m.producto === prod);
 
             window.mueblesFiltradosGlobal = mueblesFiltrados;
 
-            // ACTUALIZAMOS LAS 4 TARJETAS
-            const total = mueblesFiltrados.length;
-            const digitalizar = mueblesFiltrados.filter(m => m.estado && m.estado.toLowerCase() === 'por digitalizar').length;
-            const alertas = mueblesFiltrados.filter(m => m.estado && m.estado.toLowerCase().includes('bloque')).length;
-            const completados = mueblesFiltrados.filter(m => window.estadosFinales.includes(m.estado)).length;
+            animarContador('total_muebles', mueblesFiltrados.length);
+            animarContador('total_digitalizar', mueblesFiltrados.filter(m => m.estado && m.estado.toLowerCase() === 'por digitalizar').length);
+            animarContador('total_alertas', mueblesFiltrados.filter(m => m.estado && m.estado.toLowerCase().includes('bloque')).length);
+            animarContador('total_completados', mueblesFiltrados.filter(m => window.estadosFinales.includes(m.estado)).length);
 
-            animarContador('total_muebles', total);
-            animarContador('total_digitalizar', digitalizar);
-            animarContador('total_alertas', alertas);
-            animarContador('total_completados', completados);
-
-            let conteoEstados = {}; 
-            let conteoProyectos = {};
-            
-            mueblesFiltrados.forEach(m => {
-                let estado = m.estado || 'Sin Estado'; 
-                conteoEstados[estado] = (conteoEstados[estado] || 0) + 1;
-                
-                let proyecto = m.proyecto || 'Sin Proyecto'; 
-                conteoProyectos[proyecto] = (conteoProyectos[proyecto] || 0) + 1;
-            });
-
-            dibujarGraficaEstados(conteoEstados);
-            dibujarGraficaProyectos(conteoProyectos, window.coloresProyectosGlobal);
+            let conteoEstados = {}; let conteoProyectos = {};
+            mueblesFiltrados.forEach(m => { conteoEstados[m.estado || 'Sin Estado'] = (conteoEstados[m.estado || 'Sin Estado'] || 0) + 1; conteoProyectos[m.proyecto || 'Sin Proyecto'] = (conteoProyectos[m.proyecto || 'Sin Proyecto'] || 0) + 1; });
+            dibujarGraficaEstados(conteoEstados); dibujarGraficaProyectos(conteoProyectos, window.coloresProyectosGlobal);
         }
 
         function calcularAvance() {
             actualizarGraficasDinamicas();
+            let proy = document.getElementById('sel_proy').value; let pisoRaw = document.getElementById('sel_piso').value.trim().toUpperCase(); let piso = pisoRaw === "" ? "TODOS" : pisoRaw; let prod = document.getElementById('sel_prod').value;
 
-            let proy = document.getElementById('sel_proy').value;
-            let pisoRaw = document.getElementById('sel_piso').value.trim().toUpperCase();
-            let piso = pisoRaw === "" ? "TODOS" : pisoRaw; 
-            let prod = document.getElementById('sel_prod').value;
+            if(!proy || !prod) { resetearBarra(); document.getElementById('texto_progreso').innerHTML = "Selecciona un proyecto y producto para ver el progreso real."; return; }
 
-            if(!proy || !prod) { 
-                resetearBarra(); 
-                document.getElementById('texto_progreso').innerHTML = "Selecciona un proyecto y producto para ver el progreso real.";
-                return; 
-            }
-
-            let metaTotal = 0;
-            let usoMetaGeneral = false;
-            let mensajeAviso = "";
+            let metaTotal = 0; let usoMetaGeneral = false; let mensajeAviso = "";
 
             if (piso === "TODOS") {
                 let metaGral = window.metasCargadas.find(m => m.proyecto === proy && m.piso === "TODOS" && m.producto === prod);
-                
-                let mueblesDelProy = window.mueblesCargados.filter(m => {
-                    let nombreArmado = m.bloque ? `${m.proyecto} - Bloque ${m.bloque}` : m.proyecto;
-                    return nombreArmado === proy;
-                });
-                
+                let mueblesDelProy = window.mueblesCargados.filter(m => { let nombreArmado = m.bloque ? `${m.proyecto} - Bloque ${m.bloque}` : m.proyecto; return nombreArmado === proy; });
                 let pisosActivos = [...new Set(mueblesDelProy.map(m => (m.piso || "").toUpperCase()))];
 
-                if (pisosActivos.length === 0) {
-                    if (metaGral) metaTotal = metaGral.cantidad_esperada;
-                } else {
-                    pisosActivos.forEach(p => {
-                        let metaEsp = window.metasCargadas.find(m => m.proyecto === proy && m.piso === p && m.producto === prod);
-                        if (metaEsp) {
-                            metaTotal += metaEsp.cantidad_esperada;
-                        } else if (metaGral) {
-                            metaTotal += metaGral.cantidad_esperada;
-                            usoMetaGeneral = true;
-                        }
-                    });
-                }
-
-                if (metaTotal === 0) {
-                    document.getElementById('texto_progreso').innerHTML = "<span style='color:#ef4444;'>⚠️ No hay meta general registrada en el Administrador.</span>";
-                    resetearBarra(); return;
-                }
-
-                if (usoMetaGeneral && pisosActivos.length > 0) {
-                    mensajeAviso = `<br><span style="color:#3b82f6; font-size:11px;">*Meta dinámica: Base multiplicada por los ${pisosActivos.length} pisos activos en fábrica.</span>`;
-                }
-
+                if (pisosActivos.length === 0) { if (metaGral) metaTotal = metaGral.cantidad_esperada; } 
+                else { pisosActivos.forEach(p => { let metaEsp = window.metasCargadas.find(m => m.proyecto === proy && m.piso === p && m.producto === prod); if (metaEsp) { metaTotal += metaEsp.cantidad_esperada; } else if (metaGral) { metaTotal += metaGral.cantidad_esperada; usoMetaGeneral = true; } }); }
+                if (metaTotal === 0) { document.getElementById('texto_progreso').innerHTML = "<span style='color:#ef4444;'>⚠️ No hay meta general registrada.</span>"; resetearBarra(); return; }
+                if (usoMetaGeneral && pisosActivos.length > 0) { mensajeAviso = `<br><span style="color:#3b82f6; font-size:11px;">*Meta dinámica: Base multiplicada por los ${pisosActivos.length} pisos activos en fábrica.</span>`; }
             } else {
                 let meta = window.metasCargadas.find(m => m.proyecto === proy && m.piso === piso && m.producto === prod);
-                if (!meta) {
-                    meta = window.metasCargadas.find(m => m.proyecto === proy && m.piso === "TODOS" && m.producto === prod);
-                    usoMetaGeneral = true;
-                }
-                
-                if(!meta) {
-                    document.getElementById('texto_progreso').innerHTML = "<span style='color:#ef4444;'>⚠️ No hay meta registrada para este piso.</span>";
-                    resetearBarra(); return;
-                }
+                if (!meta) { meta = window.metasCargadas.find(m => m.proyecto === proy && m.piso === "TODOS" && m.producto === prod); usoMetaGeneral = true; }
+                if(!meta) { document.getElementById('texto_progreso').innerHTML = "<span style='color:#ef4444;'>⚠️ No hay meta registrada para este piso.</span>"; resetearBarra(); return; }
                 metaTotal = meta.cantidad_esperada;
-                if (usoMetaGeneral) {
-                    mensajeAviso = `<br><span style="color:#3b82f6; font-size:11px;">*Usando la meta general (plantilla) para el piso ${pisoRaw}.</span>`;
-                }
+                if (usoMetaGeneral) { mensajeAviso = `<br><span style="color:#3b82f6; font-size:11px;">*Usando la meta general (plantilla) para el piso ${pisoRaw}.</span>`; }
             }
 
-            let mueblesReales = window.mueblesCargados.filter(m => {
-                let nombreArmado = m.bloque ? `${m.proyecto} - Bloque ${m.bloque}` : m.proyecto;
-                return nombreArmado === proy && m.producto === prod;
-            });
+            let mueblesReales = window.mueblesCargados.filter(m => { let nombreArmado = m.bloque ? `${m.proyecto} - Bloque ${m.bloque}` : m.proyecto; return nombreArmado === proy && m.producto === prod; });
+            if(piso !== "TODOS") { mueblesReales = mueblesReales.filter(m => (m.piso || "").toUpperCase() === pisoRaw); }
 
-            if(piso !== "TODOS") {
-                mueblesReales = mueblesReales.filter(m => (m.piso || "").toUpperCase() === pisoRaw);
-            }
-
-            let terminadas = mueblesReales.filter(m => window.estadosFinales.includes(m.estado)).length;
-            let bloqueadas = mueblesReales.filter(m => m.estado && m.estado.toLowerCase().includes('bloque')).length;
-            let enProceso = mueblesReales.length - terminadas - bloqueadas;
+            let terminadas = mueblesReales.filter(m => window.estadosFinales.includes(m.estado)).length; let bloqueadas = mueblesReales.filter(m => m.estado && m.estado.toLowerCase().includes('bloque')).length; let enProceso = mueblesReales.length - terminadas - bloqueadas;
+            let totalReal = terminadas + enProceso + bloqueadas; let baseVisual = Math.max(metaTotal, totalReal); let faltantes = metaTotal - totalReal; if (faltantes < 0) faltantes = 0; 
             
-            let totalReal = terminadas + enProceso + bloqueadas;
-            let baseVisual = Math.max(metaTotal, totalReal); 
-
-            let faltantes = metaTotal - totalReal;
-            if (faltantes < 0) faltantes = 0; 
-
-            let pctVerde = (terminadas / baseVisual) * 100;
-            let pctAmarillo = (enProceso / baseVisual) * 100;
-            let pctRojo = (bloqueadas / baseVisual) * 100;
-
-            document.getElementById('bar_verde').style.width = `${pctVerde}%`; document.getElementById('bar_verde').innerHTML = terminadas > 0 ? `${terminadas}` : '';
-            document.getElementById('bar_amarillo').style.width = `${pctAmarillo}%`; document.getElementById('bar_amarillo').innerHTML = enProceso > 0 ? `${enProceso}` : '';
-            document.getElementById('bar_rojo').style.width = `${pctRojo}%`; document.getElementById('bar_rojo').innerHTML = bloqueadas > 0 ? `${bloqueadas}` : '';
+            document.getElementById('bar_verde').style.width = `${(terminadas / baseVisual) * 100}%`; document.getElementById('bar_verde').innerHTML = terminadas > 0 ? `${terminadas}` : '';
+            document.getElementById('bar_amarillo').style.width = `${(enProceso / baseVisual) * 100}%`; document.getElementById('bar_amarillo').innerHTML = enProceso > 0 ? `${enProceso}` : '';
+            document.getElementById('bar_rojo').style.width = `${(bloqueadas / baseVisual) * 100}%`; document.getElementById('bar_rojo').innerHTML = bloqueadas > 0 ? `${bloqueadas}` : '';
 
             let avisoSobreproduccion = totalReal > metaTotal ? `<span style="color:#ef4444; margin-left:10px;">(¡Sobreproducción: +${totalReal - metaTotal}!)</span>` : '';
-
-            document.getElementById('texto_progreso').innerHTML = `
-                <span style="min-width:150px;">Meta Base: ${metaTotal} unds. ${avisoSobreproduccion}</span>
-                <span style="color:#10b981;">✅ ${terminadas} Completadas</span>
-                <span style="color:#f59e0b;">⏳ ${enProceso} En Planta</span>
-                <span style="color:#94a3b8;">⚪ ${faltantes} Sin Ingresar</span>
-                ${mensajeAviso}
-            `;
+            document.getElementById('texto_progreso').innerHTML = `<span style="min-width:150px;">Meta Base: ${metaTotal} unds. ${avisoSobreproduccion}</span> <span style="color:#10b981;">✅ ${terminadas} Completadas</span> <span style="color:#f59e0b;">⏳ ${enProceso} En Planta</span> <span style="color:#94a3b8;">⚪ ${faltantes} Sin Ingresar</span> ${mensajeAviso}`;
         }
 
-        function resetearBarra() {
-            document.getElementById('bar_verde').style.width = `0%`; document.getElementById('bar_verde').innerHTML = '';
-            document.getElementById('bar_amarillo').style.width = `0%`; document.getElementById('bar_amarillo').innerHTML = '';
-            document.getElementById('bar_rojo').style.width = `0%`; document.getElementById('bar_rojo').innerHTML = '';
-        }
-
-        function animarContador(idElemento, valorFinal) {
-            let actual = 0; const elemento = document.getElementById(idElemento);
-            const incremento = Math.max(1, Math.floor(valorFinal / 20));
-            const intervalo = setInterval(() => { actual += incremento; if (actual >= valorFinal) { actual = valorFinal; clearInterval(intervalo); } elemento.innerText = actual; }, 30);
-        }
-
-        function dibujarGraficaEstados(datos) {
-            const ctx = document.getElementById('chartEstados').getContext('2d');
-            if (myChartEstados) myChartEstados.destroy();
-            const etiquetas = Object.keys(datos); const valores = Object.values(datos);
-            const colores = ['#94a3b8', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#14b8a6'];
-
-            myChartEstados = new Chart(ctx, { type: 'doughnut', data: { labels: etiquetas, datasets: [{ data: valores, backgroundColor: colores.slice(0, etiquetas.length), borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { boxWidth: 15, font: { size: 11 } } } }, cutout: '60%' } });
-        }
-
-        function dibujarGraficaProyectos(datos, diccionarioColores) {
-            const ctx = document.getElementById('chartProyectos').getContext('2d');
-            if (myChartProyectos) myChartProyectos.destroy();
-            const etiquetas = Object.keys(datos); const valores = Object.values(datos);
-            const coloresBarra = etiquetas.map(lbl => diccionarioColores[lbl] || '#3b82f6');
-
-            myChartProyectos = new Chart(ctx, { type: 'bar', data: { labels: etiquetas, datasets: [{ label: 'Cant. de Muebles', data: valores, backgroundColor: coloresBarra, borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } }, x: { grid: { display: false } } } } });
-        }
+        function resetearBarra() { document.getElementById('bar_verde').style.width = `0%`; document.getElementById('bar_verde').innerHTML = ''; document.getElementById('bar_amarillo').style.width = `0%`; document.getElementById('bar_amarillo').innerHTML = ''; document.getElementById('bar_rojo').style.width = `0%`; document.getElementById('bar_rojo').innerHTML = ''; }
+        function animarContador(idElemento, valorFinal) { let actual = 0; const elemento = document.getElementById(idElemento); const incremento = Math.max(1, Math.floor(valorFinal / 20)); const intervalo = setInterval(() => { actual += incremento; if (actual >= valorFinal) { actual = valorFinal; clearInterval(intervalo); } elemento.innerText = actual; }, 30); }
+        function dibujarGraficaEstados(datos) { const ctx = document.getElementById('chartEstados').getContext('2d'); if (myChartEstados) myChartEstados.destroy(); const etiquetas = Object.keys(datos); const valores = Object.values(datos); const colores = ['#94a3b8', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#14b8a6']; myChartEstados = new Chart(ctx, { type: 'doughnut', data: { labels: etiquetas, datasets: [{ data: valores, backgroundColor: colores.slice(0, etiquetas.length), borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { boxWidth: 15, font: { size: 11 } } } }, cutout: '60%' } }); }
+        function dibujarGraficaProyectos(datos, diccionarioColores) { const ctx = document.getElementById('chartProyectos').getContext('2d'); if (myChartProyectos) myChartProyectos.destroy(); const etiquetas = Object.keys(datos); const valores = Object.values(datos); const coloresBarra = etiquetas.map(lbl => diccionarioColores[lbl] || '#3b82f6'); myChartProyectos = new Chart(ctx, { type: 'bar', data: { labels: etiquetas, datasets: [{ label: 'Cant. de Muebles', data: valores, backgroundColor: coloresBarra, borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } }, x: { grid: { display: false } } } } }); }
     </script>
 </body>
 </html>
