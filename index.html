@@ -144,14 +144,14 @@
                         <input type="text" id="codigo_proyecto" placeholder="Dejar vacío o '0'">
                     </div>
                     <div class="form-group">
-                        <label>Estado:</label>
-                        <select id="estado"><option value="">Cargando...</option></select>
+                        <label>Estado Inicial:</label>
+                        <select id="estado"><option value="" disabled selected>Seleccione...</option></select>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label>Proyecto:</label>
-                    <select id="proyecto" onchange="cambiarTema()"><option value="">Cargando...</option></select>
+                    <select id="proyecto" onchange="cambiarTema()"><option value="" disabled selected>Seleccione...</option></select>
                 </div>
 
                 <div class="row">
@@ -168,8 +168,8 @@
                         <label>Suite:</label>
                         <input type="text" id="suite" placeholder="N° o Nombre" style="text-transform: uppercase;">
                     </div>
-                    <div class="form-group"><label>Espacio:</label><select id="espacio"><option value="">Cargando...</option></select></div>
-                    <div class="form-group"><label>Producto:</label><select id="producto"><option value="">Cargando...</option></select></div>
+                    <div class="form-group"><label>Espacio:</label><select id="espacio"><option value="" disabled selected>Seleccione...</option></select></div>
+                    <div class="form-group"><label>Producto:</label><select id="producto"><option value="" disabled selected>Seleccione...</option></select></div>
                 </div>
 
                 <div class="form-group"><label>Observaciones:</label><textarea id="observaciones" rows="2" placeholder="Detalles de diseño..."></textarea></div>
@@ -250,32 +250,37 @@
         }
 
         async function cargarCatalogos() {
+            // Se inyecta la opción vacía por defecto
             const { data: estados } = await supabaseClient.from('catalogo_estados').select('*').order('orden', { ascending: true });
             if (estados) {
                 window.estadosCargados = estados; 
-                const sel = document.getElementById('estado'); sel.innerHTML = '';
+                const sel = document.getElementById('estado'); 
+                sel.innerHTML = '<option value="" disabled selected>Seleccione...</option>';
                 estados.forEach(e => { 
-                    let seleccionado = (e.nombre === "Por Digitalizar") ? "selected" : "";
-                    sel.innerHTML += `<option value="${e.nombre}" ${seleccionado}>${e.nombre}</option>`; 
+                    sel.innerHTML += `<option value="${e.nombre}">${e.nombre}</option>`; 
                 });
             }
 
             const { data: proyectos } = await supabaseClient.from('catalogo_proyectos').select('*').order('nombre');
             if (proyectos) {
-                window.proyectosCargados = proyectos; const sel = document.getElementById('proyecto'); sel.innerHTML = '';
+                window.proyectosCargados = proyectos; 
+                const sel = document.getElementById('proyecto'); 
+                sel.innerHTML = '<option value="" disabled selected>Seleccione...</option>';
                 proyectos.forEach(p => { sel.innerHTML += `<option value="${p.nombre}">${p.nombre}</option>`; });
                 cambiarTema(); 
             }
 
             const { data: espacios } = await supabaseClient.from('catalogo_espacios').select('*').order('sigla');
             if (espacios) {
-                const sel = document.getElementById('espacio'); sel.innerHTML = ''; 
+                const sel = document.getElementById('espacio'); 
+                sel.innerHTML = '<option value="" disabled selected>Seleccione...</option>'; 
                 espacios.forEach(e => { sel.innerHTML += `<option value="${e.sigla}">${e.sigla} - ${e.nombre}</option>`; });
             }
 
             const { data: productos } = await supabaseClient.from('catalogo_productos').select('*').order('sigla');
             if (productos) {
-                const sel = document.getElementById('producto'); sel.innerHTML = '';
+                const sel = document.getElementById('producto'); 
+                sel.innerHTML = '<option value="" disabled selected>Seleccione...</option>';
                 productos.forEach(p => { sel.innerHTML += `<option value="${p.sigla}">${p.sigla} - ${p.nombre}</option>`; });
             }
         }
@@ -303,6 +308,11 @@
                     document.documentElement.style.setProperty('--tema-fondo', colorHex + '20'); 
                     if(colorRgb) document.documentElement.style.setProperty('--tema-rgb', colorRgb);
                 }
+            } else {
+                // Si vuelve a "Seleccione...", reseteamos estilos y bloques
+                inputBloque.value = ""; inputBloque.disabled = true; inputBloque.placeholder = "Selecciona Proyecto primero";
+                document.documentElement.style.setProperty('--tema-primario', '#475569');
+                document.documentElement.style.setProperty('--tema-fondo', '#f1f5f9');
             }
             if (window.registrosDescargados.length > 0) renderizarTabla(window.registrosDescargados);
         }
@@ -333,12 +343,14 @@
             
             let codigo_proyecto = "000"; if (codigo_proyecto_raw !== "" && !/^0+$/.test(codigo_proyecto_raw)) codigo_proyecto = codigo_proyecto_raw;
             
+            // NUEVA VALIDACIÓN: Verifica que se hayan escogido opciones válidas en los desplegables
+            if (!proyecto || !estado || !espacio || !producto) {
+                Swal.fire({ icon: 'warning', title: 'Faltan datos', text: 'Por favor selecciona Proyecto, Estado, Espacio y Producto de las listas.', confirmButtonColor: '#475569' });
+                return;
+            }
+
             if (!piso || !suite) { 
                 Swal.fire({ icon: 'warning', title: 'Faltan datos', text: 'Por favor completa el piso y la suite.', confirmButtonColor: '#475569' }); 
-                return; 
-            }
-            if (!proyecto) { 
-                Swal.fire({ icon: 'error', title: 'Sin Proyecto', text: 'Ve al Administrador a crear proyectos.', confirmButtonColor: '#475569' }); 
                 return; 
             }
 
@@ -390,25 +402,7 @@
             document.getElementById('codigo_proyecto').focus(); 
             btn.innerHTML = "Guardar Mueble"; btn.classList.remove('btn-editando'); btn.disabled = false; 
             
-            // Recargamos la tabla desde la base de datos
             await cargarTabla();
-            
-            // --- TRUCO MAESTRO DE INTERFAZ ---
-            // Buscamos el mueble que acabas de guardar en la lista y lo "arrastramos" a la fuerza a la posición 0 (fila 1)
-            let indexGuardado = window.registrosDescargados.findIndex(r => r.id_generado === id_generado);
-            if (indexGuardado > 0) {
-                let itemVisual = window.registrosDescargados.splice(indexGuardado, 1)[0];
-                window.registrosDescargados.unshift(itemVisual);
-                renderizarTabla(window.registrosDescargados);
-            } else if (indexGuardado === -1) {
-                // Si la BD no lo trajo entre los primeros 20, lo consultamos directo y lo ponemos de primero
-                const { data: recienGuardado } = await supabaseClient.from('registros_produccion').select('*').eq('id_generado', id_generado).single();
-                if (recienGuardado) {
-                    window.registrosDescargados.unshift(recienGuardado);
-                    if(window.registrosDescargados.length > 20) window.registrosDescargados.pop();
-                    renderizarTabla(window.registrosDescargados);
-                }
-            }
             
             window.history.replaceState({}, document.title, window.location.pathname);
             
@@ -443,7 +437,6 @@
         }
 
         async function cargarTabla() {
-            // Se quitó la orden "created_at" que daba error. Se usa el 'id' por defecto.
             const { data, error } = await supabaseClient.from('registros_produccion')
                 .select('*')
                 .order('id', { ascending: false })
