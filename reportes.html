@@ -395,39 +395,58 @@
             }
         }
 
-        // ===============================================
-        // CORRECCIÓN: FUNCIÓN QUE CARGA EL HISTORIAL USANDO 'fecha' MANUAL
-        // ===============================================
+        // =======================================================
+        // FUNCIÓN DE FECHAS MEJORADA (AM/PM)
+        // =======================================================
+        function formatearFechaEspanol(cadenaFecha) {
+            if (!cadenaFecha) return 'Fecha desconocida';
+            if (cadenaFecha.length === 10) { let partes = cadenaFecha.split('-'); return `${partes[2]}/${partes[1]}/${partes[0]}`; } // Formato manual sin hora
+            
+            let d = new Date(cadenaFecha);
+            if (isNaN(d)) return cadenaFecha;
+            
+            let dia = String(d.getDate()).padStart(2, '0'); let mes = String(d.getMonth() + 1).padStart(2, '0'); let anio = d.getFullYear();
+            let horas = d.getHours(); let minutos = String(d.getMinutes()).padStart(2, '0');
+            let ampm = horas >= 12 ? 'PM' : 'AM';
+            horas = horas % 12; horas = horas ? horas : 12; 
+            let horasStr = String(horas).padStart(2, '0');
+            
+            return `${dia}/${mes}/${anio} - ${horasStr}:${minutos} ${ampm}`;
+        }
+
         async function verHistorial(id_mueble, codigo, ubicacion) {
             Swal.fire({ title: 'Cargando expediente...', didOpen: () => Swal.showLoading() });
             
             const { data: mueble } = await supabaseClient.from('registros_produccion').select('fecha').eq('id', id_mueble).single();
             const { data: historial } = await supabaseClient.from('historial_trazabilidad').select('*').eq('id_mueble', id_mueble).order('id', { ascending: true });
             
+            let tieneCreacion = historial && historial.some(h => h.tipo_registro === 'Creación');
             let html = `<div style="text-align: left; max-height: 400px; overflow-y: auto; font-size: 13px;">`;
             html += `<h4 style="margin-top:0; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Cód: ${codigo} | ${ubicacion}</h4>`;
             html += `<ul style="list-style-type: none; padding-left: 15px; border-left: 2px solid #3b82f6; margin-left: 5px;">`;
             
-            if (mueble && mueble.fecha) {
+            if (!tieneCreacion && mueble && mueble.fecha) {
                 html += `<li style="margin-bottom: 15px; position: relative;">
                     <span style="position: absolute; left: -21px; top: 0; background: #3b82f6; width: 10px; height: 10px; border-radius: 50%;"></span>
-                    <strong>${mueble.fecha}</strong><br>
-                    ✨ <b style="color:#3b82f6;">Ingresado al Sistema</b>
+                    <strong>${formatearFechaEspanol(mueble.fecha)}</strong><br>
+                    ✨ <b style="color:#3b82f6;">Ingresado al Sistema</b> (Registro Antiguo)
                 </li>`;
             }
 
             if (historial && historial.length > 0) {
                 historial.forEach(h => {
-                    let fechaMostrada = h.created_at ? new Date(h.created_at).toLocaleString() : h.fecha || 'Fecha registrada';
-                    let icono = h.tipo_registro.includes('Falla') ? '🛑' : (h.tipo_registro.includes('Edición') ? '✏️' : '▶️');
+                    let fechaMostrada = h.created_at ? formatearFechaEspanol(h.created_at) : formatearFechaEspanol(h.fecha);
+                    let icono = h.tipo_registro.includes('Falla') ? '🛑' : (h.tipo_registro.includes('Creación') ? '✨' : (h.tipo_registro.includes('Edición') ? '✏️' : '▶️'));
+                    
                     html += `<li style="margin-bottom: 15px; position: relative;">
                         <span style="position: absolute; left: -21px; top: 0; background: #3b82f6; width: 10px; height: 10px; border-radius: 50%;"></span>
-                        <strong>${fechaMostrada}</strong> - <i>${h.operador || 'Operador'}</i><br>
-                        ${icono} <b>${h.tipo_registro}</b> (${h.etapa})<br>
-                        <span style="color: #64748b;">${h.comentarios || ''}</span>
+                        <strong style="color:#1e293b;">${fechaMostrada}</strong><br>
+                        👤 <b>${h.operador || 'Operador'}</b><br>
+                        ${icono} <span style="color:#3b82f6; font-weight:bold;">${h.tipo_registro}</span> (${h.etapa})<br>
+                        <span style="color: #475569;">${h.comentarios || ''}</span>
                     </li>`;
                 });
-            } else {
+            } else if (!tieneCreacion) {
                 html += `<li style="margin-bottom: 15px; position: relative; color: #64748b;">
                     <span style="position: absolute; left: -21px; top: 0; background: #cbd5e1; width: 10px; height: 10px; border-radius: 50%;"></span>
                     <i>Aún no hay movimientos extra registrados para esta pieza.</i>
@@ -436,24 +455,6 @@
             
             html += `</ul></div>`;
             Swal.fire({ title: '⏱️ Historial del Mueble', html: html, width: '600px', confirmButtonText: 'Cerrar', confirmButtonColor: '#475569' });
-        }
-
-        function exportarExcel() {
-            if (!window.datosParaExportar || window.datosParaExportar.length === 0) { alert("No hay datos para exportar."); return; }
-            let datosLimpios = window.datosParaExportar.map(fila => {
-                let fechaCorta = fila.fecha ? fila.fecha.split('T')[0] : "";
-                return { "Fecha": fechaCorta, "Código Interno": fila.codigo_proyecto || "N/A", "Proyecto": fila.proyecto, "Piso": fila.piso, "Bloque": fila.bloque || "N/A", "Suite": fila.suite, "Espacio": fila.espacio, "Producto": fila.producto, "Estado": fila.estado, "Observaciones": fila.observaciones || "", "Modificaciones": fila.modificaciones || "" };
-            });
-
-            const worksheet = XLSX.utils.json_to_sheet(datosLimpios);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte Producción");
-
-            const anchos = [ { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 40 }, { wch: 40 } ];
-            worksheet['!cols'] = anchos;
-
-            let fechaHoy = new Date().toISOString().split('T')[0];
-            XLSX.writeFile(workbook, `VetaCucine_Reporte_${fechaHoy}.xlsx`);
         }
 
         window.addEventListener('offline', () => { Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Sin conexión a Internet', showConfirmButton: false, background: '#fee2e2' }); });
