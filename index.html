@@ -9,7 +9,6 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#3b82f6">
     <script>
-        // Forzar actualización agresiva del Service Worker para evitar cachés viejos
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').then(reg => {
                 reg.update();
@@ -63,7 +62,7 @@
         button.btn-principal { background-color: var(--tema-primario); color: white; padding: 10px; width: 100%; border: none; border-radius: 4px; font-size: 15px; cursor: pointer; margin-top: 10px; font-weight: bold; transition: 0.2s; }
         button.btn-principal:hover { filter: brightness(0.85); }
         button.btn-principal:active { transform: scale(0.98); }
-        button.btn-editando { background-color: #f59e0b !important; color: white !important; } /* Naranja para que notes fácil que estás editando */
+        button.btn-editando { background-color: #f59e0b !important; color: white !important; }
         
         .row { display: flex; gap: 15px; }
         .row .form-group { flex: 1; }
@@ -203,7 +202,6 @@
         window.estadosCargados = []; 
         window.operadorActual = "Operador"; 
         
-        // LA VARIABLE MAESTRA DE EDICIÓN: Guarda el ID real de Supabase
         window.idMuebleEnEdicion = null;
 
         document.addEventListener("DOMContentLoaded", async () => {
@@ -219,7 +217,6 @@
                 if (linkAdmin) linkAdmin.parentElement.style.display = 'none';
             }
 
-            // Aseguramos que el nombre nunca quede vacío
             const nombreCompleto = session.user.user_metadata.full_name || session.user.email.split('@')[0];
             window.operadorActual = nombreCompleto; 
             const urlFoto = session.user.user_metadata.avatar_url || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
@@ -314,7 +311,7 @@
             let registro = window.registrosDescargados.find(r => r.id === id);
             if (!registro) return;
             
-            window.idMuebleEnEdicion = id; // Clavamos el ID exacto aquí
+            window.idMuebleEnEdicion = id; 
             document.getElementById('tituloFormulario').innerText = "✏️ Editando Mueble";
             
             if (registro.fecha) document.getElementById('fecha').value = registro.fecha.split('T')[0];
@@ -365,9 +362,6 @@
             let id_generado = "P" + piso + bloque + "-S" + suite + "-" + producto + "-" + espacio;
             let btn = document.getElementById('btnGuardar'); btn.innerHTML = "Procesando..."; btn.disabled = true;
 
-            // =========================================================
-            // RAMA 1: ESTAMOS EDITANDO UN MUEBLE (USAMOS EL ID REAL)
-            // =========================================================
             if (window.idMuebleEnEdicion) {
                 const { data: muebleAntiguo, error: errFetch } = await supabaseClient.from('registros_produccion').select('*').eq('id', window.idMuebleEnEdicion).single();
                 
@@ -381,7 +375,6 @@
                     if (estadoAntiguo !== estado) cambiosStr.push(`Estado (a '${estado}')`);
                     if (codigoAntiguo !== codigo_proyecto && codigo_proyecto !== "000") cambiosStr.push(`Cód Interno`);
 
-                    // Actualizamos DIRECTO al ID correcto, sin fallas
                     const { error: errUpd } = await supabaseClient.from('registros_produccion')
                         .update({ fecha, codigo_proyecto, observaciones, modificaciones, estado, proyecto, piso, bloque, suite, espacio, producto, id_generado })
                         .eq('id', window.idMuebleEnEdicion);
@@ -395,7 +388,7 @@
                         if (errHist) {
                             Swal.fire('Advertencia', 'El mueble se guardó, pero falló la anotación en el historial: ' + errHist.message, 'warning');
                         } else {
-                            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '¡Mueble Editado y Auditado!', showConfirmButton: false, timer: 3000 });
+                            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '¡Actualizado y registrado en el historial!', showConfirmButton: false, timer: 3000 });
                         }
                     } else if (cambiosStr.length === 0) {
                         Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'No hubo cambios que registrar', showConfirmButton: false, timer: 2000 });
@@ -403,9 +396,6 @@
                 }
                 cancelarEdicion();
 
-            // =========================================================
-            // RAMA 2: CREANDO UN MUEBLE NUEVO
-            // =========================================================
             } else {
                 const { data: existente } = await supabaseClient.from('registros_produccion').select('*').eq('id_generado', id_generado);
                 if (existente && existente.length > 0) {
@@ -439,7 +429,7 @@
         }
 
         async function cargarTabla() {
-            const { data, error } = await supabaseClient.from('registros_produccion').select('*').order('created_at', { ascending: false }).limit(20);
+            const { data, error } = await supabaseClient.from('registros_produccion').select('*').order('id', { ascending: false }).limit(20);
             if (error) { document.querySelector("#tablaRegistros tbody").innerHTML = `<tr><td colspan="8" class="estado-vacio" style="color:#ef4444;">Falla: ${error.message}</td></tr>`; return; }
             if (data) { window.registrosDescargados = data; renderizarTabla(data); }
         }
@@ -480,6 +470,92 @@
                     </td></tr>`;
             });
         }
+        
+        function formatearFechaEspanol(cadenaFecha) {
+            if (!cadenaFecha) return 'Fecha desconocida';
+            if (cadenaFecha.length === 10) { let partes = cadenaFecha.split('-'); return `${partes[2]}/${partes[1]}/${partes[0]} - (Ingreso manual)`; }
+            
+            let d = new Date(cadenaFecha);
+            if (isNaN(d)) return cadenaFecha;
+            
+            let dia = String(d.getDate()).padStart(2, '0'); let mes = String(d.getMonth() + 1).padStart(2, '0'); let anio = d.getFullYear();
+            let horas = d.getHours(); let minutos = String(d.getMinutes()).padStart(2, '0');
+            let ampm = horas >= 12 ? 'PM' : 'AM';
+            horas = horas % 12; horas = horas ? horas : 12; 
+            let horasStr = String(horas).padStart(2, '0');
+            
+            return `${dia}/${mes}/${anio} a las ${horasStr}:${minutos} ${ampm}`;
+        }
+        
+        function obtenerIniciales(nombreCompleto) {
+            if (!nombreCompleto) return '👤';
+            let partes = nombreCompleto.trim().split(' ').filter(p => p.length > 0);
+            if (partes.length === 0) return '👤';
+            if (partes.length === 1) return partes[0].charAt(0).toUpperCase();
+            return (partes[0].charAt(0) + partes[1].charAt(0)).toUpperCase();
+        }
+
+        function obtenerColorAvatar(nombre) {
+            const colores = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#0284c7'];
+            if (!nombre) return colores[0];
+            let num = 0; for (let i = 0; i < nombre.length; i++) num += nombre.charCodeAt(i);
+            return colores[num % colores.length];
+        }
+
+        async function verHistorial(id_mueble, codigo, ubicacion) {
+            Swal.fire({ title: 'Cargando expediente...', didOpen: () => Swal.showLoading() });
+            
+            const { data: mueble } = await supabaseClient.from('registros_produccion').select('fecha').eq('id', id_mueble).single();
+            const { data: historialBruto } = await supabaseClient.from('historial_trazabilidad').select('*').eq('id_mueble', id_mueble);
+            
+            let historial = [];
+            if (historialBruto) {
+                historial = historialBruto.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+            }
+            
+            let tieneCreacion = historial.some(h => h.tipo_registro === 'Creación');
+            let html = `<div style="text-align: left; max-height: 400px; overflow-y: auto; overflow-x: hidden; font-size: 13px; padding: 5px 10px 5px 25px;">`;
+            html += `<h4 style="margin-top:0; border-bottom: 1px solid #ccc; padding-bottom: 8px; margin-bottom: 15px;">Cód: ${codigo} | ${ubicacion}</h4>`;
+            
+            if (!tieneCreacion && mueble && mueble.fecha) {
+                html += `<div style="display: flex; gap: 12px; margin-bottom: 15px; border-left: 2px solid #cbd5e1; padding-left: 15px; position: relative;">
+                    <div style="position: absolute; left: -17px; top: 0; width: 32px; height: 32px; border-radius: 50%; background: #94a3b8; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2px solid white;">🤖</div>
+                    <div>
+                        <strong style="color:#1e293b;">Sistema Central</strong> <span style="color:#64748b; font-size:11px;">• ${formatearFechaEspanol(mueble.fecha)}</span><br>
+                        ✨ <b style="color:#64748b;">Ingreso Básico</b><br>
+                        <span style="color: #94a3b8; font-style: italic;">Pieza registrada antes de la actualización de trazabilidad.</span>
+                    </div>
+                </div>`;
+            }
+
+            if (historial.length > 0) {
+                historial.forEach(h => {
+                    let fechaMostrada = h.created_at ? formatearFechaEspanol(h.created_at) : formatearFechaEspanol(h.fecha);
+                    let icono = h.tipo_registro.includes('Falla') ? '🛑' : (h.tipo_registro.includes('Creación') ? '✨' : (h.tipo_registro.includes('Edición') ? '✏️' : '▶️'));
+                    
+                    let nombreOp = h.operador || 'Operador';
+                    let iniciales = obtenerIniciales(nombreOp);
+                    let colorAvatar = obtenerColorAvatar(nombreOp);
+
+                    html += `<div style="display: flex; gap: 12px; margin-bottom: 15px; border-left: 2px solid ${colorAvatar}; padding-left: 15px; position: relative;">
+                        <div style="position: absolute; left: -17px; top: 0; width: 32px; height: 32px; border-radius: 50%; background: ${colorAvatar}; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">${iniciales}</div>
+                        <div>
+                            <strong style="color:#1e293b;">${nombreOp}</strong> <span style="color:#64748b; font-size:11px;">• ${fechaMostrada}</span><br>
+                            ${icono} <b style="color:${colorAvatar};">${h.tipo_registro}</b> <span style="color:#64748b;">(${h.etapa})</span><br>
+                            <span style="color: #475569;">${h.comentarios || ''}</span>
+                        </div>
+                    </div>`;
+                });
+            } else if (!tieneCreacion) {
+                html += `<div style="color: #94a3b8; text-align: center; margin-top: 20px; font-style: italic;">Aún no hay movimientos registrados por operadores para esta pieza.</div>`;
+            }
+            
+            html += `</div>`;
+            Swal.fire({ title: '⏱️ Expediente de Trazabilidad', html: html, width: '600px', confirmButtonText: 'Cerrar', confirmButtonColor: '#475569' });
+        }
+
+        window.addEventListener('offline', () => { Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Sin conexión a Internet', showConfirmButton: false, background: '#fee2e2' }); });
+        window.addEventListener('online', () => { Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Conexión restaurada', showConfirmButton: false, timer: 4000 }); });
     </script>
 </body>
 </html>
