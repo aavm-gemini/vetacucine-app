@@ -362,27 +362,51 @@
             let id_generado = "P" + piso + bloque + "-S" + suite + "-" + producto + "-" + espacio;
             let btn = document.getElementById('btnGuardar'); btn.innerHTML = "Procesando..."; btn.disabled = true;
 
+            // La hora exacta enviada por nosotros, para evitar el error "Fecha Desconocida"
+            let fechaAuditoria = new Date().toISOString();
+
             if (window.idMuebleEnEdicion) {
                 const { data: muebleAntiguo, error: errFetch } = await supabaseClient.from('registros_produccion').select('*').eq('id', window.idMuebleEnEdicion).single();
                 
                 if (muebleAntiguo) {
-                    let cambiosStr = [];
+                    // === EL ESPÍA DETALLADO (LA MAGIA DEL HISTORIAL) ===
+                    let cambiosContador = 0;
+                    let detallesHTML = "";
                     let obsAntigua = (muebleAntiguo.observaciones || "").trim(); let modAntigua = (muebleAntiguo.modificaciones || "").trim();
                     let estadoAntiguo = (muebleAntiguo.estado || "").trim(); let codigoAntiguo = (muebleAntiguo.codigo_proyecto || "").trim();
 
-                    if (obsAntigua !== observaciones) cambiosStr.push("Observaciones");
-                    if (modAntigua !== modificaciones) cambiosStr.push("Modificaciones");
-                    if (estadoAntiguo !== estado) cambiosStr.push(`Estado (a '${estado}')`);
-                    if (codigoAntiguo !== codigo_proyecto && codigo_proyecto !== "000") cambiosStr.push(`Cód Interno`);
+                    if (obsAntigua !== observaciones) {
+                        cambiosContador++;
+                        detallesHTML += `<li style="margin-bottom:4px;"><b>Observaciones:</b> <span style="color:#0f172a;">${observaciones || '(Se dejó en blanco)'}</span></li>`;
+                    }
+                    if (modAntigua !== modificaciones) {
+                        cambiosContador++;
+                        detallesHTML += `<li style="margin-bottom:4px;"><b>Modificaciones:</b> <span style="color:#0f172a;">${modificaciones || '(Se dejó en blanco)'}</span></li>`;
+                    }
+                    if (estadoAntiguo !== estado) {
+                        cambiosContador++;
+                        detallesHTML += `<li style="margin-bottom:4px;"><b>Estado:</b> cambió a <span style="color:#0f172a;">${estado}</span></li>`;
+                    }
+                    if (codigoAntiguo !== codigo_proyecto && codigo_proyecto !== "000") {
+                        cambiosContador++;
+                        detallesHTML += `<li style="margin-bottom:4px;"><b>Cód Interno:</b> cambió a <span style="color:#0f172a;">${codigo_proyecto}</span></li>`;
+                    }
 
                     const { error: errUpd } = await supabaseClient.from('registros_produccion')
                         .update({ fecha, codigo_proyecto, observaciones, modificaciones, estado, proyecto, piso, bloque, suite, espacio, producto, id_generado })
                         .eq('id', window.idMuebleEnEdicion);
 
-                    if (!errUpd && cambiosStr.length > 0) {
+                    if (!errUpd && cambiosContador > 0) {
+                        // Construimos un acordeón elegante para que se expanda al darle clic
+                        let comentarioFinal = `Actualizó ${cambiosContador} campo(s). <details style="margin-top:6px; cursor:pointer; background:#f8fafc; padding:6px; border-radius:4px; border:1px solid #e2e8f0;"><summary style="color:#3b82f6; font-weight:bold; font-size:11px; outline:none;">Ver detalles</summary><ul style="margin:6px 0 0 0; padding-left:18px; font-size:11px; color:#475569;">${detallesHTML}</ul></details>`;
+
                         const { error: errHist } = await supabaseClient.from('historial_trazabilidad').insert([{
-                            id_mueble: window.idMuebleEnEdicion, etapa: estado, operador: window.operadorActual,
-                            tipo_registro: 'Edición en Sistema', comentarios: `Actualizó: ${cambiosStr.join(', ')}.`
+                            id_mueble: window.idMuebleEnEdicion, 
+                            etapa: estado, 
+                            operador: window.operadorActual,
+                            tipo_registro: 'Edición en Sistema', 
+                            comentarios: comentarioFinal,
+                            created_at: fechaAuditoria // <-- Enviamos la hora exacta desde JS
                         }]);
                         
                         if (errHist) {
@@ -390,7 +414,7 @@
                         } else {
                             Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '¡Actualizado y registrado en el historial!', showConfirmButton: false, timer: 3000 });
                         }
-                    } else if (cambiosStr.length === 0) {
+                    } else if (cambiosContador === 0) {
                         Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'No hubo cambios que registrar', showConfirmButton: false, timer: 2000 });
                     }
                 }
@@ -406,8 +430,12 @@
                 const { data: nuevoReg } = await supabaseClient.from('registros_produccion').insert([{ fecha, codigo_proyecto, proyecto, piso, bloque, suite, espacio, producto, observaciones, modificaciones, estado, id_generado }]).select();
                 if (nuevoReg && nuevoReg.length > 0) {
                     await supabaseClient.from('historial_trazabilidad').insert([{
-                        id_mueble: nuevoReg[0].id, etapa: estado, operador: window.operadorActual,
-                        tipo_registro: 'Creación', comentarios: `Registro inicial de la pieza.`
+                        id_mueble: nuevoReg[0].id, 
+                        etapa: estado, 
+                        operador: window.operadorActual,
+                        tipo_registro: 'Creación', 
+                        comentarios: `Registro inicial de la pieza.`,
+                        created_at: fechaAuditoria // <-- Enviamos la hora exacta desde JS
                     }]);
                     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '¡Mueble Creado!', showConfirmButton: false, timer: 2000 });
                 }
@@ -542,7 +570,7 @@
                         <div>
                             <strong style="color:#1e293b;">${nombreOp}</strong> <span style="color:#64748b; font-size:11px;">• ${fechaMostrada}</span><br>
                             ${icono} <b style="color:${colorAvatar};">${h.tipo_registro}</b> <span style="color:#64748b;">(${h.etapa})</span><br>
-                            <span style="color: #475569;">${h.comentarios || ''}</span>
+                            <div style="color: #475569;">${h.comentarios || ''}</div>
                         </div>
                     </div>`;
                 });
