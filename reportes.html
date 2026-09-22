@@ -56,12 +56,12 @@
         .resultados-header h3 { margin: 0; font-size: 18px; color: #334155; }
         .contador { background-color: var(--tema-fondo); color: var(--tema-primario); border: 1px solid var(--tema-primario); padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; transition: 0.5s; }
         
+        /* ESTILOS DE TABLA AJUSTADOS PARA ALTURA COMPACTA */
         table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
-        th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; vertical-align: middle; }
+        th, td { border: 1px solid #e2e8f0; padding: 6px 10px; /* Padding reducido para coincidir con index */ text-align: left; vertical-align: middle; height: 32px; /* Altura forzada */ }
         th { background-color: #f8fafc; color: #475569; }
         tr:hover td { background-color: #f1f5f9; }
         
-        /* ORDEN DE TAMAÑOS DE COLUMNA EN REPORTES */
         th:nth-child(1) { width: 8%; } 
         th:nth-child(2) { width: 9%; } 
         th:nth-child(3) { width: 17%; } 
@@ -69,15 +69,16 @@
         th:nth-child(5) { width: 9%; text-align: center; } 
         th:nth-child(6) { width: 19%; } 
         th:nth-child(7) { width: 19%; } 
-        th:nth-child(8) { width: 7%; text-align: center; } /* Acción */
+        th:nth-child(8) { width: 7%; text-align: center; } 
 
-        .texto-truncado { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+        .texto-truncado { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%;}
         .badge-estado { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; white-space: nowrap; transition: 0.3s; }
         .estado-vacio { text-align: center; padding: 40px; color: #94a3b8; font-style: italic; }
 
-        /* ALINEACIÓN VERTICAL DE LOS ICONOS (OCULTOS HASTA TOCAR/HOVER) */
-        .acciones-col { text-align: center; vertical-align: middle; }
-        .btn-accion { display: block; background-color: transparent; border: none; font-size: 16px; cursor: pointer; padding: 4px; margin: 4px auto; line-height: 1; opacity: 0; transition: 0.2s; }
+        /* ALINEACIÓN DE ICONOS SUPERPUESTOS PARA NO EMPUJAR LA CELDA */
+        .acciones-col { text-align: center; position: relative; }
+        .contenedor-acciones { display: flex; flex-direction: column; justify-content: center; align-items: center; position: absolute; top: 0; bottom: 0; left: 0; right: 0; gap: 2px; }
+        .btn-accion { display: block; background-color: transparent; border: none; font-size: 15px; cursor: pointer; padding: 2px; margin: 0; line-height: 1; opacity: 0; transition: 0.2s; }
         tr:hover .btn-accion { opacity: 1; } 
         .btn-accion:hover { transform: scale(1.3); }
 
@@ -104,7 +105,7 @@
             .btn-exportar { margin-left: 0; width: 100%; margin-top: 10px;}
             .resultados-header { flex-direction: column; align-items: flex-start; }
             
-            /* La regla que hacía los botones siempre visibles fue eliminada para mantener la interfaz limpia */
+            .btn-accion { padding: 4px; font-size: 16px; }
         }
     </style>
 </head>
@@ -392,9 +393,11 @@
                         <td style="text-align: center;"><span class="badge-estado" style="${estiloBadge}">${nombreEstado}</span></td>
                         <td title="${obsText}"><span class="texto-truncado">${obsText}</span></td><td title="${modText}"><span class="texto-truncado">${modText}</span></td>
                         <td class="acciones-col">
-                            <button class="btn-accion" title="Ver Historial" onclick="verHistorial('${fila.id}', '${fila.codigo_proyecto || 'S/N'}', '${ubicacionVisual}')">⏱️</button>
-                            <button class="btn-accion" title="Editar" onclick="editarDesdeReporte('${fila.id}')">✏️</button>
-                            <button class="btn-accion" title="Borrar" onclick="eliminarDesdeReporte('${fila.id}', '${fila.codigo_proyecto || '-'}', '${ubicacionVisual}')">🗑️</button>
+                            <div class="contenedor-acciones">
+                                <button class="btn-accion" title="Ver Historial" onclick="verHistorial('${fila.id}', '${fila.codigo_proyecto || 'S/N'}', '${ubicacionVisual}')">⏱️</button>
+                                <button class="btn-accion" title="Editar" onclick="editarDesdeReporte('${fila.id}')">✏️</button>
+                                <button class="btn-accion" title="Borrar" onclick="eliminarDesdeReporte('${fila.id}', '${fila.codigo_proyecto || '-'}', '${ubicacionVisual}')">🗑️</button>
+                            </div>
                         </td>
                     </tr>`;
             });
