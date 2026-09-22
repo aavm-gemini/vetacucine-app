@@ -61,15 +61,14 @@
         th { background-color: #f8fafc; color: #475569; }
         tr:hover td { background-color: #f1f5f9; }
         
-        /* NUEVO ORDEN DE TAMAÑOS DE COLUMNA EN REPORTES */
         th:nth-child(1) { width: 8%; } 
         th:nth-child(2) { width: 9%; } 
         th:nth-child(3) { width: 17%; } 
         th:nth-child(4) { width: 11%; } 
-        th:nth-child(5) { width: 9%; text-align: center; } /* Estado */
-        th:nth-child(6) { width: 19%; } /* Observaciones */
-        th:nth-child(7) { width: 19%; } /* Modificaciones */
-        th:nth-child(8) { width: 8%; text-align: center; } /* Acción */
+        th:nth-child(5) { width: 9%; text-align: center; } 
+        th:nth-child(6) { width: 19%; } 
+        th:nth-child(7) { width: 19%; } 
+        th:nth-child(8) { width: 8%; text-align: center; }
 
         .texto-truncado { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
         .badge-estado { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; white-space: nowrap; transition: 0.3s; }
@@ -162,13 +161,12 @@
                 <div class="resultados-header">
                     <h3>Resultados de Búsqueda</h3>
                     <div>
-                        <span class="contador" id="contador_resultados">0 registros encontrados</span>
+                        <span class="contador" id="contador_resultados">Cargando...</span>
                         <button id="btn_exportar" class="btn-exportar" onclick="exportarExcel()">📥 Exportar a Excel</button>
                     </div>
                 </div>
                 <table id="tablaResultados">
                     <thead>
-                        <!-- NUEVO ORDEN DE CABECERAS EN REPORTES -->
                         <tr><th>Fecha</th><th>Cód. Int.</th><th>Ubicación</th><th>Mueble</th><th style="text-align: center;">Estado</th><th>Observaciones</th><th>Modificaciones</th><th style="text-align: center;">Acción</th></tr>
                     </thead>
                     <tbody>
@@ -190,10 +188,7 @@
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
-            if (!session) {
-                window.location.href = 'login.html';
-                return;
-            }
+            if (!session) { window.location.href = 'login.html'; return; }
 
             const correoUsuario = session.user.email;
             const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol').eq('email', correoUsuario).single();
@@ -214,14 +209,10 @@
             document.getElementById('filtro_fecha_inicio').value = ""; 
             await cargarSelectores();
             
-            // Forzamos a cargar la tabla al inicio con el orden de Piso y Suite
             await ejecutarBusqueda(); 
         });
 
-        async function cerrarSesion() {
-            await supabaseClient.auth.signOut();
-            window.location.href = 'login.html';
-        }
+        async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; }
 
         function hexToRgb(hex) {
             let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -243,17 +234,11 @@
                 let todosLosBloques = new Set();
                 if (window.proyectosCargados) {
                     window.proyectosCargados.forEach(p => {
-                        if (p.bloques) {
-                            p.bloques.split(',').forEach(b => {
-                                if (b.trim() !== "") todosLosBloques.add(b.trim().toUpperCase());
-                            });
-                        }
+                        if (p.bloques) { p.bloques.split(',').forEach(b => { if (b.trim() !== "") todosLosBloques.add(b.trim().toUpperCase()); }); }
                     });
                 }
                 let arrayBloques = Array.from(todosLosBloques).sort();
-                arrayBloques.forEach(b => {
-                    selBloque.innerHTML += `<option value="${b}">Bloque ${b}</option>`;
-                });
+                arrayBloques.forEach(b => { selBloque.innerHTML += `<option value="${b}">Bloque ${b}</option>`; });
 
             } else {
                 let proyectoReal = window.proyectosCargados.find(p => p.nombre === nombreProyecto);
@@ -262,13 +247,10 @@
                     selBloque.disabled = false;
                     let arrayBloques = proyectoReal.bloques.split(',').map(b => b.trim()).filter(b => b !== "");
                     arrayBloques.forEach(b => { selBloque.innerHTML += `<option value="${b}">Bloque ${b}</option>`; });
-                } else {
-                    selBloque.disabled = true;
-                }
+                } else { selBloque.disabled = true; }
 
                 if (proyectoReal && proyectoReal.color) {
-                    let colorHex = proyectoReal.color;
-                    let colorRgb = hexToRgb(colorHex);
+                    let colorHex = proyectoReal.color; let colorRgb = hexToRgb(colorHex);
                     document.documentElement.style.setProperty('--tema-primario', colorHex);
                     document.documentElement.style.setProperty('--tema-fondo', colorHex + '15');
                     if (colorRgb) document.documentElement.style.setProperty('--tema-rgb', colorRgb);
@@ -305,64 +287,82 @@
             let suite = document.getElementById('filtro_suite').value.trim().toUpperCase(); let texto = document.getElementById('filtro_texto').value.trim().toLowerCase();
             let fechaInicio = document.getElementById('filtro_fecha_inicio').value; let fechaFin = document.getElementById('filtro_fecha_fin').value;
 
+            // =========================================================
+            // LA MAGIA DE LA CARGA PEREZOSA (LAZY LOADING)
+            // =========================================================
+            let hayFiltrosActivos = (proyecto !== "Todos" || estado !== "Todos" || producto !== "Todos" || piso !== "" || bloque !== "" || suite !== "" || texto !== "" || fechaInicio !== "");
+
             document.querySelector("#tablaResultados tbody").innerHTML = '<tr><td colspan="8" class="estado-vacio">Buscando en la base de datos... ⏳</td></tr>';
 
-            // Reportes procesa los 150 más recientes para estructurar el edificio
-            let query = supabaseClient.from('registros_produccion').select('*').limit(150);
+            let query = supabaseClient.from('registros_produccion').select('*');
 
-            if (proyecto !== "Todos") query = query.eq('proyecto', proyecto);
-            if (estado !== "Todos") query = query.eq('estado', estado);
-            if (producto !== "Todos") query = query.eq('producto', producto); 
-            if (fechaInicio) query = query.gte('fecha', fechaInicio);
-            if (fechaFin) query = query.lte('fecha', fechaFin);
+            if (!hayFiltrosActivos) {
+                // 1. MODO VISTA RÁPIDA: Si no hay filtros, trae solo los últimos 100 muebles creados y rápidos
+                query = query.order('created_at', { ascending: false }).limit(100);
+            } else {
+                // 2. MODO ANÁLISIS: Si hay filtros, trae todo lo que coincida (hasta 1500 por seguridad)
+                if (proyecto !== "Todos") query = query.eq('proyecto', proyecto);
+                if (estado !== "Todos") query = query.eq('estado', estado);
+                if (producto !== "Todos") query = query.eq('producto', producto); 
+                if (fechaInicio) query = query.gte('fecha', fechaInicio);
+                if (fechaFin) query = query.lte('fecha', fechaFin);
+                query = query.limit(1500);
+            }
 
             const { data, error } = await query;
             if (error) { alert("Error buscando datos: " + error.message); return; }
 
             let datosFiltrados = data;
-            if (piso !== "") datosFiltrados = datosFiltrados.filter(fila => (fila.piso || "").toUpperCase() === piso);
-            if (bloque !== "") datosFiltrados = datosFiltrados.filter(fila => (fila.bloque || "").toUpperCase() === bloque);
-            if (suite !== "") datosFiltrados = datosFiltrados.filter(fila => (fila.suite || "").toUpperCase() === suite);
-            if (texto !== "") {
-                datosFiltrados = datosFiltrados.filter(fila => {
-                    let codigo = (fila.codigo_proyecto || "").toLowerCase(); let obs = (fila.observaciones || "").toLowerCase(); let mod = (fila.modificaciones || "").toLowerCase();
-                    return codigo.includes(texto) || obs.includes(texto) || mod.includes(texto);
+            
+            if (hayFiltrosActivos) {
+                // Filtramos a nivel de JavaScript la escritura libre
+                if (piso !== "") datosFiltrados = datosFiltrados.filter(fila => (fila.piso || "").toUpperCase() === piso);
+                if (bloque !== "") datosFiltrados = datosFiltrados.filter(fila => (fila.bloque || "").toUpperCase() === bloque);
+                if (suite !== "") datosFiltrados = datosFiltrados.filter(fila => (fila.suite || "").toUpperCase() === suite);
+                if (texto !== "") {
+                    datosFiltrados = datosFiltrados.filter(fila => {
+                        let codigo = (fila.codigo_proyecto || "").toLowerCase(); let obs = (fila.observaciones || "").toLowerCase(); let mod = (fila.modificaciones || "").toLowerCase();
+                        return codigo.includes(texto) || obs.includes(texto) || mod.includes(texto);
+                    });
+                }
+
+                // APLICAMOS ORDEN ARQUITECTÓNICO SOLO SI ESTÁ FILTRANDO
+                datosFiltrados.sort((a, b) => {
+                    const parseAlphaNum = (str) => {
+                        if (!str) return [999999, ""];
+                        let s = String(str).toUpperCase();
+                        let num = parseInt(s.replace(/\D/g, ''));
+                        if (isNaN(num)) { if (s === "PB") num = -1; else if (s === "PH") num = 999998; else num = 999999; }
+                        let txt = s.replace(/[0-9]/g, '').trim();
+                        return [num, txt];
+                    };
+
+                    let [pNumA, pTxtA] = parseAlphaNum(a.piso); let [pNumB, pTxtB] = parseAlphaNum(b.piso);
+                    if (pNumA !== pNumB) return pNumA - pNumB; if (pTxtA !== pTxtB) return pTxtA.localeCompare(pTxtB);
+
+                    let [sNumA, sTxtA] = parseAlphaNum(a.suite); let [sNumB, sTxtB] = parseAlphaNum(b.suite);
+                    if (sNumA !== sNumB) return sNumA - sNumB; return sTxtA.localeCompare(sTxtB);
                 });
             }
-
-            // ========================================================
-            // ORDEN ARQUITECTÓNICO: Organiza todo por Piso y Suite
-            // ========================================================
-            datosFiltrados.sort((a, b) => {
-                const parseAlphaNum = (str) => {
-                    if (!str) return [999999, ""];
-                    let s = String(str).toUpperCase();
-                    let num = parseInt(s.replace(/\D/g, ''));
-                    if (isNaN(num)) {
-                        if (s === "PB") num = -1; else if (s === "PH") num = 999998; else num = 999999;
-                    }
-                    let txt = s.replace(/[0-9]/g, '').trim();
-                    return [num, txt];
-                };
-
-                let [pNumA, pTxtA] = parseAlphaNum(a.piso); let [pNumB, pTxtB] = parseAlphaNum(b.piso);
-                if (pNumA !== pNumB) return pNumA - pNumB; if (pTxtA !== pTxtB) return pTxtA.localeCompare(pTxtB);
-
-                let [sNumA, sTxtA] = parseAlphaNum(a.suite); let [sNumB, sTxtB] = parseAlphaNum(b.suite);
-                if (sNumA !== sNumB) return sNumA - sNumB; return sTxtA.localeCompare(sTxtB);
-            });
             
             window.datosParaExportar = datosFiltrados;
             if (datosFiltrados.length > 0) { document.getElementById('btn_exportar').style.display = 'inline-block'; } 
             else { document.getElementById('btn_exportar').style.display = 'none'; }
 
-            pintarTabla(datosFiltrados);
+            pintarTabla(datosFiltrados, hayFiltrosActivos);
         }
 
-        function pintarTabla(data) {
+        function pintarTabla(data, hayFiltrosActivos) {
             const tbody = document.querySelector("#tablaResultados tbody"); tbody.innerHTML = ""; 
-            document.getElementById('contador_resultados').innerText = `${data.length} registros encontrados`;
-            if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="8" class="estado-vacio">No se encontró ningún mueble con estos filtros.</td></tr>'; return; }
+            
+            // Actualizamos el contador inteligentemente
+            if (hayFiltrosActivos) {
+                document.getElementById('contador_resultados').innerText = `${data.length} registros encontrados`;
+            } else {
+                document.getElementById('contador_resultados').innerHTML = `Mostrando los últimos <b>${data.length}</b> registros`;
+            }
+
+            if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="8" class="estado-vacio">No se encontró ningún mueble.</td></tr>'; return; }
 
             let maxOrdenEstado = (window.estadosCargados && window.estadosCargados.length > 0) ? Math.max(...window.estadosCargados.map(e => e.orden)) : 1;
 
@@ -390,7 +390,6 @@
 
                 let obsText = fila.observaciones || ''; let modText = fila.modificaciones || '';
                 
-                // NUEVO ORDEN DE COLUMNAS (Estado antes de Notas)
                 tbody.innerHTML += `<tr>
                         <td style="font-weight:bold;">${fechaCorta}</td><td><strong>${fila.codigo_proyecto || '-'}</strong></td><td>${ubicacionVisual}</td><td>${fila.producto} (${fila.espacio})</td>
                         <td style="text-align: center;"><span class="badge-estado" style="${estiloBadge}">${nombreEstado}</span></td>
@@ -404,22 +403,16 @@
             });
         }
         
-        function editarDesdeReporte(id) {
-            window.location.href = 'index.html?edit=' + id;
-        }
+        function editarDesdeReporte(id) { window.location.href = 'index.html?edit=' + id; }
 
         async function eliminarDesdeReporte(id, codigo, mueble) {
             const result = await Swal.fire({ title: '¿Estás seguro?', html: `Estás a punto de borrar:<br><b>Cód:</b> ${codigo}<br><b>Mueble:</b> ${mueble}`, icon: 'error', showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar' });
             if (result.isConfirmed) {
                 await supabaseClient.from('registros_produccion').delete().eq('id', id); 
-                ejecutarBusqueda(); 
-                Swal.fire({ icon: 'success', title: '¡Eliminado!', text: 'El registro fue borrado de la base de datos.', timer: 1500, showConfirmButton: false });
+                ejecutarBusqueda(); Swal.fire({ icon: 'success', title: '¡Eliminado!', text: 'El registro fue borrado de la base de datos.', timer: 1500, showConfirmButton: false });
             }
         }
 
-        // =======================================================
-        // HERRAMIENTAS DE AVATARES Y FECHAS
-        // =======================================================
         function obtenerIniciales(nombreCompleto) {
             if (!nombreCompleto) return '👤';
             let partes = nombreCompleto.trim().split(' ').filter(p => p.length > 0);
@@ -451,9 +444,6 @@
             return `${dia}/${mes}/${anio} a las ${horasStr}:${minutos} ${ampm}`;
         }
 
-        // =======================================================
-        // EXPEDIENTE RECONSTRUIDO Y A PRUEBA DE FALLOS
-        // =======================================================
         async function verHistorial(id_mueble, codigo, ubicacion) {
             Swal.fire({ title: 'Cargando expediente...', didOpen: () => Swal.showLoading() });
             
@@ -461,9 +451,7 @@
             const { data: historialBruto } = await supabaseClient.from('historial_trazabilidad').select('*').eq('id_mueble', id_mueble);
             
             let historial = [];
-            if (historialBruto) {
-                historial = historialBruto.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
-            }
+            if (historialBruto) { historial = historialBruto.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0)); }
             
             let tieneCreacion = historial.some(h => h.tipo_registro === 'Creación');
             let html = `<div style="text-align: left; max-height: 400px; overflow-y: auto; overflow-x: hidden; font-size: 13px; padding: 5px 10px 5px 25px;">`;
