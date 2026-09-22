@@ -9,8 +9,11 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#3b82f6">
     <script>
+        // Forzar actualización agresiva del Service Worker para evitar cachés viejos
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js');
+            navigator.serviceWorker.register('sw.js').then(reg => {
+                reg.update();
+            });
         }
     </script>
     
@@ -60,7 +63,7 @@
         button.btn-principal { background-color: var(--tema-primario); color: white; padding: 10px; width: 100%; border: none; border-radius: 4px; font-size: 15px; cursor: pointer; margin-top: 10px; font-weight: bold; transition: 0.2s; }
         button.btn-principal:hover { filter: brightness(0.85); }
         button.btn-principal:active { transform: scale(0.98); }
-        button.btn-editando { background-color: #1e293b !important; color: white !important; }
+        button.btn-editando { background-color: #f59e0b !important; color: white !important; } /* Naranja para que notes fácil que estás editando */
         
         .row { display: flex; gap: 15px; }
         .row .form-group { flex: 1; }
@@ -118,12 +121,10 @@
             </ul>
         </nav>
 
-        <!-- ÁREA DE TRABAJO PRINCIPAL -->
         <div class="main-content">
             
             <div class="header-top">
                 <h2 class="header-title">Ingreso de Producción</h2>
-                
                 <div class="perfil-usuario">
                     <div class="mensaje-bienvenida">Hola, <span id="nombreUsuario">Cargando...</span></div>
                     <img id="fotoUsuario" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Foto" class="foto-perfil">
@@ -132,7 +133,7 @@
             </div>
 
             <div class="card">
-                <h2>Registrar Nuevo Mueble</h2>
+                <h2 id="tituloFormulario">Registrar Nuevo Mueble</h2>
                 
                 <div class="row">
                     <div class="form-group">
@@ -174,7 +175,9 @@
 
                 <div class="form-group"><label>Observaciones:</label><textarea id="observaciones" rows="2" placeholder="Detalles de diseño..."></textarea></div>
                 <div class="form-group"><label>Modificaciones:</label><textarea id="modificaciones" rows="2" placeholder="Ajustes o cambios..."></textarea></div>
+                
                 <button id="btnGuardar" class="btn-principal" onclick="guardarRegistro()">Guardar Mueble</button>
+                <button id="btnCancelarEdit" class="btn-principal" style="background-color:#94a3b8; display:none;" onclick="cancelarEdicion()">Cancelar Edición</button>
             </div>
 
             <div class="card table-card">
@@ -195,8 +198,13 @@
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBucm50bWtjaXNneW15dm16c29uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNzAwODQsImV4cCI6MjEwNDc0NjA4NH0.fdW9mj9rkO0rxHXB8rBeJc6a32QSQxtvsNtu9_rL6yc';
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
         
-        window.registrosDescargados = []; window.proyectosCargados = []; window.estadosCargados = []; 
-        window.operadorActual = ""; 
+        window.registrosDescargados = []; 
+        window.proyectosCargados = []; 
+        window.estadosCargados = []; 
+        window.operadorActual = "Operador"; 
+        
+        // LA VARIABLE MAESTRA DE EDICIÓN: Guarda el ID real de Supabase
+        window.idMuebleEnEdicion = null;
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -211,9 +219,10 @@
                 if (linkAdmin) linkAdmin.parentElement.style.display = 'none';
             }
 
-            const nombreCompleto = session.user.user_metadata.full_name;
+            // Aseguramos que el nombre nunca quede vacío
+            const nombreCompleto = session.user.user_metadata.full_name || session.user.email.split('@')[0];
             window.operadorActual = nombreCompleto; 
-            const urlFoto = session.user.user_metadata.avatar_url;
+            const urlFoto = session.user.user_metadata.avatar_url || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
             document.getElementById('nombreUsuario').innerText = nombreCompleto.split(' ')[0];
             document.getElementById('fotoUsuario').src = urlFoto;
 
@@ -225,7 +234,6 @@
 
             const urlParams = new URLSearchParams(window.location.search);
             const editId = urlParams.get('edit');
-            
             if (editId) {
                 const { data: regEdit } = await supabaseClient.from('registros_produccion').select('*').eq('id', editId).single();
                 if (regEdit) {
@@ -305,18 +313,41 @@
         function cargarParaEditar(id) {
             let registro = window.registrosDescargados.find(r => r.id === id);
             if (!registro) return;
+            
+            window.idMuebleEnEdicion = id; // Clavamos el ID exacto aquí
+            document.getElementById('tituloFormulario').innerText = "✏️ Editando Mueble";
+            
             if (registro.fecha) document.getElementById('fecha').value = registro.fecha.split('T')[0];
             document.getElementById('codigo_proyecto').value = registro.codigo_proyecto === '000' ? '0' : registro.codigo_proyecto;
             document.getElementById('estado').value = registro.estado; document.getElementById('proyecto').value = registro.proyecto; 
             cambiarTema(); 
             document.getElementById('piso').value = registro.piso; document.getElementById('bloque').value = registro.bloque || ''; 
             document.getElementById('suite').value = registro.suite; document.getElementById('espacio').value = registro.espacio; 
-            document.getElementById('producto').value = registro.producto; document.getElementById('observaciones').value = registro.observaciones || ''; 
+            document.getElementById('producto').value = registro.producto; 
+            document.getElementById('observaciones').value = registro.observaciones || ''; 
             document.getElementById('modificaciones').value = registro.modificaciones || '';
             
             document.querySelector('.main-content').scrollTo({ top: 0, behavior: 'smooth' }); 
             document.getElementById('observaciones').focus();
-            let btn = document.getElementById('btnGuardar'); btn.innerHTML = "Actualizar Mueble"; btn.classList.add('btn-editando');
+            
+            let btn = document.getElementById('btnGuardar'); 
+            btn.innerHTML = "💾 Actualizar Mueble"; 
+            btn.classList.add('btn-editando');
+            document.getElementById('btnCancelarEdit').style.display = 'block';
+        }
+
+        function cancelarEdicion() {
+            window.idMuebleEnEdicion = null;
+            document.getElementById('tituloFormulario').innerText = "Registrar Nuevo Mueble";
+            document.getElementById('codigo_proyecto').value = ''; 
+            document.getElementById('observaciones').value = ''; 
+            document.getElementById('modificaciones').value = '';
+            
+            let btn = document.getElementById('btnGuardar'); 
+            btn.innerHTML = "Guardar Mueble"; 
+            btn.classList.remove('btn-editando');
+            document.getElementById('btnCancelarEdit').style.display = 'none';
+            window.history.replaceState({}, document.title, window.location.pathname);
         }
 
         async function guardarRegistro() {
@@ -331,79 +362,72 @@
             if (!proyecto || !estado || !espacio || !producto) { Swal.fire({ icon: 'warning', title: 'Faltan datos', text: 'Por favor selecciona Proyecto, Estado, Espacio y Producto.', confirmButtonColor: '#475569' }); return; }
             if (!piso || !suite) { Swal.fire({ icon: 'warning', title: 'Faltan datos', text: 'Por favor completa el piso y la suite.', confirmButtonColor: '#475569' }); return; }
 
-            let proyectoReal = window.proyectosCargados.find(p => p.nombre === proyecto);
-            if (proyectoReal && proyectoReal.bloques && proyectoReal.bloques.trim() !== "") {
-                if (bloque === "") { Swal.fire({ icon: 'warning', title: 'Bloque Requerido', text: `El proyecto "${proyecto}" exige que especifiques un Bloque.`, confirmButtonColor: '#475569' }); document.getElementById('bloque').focus(); return; }
-                let arrayBloquesValidos = proyectoReal.bloques.split(',').map(b => b.trim().toUpperCase());
-                if (!arrayBloquesValidos.includes(bloque)) { Swal.fire({ icon: 'error', title: 'Error de Bloque', html: `El bloque <b>"${bloque}"</b> no existe en el proyecto ${proyecto}.`, confirmButtonColor: '#475569' }); document.getElementById('bloque').focus(); return; }
-            } else { bloque = ""; }
-
             let id_generado = "P" + piso + bloque + "-S" + suite + "-" + producto + "-" + espacio;
-            let btn = document.getElementById('btnGuardar'); btn.innerHTML = "Comprobando..."; btn.disabled = true;
-            
-            let mensajeExito = '¡Mueble guardado!'; // Mensaje por defecto
+            let btn = document.getElementById('btnGuardar'); btn.innerHTML = "Procesando..."; btn.disabled = true;
 
-            const { data: existente } = await supabaseClient.from('registros_produccion').select('*').eq('id_generado', id_generado);
-            
-            if (existente && existente.length > 0) {
-                let muebleAntiguo = existente[0];
-                let ca = muebleAntiguo.codigo_proyecto || "";
+            // =========================================================
+            // RAMA 1: ESTAMOS EDITANDO UN MUEBLE (USAMOS EL ID REAL)
+            // =========================================================
+            if (window.idMuebleEnEdicion) {
+                const { data: muebleAntiguo, error: errFetch } = await supabaseClient.from('registros_produccion').select('*').eq('id', window.idMuebleEnEdicion).single();
                 
-                if (!(ca.trim() === "" || /^0+$/.test(ca.trim())) && ca !== codigo_proyecto) {
-                    const result = await Swal.fire({ title: '¿Reemplazar mueble?', text: `Este mueble ya está registrado como "${ca}". ¿Deseas reemplazarlo por "${codigo_proyecto}"?`, icon: 'question', showCancelButton: true, confirmButtonColor: '#3b82f6', cancelButtonColor: '#94a3b8', confirmButtonText: 'Sí, reemplazar', cancelButtonText: 'Cancelar' });
-                    if (!result.isConfirmed) { btn.innerHTML = "Guardar Mueble"; btn.disabled = false; return; }
-                }
+                if (muebleAntiguo) {
+                    let cambiosStr = [];
+                    let obsAntigua = (muebleAntiguo.observaciones || "").trim(); let modAntigua = (muebleAntiguo.modificaciones || "").trim();
+                    let estadoAntiguo = (muebleAntiguo.estado || "").trim(); let codigoAntiguo = (muebleAntiguo.codigo_proyecto || "").trim();
 
-                // === EL SUPER ESPÍA: VIGILA TODO TIPO DE CAMBIOS (Con limpieza de espacios) ===
-                let cambiosStr = [];
-                let obsAntigua = (muebleAntiguo.observaciones || "").trim(); let modAntigua = (muebleAntiguo.modificaciones || "").trim();
-                let estadoAntiguo = (muebleAntiguo.estado || "").trim(); let codigoAntiguo = (muebleAntiguo.codigo_proyecto || "").trim();
+                    if (obsAntigua !== observaciones) cambiosStr.push("Observaciones");
+                    if (modAntigua !== modificaciones) cambiosStr.push("Modificaciones");
+                    if (estadoAntiguo !== estado) cambiosStr.push(`Estado (a '${estado}')`);
+                    if (codigoAntiguo !== codigo_proyecto && codigo_proyecto !== "000") cambiosStr.push(`Cód Interno`);
 
-                if (obsAntigua !== observaciones) cambiosStr.push("Observaciones");
-                if (modAntigua !== modificaciones) cambiosStr.push("Modificaciones");
-                if (estadoAntiguo !== estado) cambiosStr.push(`Estado (a '${estado}')`);
-                if (codigoAntiguo !== codigo_proyecto && codigo_proyecto !== "000") cambiosStr.push(`Cód Interno`);
+                    // Actualizamos DIRECTO al ID correcto, sin fallas
+                    const { error: errUpd } = await supabaseClient.from('registros_produccion')
+                        .update({ fecha, codigo_proyecto, observaciones, modificaciones, estado, proyecto, piso, bloque, suite, espacio, producto, id_generado })
+                        .eq('id', window.idMuebleEnEdicion);
 
-                await supabaseClient.from('registros_produccion').update({ fecha, codigo_proyecto, observaciones, modificaciones, estado }).eq('id_generado', id_generado);
-
-                // Si detectó cualquier cambio, lo anota en el reloj de auditoría
-                if (cambiosStr.length > 0) {
-                    const { error: errHist } = await supabaseClient.from('historial_trazabilidad').insert([{
-                        id_mueble: muebleAntiguo.id, etapa: estado, operador: window.operadorActual,
-                        tipo_registro: 'Edición en Sistema', comentarios: `Actualizó: ${cambiosStr.join(', ')}.`
-                    }]);
-                    
-                    if(!errHist) {
-                        mensajeExito = '¡Actualizado y registrado en el historial!'; // Confirmación de que el Espía funcionó
+                    if (!errUpd && cambiosStr.length > 0) {
+                        const { error: errHist } = await supabaseClient.from('historial_trazabilidad').insert([{
+                            id_mueble: window.idMuebleEnEdicion, etapa: estado, operador: window.operadorActual,
+                            tipo_registro: 'Edición en Sistema', comentarios: `Actualizó: ${cambiosStr.join(', ')}.`
+                        }]);
+                        
+                        if (errHist) {
+                            Swal.fire('Advertencia', 'El mueble se guardó, pero falló la anotación en el historial: ' + errHist.message, 'warning');
+                        } else {
+                            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '¡Mueble Editado y Auditado!', showConfirmButton: false, timer: 3000 });
+                        }
+                    } else if (cambiosStr.length === 0) {
+                        Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'No hubo cambios que registrar', showConfirmButton: false, timer: 2000 });
                     }
                 }
+                cancelarEdicion();
 
+            // =========================================================
+            // RAMA 2: CREANDO UN MUEBLE NUEVO
+            // =========================================================
             } else {
+                const { data: existente } = await supabaseClient.from('registros_produccion').select('*').eq('id_generado', id_generado);
+                if (existente && existente.length > 0) {
+                    Swal.fire({ title: 'Error', text: `Ya existe un mueble registrado en esta ubicación exacta. Si deseas cambiarlo, búscalo en la tabla y presiona el botón Editar (✏️).`, icon: 'error', confirmButtonColor: '#475569' });
+                    btn.innerHTML = "Guardar Mueble"; btn.disabled = false; return;
+                }
+
                 const { data: nuevoReg } = await supabaseClient.from('registros_produccion').insert([{ fecha, codigo_proyecto, proyecto, piso, bloque, suite, espacio, producto, observaciones, modificaciones, estado, id_generado }]).select();
                 if (nuevoReg && nuevoReg.length > 0) {
                     await supabaseClient.from('historial_trazabilidad').insert([{
                         id_mueble: nuevoReg[0].id, etapa: estado, operador: window.operadorActual,
                         tipo_registro: 'Creación', comentarios: `Registro inicial de la pieza.`
                     }]);
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '¡Mueble Creado!', showConfirmButton: false, timer: 2000 });
                 }
+                
+                document.getElementById('codigo_proyecto').value = ''; document.getElementById('observaciones').value = ''; document.getElementById('modificaciones').value = '';
+                document.getElementById('codigo_proyecto').focus(); 
+                btn.innerHTML = "Guardar Mueble"; btn.disabled = false; 
             }
-            
-            document.getElementById('codigo_proyecto').value = ''; document.getElementById('observaciones').value = ''; document.getElementById('modificaciones').value = '';
-            document.getElementById('codigo_proyecto').focus(); 
-            btn.innerHTML = "Guardar Mueble"; btn.classList.remove('btn-editando'); btn.disabled = false; 
             
             await cargarTabla();
-            
-            let indexGuardado = window.registrosDescargados.findIndex(r => r.id_generado === id_generado);
-            if (indexGuardado > 0) {
-                let itemVisual = window.registrosDescargados.splice(indexGuardado, 1)[0]; window.registrosDescargados.unshift(itemVisual); renderizarTabla(window.registrosDescargados);
-            } else if (indexGuardado === -1) {
-                const { data: recienGuardado } = await supabaseClient.from('registros_produccion').select('*').eq('id_generado', id_generado).single();
-                if (recienGuardado) { window.registrosDescargados.unshift(recienGuardado); if(window.registrosDescargados.length > 20) window.registrosDescargados.pop(); renderizarTabla(window.registrosDescargados); }
-            }
-            
-            window.history.replaceState({}, document.title, window.location.pathname);
-            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: mensajeExito, showConfirmButton: false, timer: 2500, timerProgressBar: true });
         }
 
         async function eliminarRegistro(id, codigo, mueble) {
@@ -456,100 +480,6 @@
                     </td></tr>`;
             });
         }
-
-        // =======================================================
-        // HERRAMIENTAS DE AVATARES Y FECHAS
-        // =======================================================
-        function obtenerIniciales(nombreCompleto) {
-            if (!nombreCompleto) return '👤';
-            let partes = nombreCompleto.trim().split(' ').filter(p => p.length > 0);
-            if (partes.length === 0) return '👤';
-            if (partes.length === 1) return partes[0].charAt(0).toUpperCase();
-            return (partes[0].charAt(0) + partes[1].charAt(0)).toUpperCase();
-        }
-
-        function obtenerColorAvatar(nombre) {
-            const colores = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#0284c7'];
-            if (!nombre) return colores[0];
-            let num = 0; for (let i = 0; i < nombre.length; i++) num += nombre.charCodeAt(i);
-            return colores[num % colores.length];
-        }
-
-        function formatearFechaEspanol(cadenaFecha) {
-            if (!cadenaFecha) return 'Fecha desconocida';
-            if (cadenaFecha.length === 10) { let partes = cadenaFecha.split('-'); return `${partes[2]}/${partes[1]}/${partes[0]} - (Ingreso manual)`; }
-            
-            let d = new Date(cadenaFecha);
-            if (isNaN(d)) return cadenaFecha;
-            
-            let dia = String(d.getDate()).padStart(2, '0'); let mes = String(d.getMonth() + 1).padStart(2, '0'); let anio = d.getFullYear();
-            let horas = d.getHours(); let minutos = String(d.getMinutes()).padStart(2, '0');
-            let ampm = horas >= 12 ? 'PM' : 'AM';
-            horas = horas % 12; horas = horas ? horas : 12; 
-            let horasStr = String(horas).padStart(2, '0');
-            
-            return `${dia}/${mes}/${anio} a las ${horasStr}:${minutos} ${ampm}`;
-        }
-
-        // =======================================================
-        // EXPEDIENTE CON DISEÑO CORREGIDO (NO SE CORTA EL ICONO)
-        // =======================================================
-        async function verHistorial(id_mueble, codigo, ubicacion) {
-            Swal.fire({ title: 'Cargando expediente...', didOpen: () => Swal.showLoading() });
-            
-            const { data: mueble } = await supabaseClient.from('registros_produccion').select('fecha').eq('id', id_mueble).single();
-            const { data: historialBruto } = await supabaseClient.from('historial_trazabilidad').select('*').eq('id_mueble', id_mueble);
-            
-            let historial = [];
-            if (historialBruto) {
-                historial = historialBruto.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
-            }
-            
-            let tieneCreacion = historial.some(h => h.tipo_registro === 'Creación');
-            
-            // Se le agregó un padding-left de 25px para proteger los avatares
-            let html = `<div style="text-align: left; max-height: 400px; overflow-y: auto; overflow-x: hidden; font-size: 13px; padding: 5px 10px 5px 25px;">`;
-            html += `<h4 style="margin-top:0; border-bottom: 1px solid #ccc; padding-bottom: 8px; margin-bottom: 15px;">Cód: ${codigo} | ${ubicacion}</h4>`;
-            
-            if (!tieneCreacion && mueble && mueble.fecha) {
-                html += `<div style="display: flex; gap: 12px; margin-bottom: 15px; border-left: 2px solid #cbd5e1; padding-left: 15px; position: relative;">
-                    <div style="position: absolute; left: -17px; top: 0; width: 32px; height: 32px; border-radius: 50%; background: #94a3b8; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2px solid white;">🤖</div>
-                    <div>
-                        <strong style="color:#1e293b;">Sistema Central</strong> <span style="color:#64748b; font-size:11px;">• ${formatearFechaEspanol(mueble.fecha)}</span><br>
-                        ✨ <b style="color:#64748b;">Ingreso Básico</b><br>
-                        <span style="color: #94a3b8; font-style: italic;">Pieza registrada antes de la actualización de trazabilidad.</span>
-                    </div>
-                </div>`;
-            }
-
-            if (historial.length > 0) {
-                historial.forEach(h => {
-                    let fechaMostrada = h.created_at ? formatearFechaEspanol(h.created_at) : formatearFechaEspanol(h.fecha);
-                    let icono = h.tipo_registro.includes('Falla') ? '🛑' : (h.tipo_registro.includes('Creación') ? '✨' : (h.tipo_registro.includes('Edición') ? '✏️' : '▶️'));
-                    
-                    let nombreOp = h.operador || 'Operador';
-                    let iniciales = obtenerIniciales(nombreOp);
-                    let colorAvatar = obtenerColorAvatar(nombreOp);
-
-                    html += `<div style="display: flex; gap: 12px; margin-bottom: 15px; border-left: 2px solid ${colorAvatar}; padding-left: 15px; position: relative;">
-                        <div style="position: absolute; left: -17px; top: 0; width: 32px; height: 32px; border-radius: 50%; background: ${colorAvatar}; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">${iniciales}</div>
-                        <div>
-                            <strong style="color:#1e293b;">${nombreOp}</strong> <span style="color:#64748b; font-size:11px;">• ${fechaMostrada}</span><br>
-                            ${icono} <b style="color:${colorAvatar};">${h.tipo_registro}</b> <span style="color:#64748b;">(${h.etapa})</span><br>
-                            <span style="color: #475569;">${h.comentarios || ''}</span>
-                        </div>
-                    </div>`;
-                });
-            } else if (!tieneCreacion) {
-                html += `<div style="color: #94a3b8; text-align: center; margin-top: 20px; font-style: italic;">Aún no hay movimientos registrados por operadores para esta pieza.</div>`;
-            }
-            
-            html += `</div>`;
-            Swal.fire({ title: '⏱️ Expediente de Trazabilidad', html: html, width: '600px', confirmButtonText: 'Cerrar', confirmButtonColor: '#475569' });
-        }
-
-        window.addEventListener('offline', () => { Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Sin conexión a Internet', showConfirmButton: false, background: '#fee2e2' }); });
-        window.addEventListener('online', () => { Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Conexión restaurada', showConfirmButton: false, timer: 4000 }); });
     </script>
 </body>
 </html>
