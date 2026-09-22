@@ -61,22 +61,25 @@
         th { background-color: #f8fafc; color: #475569; }
         tr:hover td { background-color: #f1f5f9; }
         
+        /* ORDEN DE TAMAÑOS DE COLUMNA EN REPORTES */
         th:nth-child(1) { width: 8%; } 
         th:nth-child(2) { width: 9%; } 
         th:nth-child(3) { width: 17%; } 
-        th:nth-child(4) { width: 11%; } 
+        th:nth-child(4) { width: 12%; } 
         th:nth-child(5) { width: 9%; text-align: center; } 
         th:nth-child(6) { width: 19%; } 
         th:nth-child(7) { width: 19%; } 
-        th:nth-child(8) { width: 8%; text-align: center; }
+        th:nth-child(8) { width: 7%; text-align: center; } /* Acción */
 
         .texto-truncado { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
         .badge-estado { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; white-space: nowrap; transition: 0.3s; }
         .estado-vacio { text-align: center; padding: 40px; color: #94a3b8; font-style: italic; }
 
-        .acciones-col { white-space: nowrap; text-align: center; }
-        .btn-accion { background-color: transparent; border: none; font-size: 15px; cursor: pointer; padding: 2px 3px; margin: 0; line-height: 1; opacity: 0; transition: 0.2s; }
-        tr:hover .btn-accion { opacity: 1; } .btn-accion:hover { transform: scale(1.3); }
+        /* ALINEACIÓN VERTICAL DE LOS ICONOS (OCULTOS HASTA TOCAR/HOVER) */
+        .acciones-col { text-align: center; vertical-align: middle; }
+        .btn-accion { display: block; background-color: transparent; border: none; font-size: 16px; cursor: pointer; padding: 4px; margin: 4px auto; line-height: 1; opacity: 0; transition: 0.2s; }
+        tr:hover .btn-accion { opacity: 1; } 
+        .btn-accion:hover { transform: scale(1.3); }
 
         @media (max-width: 768px) { 
             body { overflow: auto; }
@@ -100,6 +103,8 @@
             table { min-width: 950px; }
             .btn-exportar { margin-left: 0; width: 100%; margin-top: 10px;}
             .resultados-header { flex-direction: column; align-items: flex-start; }
+            
+            /* La regla que hacía los botones siempre visibles fue eliminada para mantener la interfaz limpia */
         }
     </style>
 </head>
@@ -287,9 +292,6 @@
             let suite = document.getElementById('filtro_suite').value.trim().toUpperCase(); let texto = document.getElementById('filtro_texto').value.trim().toLowerCase();
             let fechaInicio = document.getElementById('filtro_fecha_inicio').value; let fechaFin = document.getElementById('filtro_fecha_fin').value;
 
-            // =========================================================
-            // LA MAGIA DE LA CARGA PEREZOSA (LAZY LOADING)
-            // =========================================================
             let hayFiltrosActivos = (proyecto !== "Todos" || estado !== "Todos" || producto !== "Todos" || piso !== "" || bloque !== "" || suite !== "" || texto !== "" || fechaInicio !== "");
 
             document.querySelector("#tablaResultados tbody").innerHTML = '<tr><td colspan="8" class="estado-vacio">Buscando en la base de datos... ⏳</td></tr>';
@@ -297,10 +299,8 @@
             let query = supabaseClient.from('registros_produccion').select('*');
 
             if (!hayFiltrosActivos) {
-                // 1. MODO VISTA RÁPIDA: Si no hay filtros, trae solo los últimos 100 muebles creados y rápidos
                 query = query.order('created_at', { ascending: false }).limit(100);
             } else {
-                // 2. MODO ANÁLISIS: Si hay filtros, trae todo lo que coincida (hasta 1500 por seguridad)
                 if (proyecto !== "Todos") query = query.eq('proyecto', proyecto);
                 if (estado !== "Todos") query = query.eq('estado', estado);
                 if (producto !== "Todos") query = query.eq('producto', producto); 
@@ -315,7 +315,6 @@
             let datosFiltrados = data;
             
             if (hayFiltrosActivos) {
-                // Filtramos a nivel de JavaScript la escritura libre
                 if (piso !== "") datosFiltrados = datosFiltrados.filter(fila => (fila.piso || "").toUpperCase() === piso);
                 if (bloque !== "") datosFiltrados = datosFiltrados.filter(fila => (fila.bloque || "").toUpperCase() === bloque);
                 if (suite !== "") datosFiltrados = datosFiltrados.filter(fila => (fila.suite || "").toUpperCase() === suite);
@@ -326,7 +325,6 @@
                     });
                 }
 
-                // APLICAMOS ORDEN ARQUITECTÓNICO SOLO SI ESTÁ FILTRANDO
                 datosFiltrados.sort((a, b) => {
                     const parseAlphaNum = (str) => {
                         if (!str) return [999999, ""];
@@ -355,7 +353,6 @@
         function pintarTabla(data, hayFiltrosActivos) {
             const tbody = document.querySelector("#tablaResultados tbody"); tbody.innerHTML = ""; 
             
-            // Actualizamos el contador inteligentemente
             if (hayFiltrosActivos) {
                 document.getElementById('contador_resultados').innerText = `${data.length} registros encontrados`;
             } else {
