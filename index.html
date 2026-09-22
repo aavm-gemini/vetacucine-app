@@ -362,14 +362,10 @@
             let id_generado = "P" + piso + bloque + "-S" + suite + "-" + producto + "-" + espacio;
             let btn = document.getElementById('btnGuardar'); btn.innerHTML = "Procesando..."; btn.disabled = true;
 
-            // La hora exacta enviada por nosotros, para evitar el error "Fecha Desconocida"
-            let fechaAuditoria = new Date().toISOString();
-
             if (window.idMuebleEnEdicion) {
                 const { data: muebleAntiguo, error: errFetch } = await supabaseClient.from('registros_produccion').select('*').eq('id', window.idMuebleEnEdicion).single();
                 
                 if (muebleAntiguo) {
-                    // === EL ESPÍA DETALLADO (LA MAGIA DEL HISTORIAL) ===
                     let cambiosContador = 0;
                     let detallesHTML = "";
                     let obsAntigua = (muebleAntiguo.observaciones || "").trim(); let modAntigua = (muebleAntiguo.modificaciones || "").trim();
@@ -397,7 +393,6 @@
                         .eq('id', window.idMuebleEnEdicion);
 
                     if (!errUpd && cambiosContador > 0) {
-                        // Construimos un acordeón elegante para que se expanda al darle clic
                         let comentarioFinal = `Actualizó ${cambiosContador} campo(s). <details style="margin-top:6px; cursor:pointer; background:#f8fafc; padding:6px; border-radius:4px; border:1px solid #e2e8f0;"><summary style="color:#3b82f6; font-weight:bold; font-size:11px; outline:none;">Ver detalles</summary><ul style="margin:6px 0 0 0; padding-left:18px; font-size:11px; color:#475569;">${detallesHTML}</ul></details>`;
 
                         const { error: errHist } = await supabaseClient.from('historial_trazabilidad').insert([{
@@ -405,8 +400,8 @@
                             etapa: estado, 
                             operador: window.operadorActual,
                             tipo_registro: 'Edición en Sistema', 
-                            comentarios: comentarioFinal,
-                            created_at: fechaAuditoria // <-- Enviamos la hora exacta desde JS
+                            comentarios: comentarioFinal
+                            // Eliminado el envío de la fecha manual; dejamos que Supabase la asigne automáticamente
                         }]);
                         
                         if (errHist) {
@@ -434,8 +429,8 @@
                         etapa: estado, 
                         operador: window.operadorActual,
                         tipo_registro: 'Creación', 
-                        comentarios: `Registro inicial de la pieza.`,
-                        created_at: fechaAuditoria // <-- Enviamos la hora exacta desde JS
+                        comentarios: `Registro inicial de la pieza.`
+                        // Eliminado el envío de la fecha manual; dejamos que Supabase la asigne automáticamente
                     }]);
                     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '¡Mueble Creado!', showConfirmButton: false, timer: 2000 });
                 }
