@@ -48,7 +48,6 @@
         .btn-salir:hover { background-color: #fef2f2; }
 
         .card { max-width: 950px; margin: 0 auto; background: white; padding: 15px 30px 25px 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 6px solid var(--tema-primario); transition: border-top 0.5s ease; }
-        /* Permite que la tabla haga scroll horizontal nativo y suave en celulares */
         .table-card { max-width: 950px; margin-top: 20px; margin-left: auto; margin-right: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 40px; }
         
         h2 { color: #333; text-align: center; margin-top: 0; margin-bottom: 15px; font-size: 22px; }
@@ -73,8 +72,15 @@
         th { background-color: #f8fafc; color: #333; }
         tr:hover td { background-color: #f1f5f9; }
         
-        th:nth-child(1) { width: 9%; } th:nth-child(2) { width: 9%; } th:nth-child(3) { width: 17%; } th:nth-child(4) { width: 11%; } 
-        th:nth-child(5) { width: 18%; } th:nth-child(6) { width: 18%; } th:nth-child(7) { width: 12%; text-align: center; } th:nth-child(8) { width: 6%; text-align: center; }  
+        /* NUEVO ORDEN DE TAMAÑOS DE COLUMNA */
+        th:nth-child(1) { width: 9%; } 
+        th:nth-child(2) { width: 9%; } 
+        th:nth-child(3) { width: 17%; } 
+        th:nth-child(4) { width: 11%; } 
+        th:nth-child(5) { width: 12%; text-align: center; } /* Estado */
+        th:nth-child(6) { width: 18%; } /* Observaciones */
+        th:nth-child(7) { width: 18%; } /* Modificaciones */
+        th:nth-child(8) { width: 6%; text-align: center; }  
 
         .col-texto { position: relative; font-size: 12px; color: #555; cursor: pointer; }
         .texto-truncado { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; display: block; }
@@ -92,18 +98,14 @@
         .badge-estado { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; white-space: nowrap; transition: 0.3s; }
         .estado-vacio { text-align: center; padding: 30px; color: #94a3b8; font-style: italic; }
 
-        /* ========================================================
-           CORRECCIONES MÓVILES (Celulares y Tablets pequeñas)
-           ======================================================== */
         @media (max-width: 768px) { 
             body { overflow: auto; }
             .app-container { flex-direction: column; height: auto; }
             .sidebar { width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 100; }
             .sidebar-header { padding: 15px; font-size: 20px; }
             
-            /* Navegación deslizable (Swipe horizontal) en celulares */
             .nav-links { flex-direction: row; margin-top: 0; justify-content: flex-start; background-color: #0f172a; overflow-x: auto; overflow-y: hidden; white-space: nowrap; -webkit-overflow-scrolling: touch; padding: 0 5px; }
-            .nav-links::-webkit-scrollbar { display: none; } /* Ocultar barrita fea en móvil */
+            .nav-links::-webkit-scrollbar { display: none; } 
             .nav-links a { padding: 12px 15px; font-size: 13px; border-left: none; border-bottom: 3px solid transparent; flex-direction: row; flex: 0 0 auto; gap: 6px; }
             .nav-links a.active { border-bottom-color: #3b82f6; }
             
@@ -111,14 +113,12 @@
             .row { flex-direction: column; gap: 12px; } 
             .row .form-group { width: 100%; }
             
-            /* Encabezado sin amontonarse (Centrado y organizado) */
             .header-top { flex-direction: column; align-items: center; text-align: center; gap: 15px; margin-bottom: 20px; padding-bottom: 15px; }
             .header-title { font-size: 22px; }
             .perfil-usuario { flex-wrap: wrap; justify-content: center; gap: 10px; }
             
-            /* LA MAGIA DE LA TABLA: Ancho mínimo forzado para que no se aplaste */
             .table-card { padding: 10px; border-radius: 5px; }
-            table { min-width: 900px; /* Al obligarla a medir 900px, el celular generará scroll horizontal */ }
+            table { min-width: 900px; }
         }
     </style>
 </head>
@@ -200,7 +200,8 @@
                 <h3>Últimos Registros Ingresados</h3>
                 <table id="tablaRegistros">
                     <thead>
-                        <tr><th>Fecha</th><th>Cód. Int.</th><th>Ubicación</th><th>Mueble</th><th>Observaciones</th><th>Modificaciones</th><th style="text-align: center;">Estado</th><th>Acción</th></tr>
+                        <!-- NUEVO ORDEN DE CABECERAS -->
+                        <tr><th>Fecha</th><th>Cód. Int.</th><th>Ubicación</th><th>Mueble</th><th style="text-align: center;">Estado</th><th>Observaciones</th><th>Modificaciones</th><th>Acción</th></tr>
                     </thead>
                     <tbody></tbody>
                 </table>
@@ -467,7 +468,7 @@
         }
 
         async function cargarTabla() {
-            // AQUÍ CORREGIMOS EL ORDEN PARA QUE EL REGISTRO MÁS NUEVO SALGA SIEMPRE ARRIBA
+            // Mantiene el orden de CREACIÓN (Bitácora más reciente primero)
             const { data, error } = await supabaseClient.from('registros_produccion')
                 .select('*')
                 .order('created_at', { ascending: false })
@@ -502,10 +503,11 @@
                 let obsHTML = fila.observaciones ? `<div class="texto-truncado">${fila.observaciones}</div><span class="tooltip-custom">${fila.observaciones}</span>` : '';
                 let modHTML = fila.modificaciones ? `<div class="texto-truncado">${fila.modificaciones}</div><span class="tooltip-custom">${fila.modificaciones}</span>` : '';
 
+                // NUEVO ORDEN DE COLUMNAS (Estado antes de Notas)
                 tbody.innerHTML += `<tr>
                     <td class="col-fecha">${fechaCorta}</td><td><strong>${fila.codigo_proyecto || '-'}</strong></td><td>${ubicacionVisual}</td><td>${fila.producto} (${fila.espacio})</td>
-                    <td class="col-texto">${obsHTML}</td><td class="col-texto">${modHTML}</td>
                     <td style="text-align: center;"><span class="badge-estado" style="${estiloBadge}">${nombreEstado}</span></td>
+                    <td class="col-texto">${obsHTML}</td><td class="col-texto">${modHTML}</td>
                     <td class="acciones-col">
                         <button class="btn-accion" title="Ver Historial" onclick="verHistorial('${fila.id}', '${fila.codigo_proyecto || 'S/N'}', '${ubicacionVisual}')">⏱️</button>
                         <button class="btn-accion" title="Editar" onclick="cargarParaEditar('${fila.id}')">✏️</button>

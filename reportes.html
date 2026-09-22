@@ -51,7 +51,7 @@
         .btn-exportar { background-color: #10b981; color: white; border: none; padding: 9px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; height: 35px; display: none; margin-left: auto; }
         .btn-exportar:hover { background-color: #059669; transform: scale(0.98); }
 
-        .table-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); max-width: 1200px; margin: 0 auto; overflow-x: auto; margin-bottom: 40px; }
+        .table-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); max-width: 1200px; margin: 0 auto; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 40px; }
         .resultados-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
         .resultados-header h3 { margin: 0; font-size: 18px; color: #334155; }
         .contador { background-color: var(--tema-fondo); color: var(--tema-primario); border: 1px solid var(--tema-primario); padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; transition: 0.5s; }
@@ -61,8 +61,15 @@
         th { background-color: #f8fafc; color: #475569; }
         tr:hover td { background-color: #f1f5f9; }
         
-        th:nth-child(1) { width: 8%; } th:nth-child(2) { width: 9%; } th:nth-child(3) { width: 17%; } th:nth-child(4) { width: 11%; } 
-        th:nth-child(5) { width: 19%; } th:nth-child(6) { width: 19%; } th:nth-child(7) { width: 9%; text-align: center; } th:nth-child(8) { width: 8%; text-align: center; }
+        /* NUEVO ORDEN DE TAMAÑOS DE COLUMNA EN REPORTES */
+        th:nth-child(1) { width: 8%; } 
+        th:nth-child(2) { width: 9%; } 
+        th:nth-child(3) { width: 17%; } 
+        th:nth-child(4) { width: 11%; } 
+        th:nth-child(5) { width: 9%; text-align: center; } /* Estado */
+        th:nth-child(6) { width: 19%; } /* Observaciones */
+        th:nth-child(7) { width: 19%; } /* Modificaciones */
+        th:nth-child(8) { width: 8%; text-align: center; } /* Acción */
 
         .texto-truncado { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
         .badge-estado { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; white-space: nowrap; transition: 0.3s; }
@@ -75,15 +82,25 @@
         @media (max-width: 768px) { 
             body { overflow: auto; }
             .app-container { flex-direction: column; height: auto; }
-            .sidebar { width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            .sidebar-header { padding: 15px; }
-            .nav-links { flex-direction: row; margin-top: 0; justify-content: space-around; background-color: #0f172a; }
-            .nav-links a { padding: 10px 5px; font-size: 12px; border-left: none; border-bottom: 3px solid transparent; flex-direction: column; gap: 4px; text-align: center; }
-            .nav-links a.active { border-left: none; border-bottom-color: #3b82f6; }
-            .main-content { padding: 15px; height: auto; overflow-y: visible; }
-            .filter-row { flex-direction: column; gap: 10px; align-items: stretch; }
-            .header-top { flex-direction: column; align-items: flex-start; }
-            .btn-exportar { margin-left: 0; width: 100%; }
+            .sidebar { width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 100; }
+            .sidebar-header { padding: 15px; font-size: 20px; }
+            
+            .nav-links { flex-direction: row; margin-top: 0; justify-content: flex-start; background-color: #0f172a; overflow-x: auto; overflow-y: hidden; white-space: nowrap; -webkit-overflow-scrolling: touch; padding: 0 5px; }
+            .nav-links::-webkit-scrollbar { display: none; }
+            .nav-links a { padding: 12px 15px; font-size: 13px; border-left: none; border-bottom: 3px solid transparent; flex-direction: row; flex: 0 0 auto; gap: 6px; }
+            .nav-links a.active { border-bottom-color: #3b82f6; }
+            
+            .main-content { padding: 10px; height: auto; overflow-y: visible; }
+            .filter-row { flex-direction: column; gap: 12px; align-items: stretch; }
+            .filter-group { width: 100%; }
+            .header-top { flex-direction: column; align-items: center; text-align: center; gap: 15px; margin-bottom: 20px; padding-bottom: 15px; }
+            .header-title { font-size: 22px; }
+            .perfil-usuario { flex-wrap: wrap; justify-content: center; gap: 10px; }
+            
+            .table-card { padding: 10px; border-radius: 5px; }
+            table { min-width: 950px; }
+            .btn-exportar { margin-left: 0; width: 100%; margin-top: 10px;}
+            .resultados-header { flex-direction: column; align-items: flex-start; }
         }
     </style>
 </head>
@@ -151,10 +168,11 @@
                 </div>
                 <table id="tablaResultados">
                     <thead>
-                        <tr><th>Fecha</th><th>Cód. Int.</th><th>Ubicación</th><th>Mueble</th><th>Observaciones</th><th>Modificaciones</th><th style="text-align: center;">Estado</th><th style="text-align: center;">Acción</th></tr>
+                        <!-- NUEVO ORDEN DE CABECERAS EN REPORTES -->
+                        <tr><th>Fecha</th><th>Cód. Int.</th><th>Ubicación</th><th>Mueble</th><th style="text-align: center;">Estado</th><th>Observaciones</th><th>Modificaciones</th><th style="text-align: center;">Acción</th></tr>
                     </thead>
                     <tbody>
-                        <tr><td colspan="8" class="estado-vacio">Usa los filtros de arriba y haz clic en "Buscar" para traer registros.</td></tr>
+                        <tr><td colspan="8" class="estado-vacio">Cargando base de datos...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -186,8 +204,8 @@
                 if (linkAdmin) linkAdmin.parentElement.style.display = 'none';
             }
 
-            const nombreCompleto = session.user.user_metadata.full_name;
-            const urlFoto = session.user.user_metadata.avatar_url;
+            const nombreCompleto = session.user.user_metadata.full_name || session.user.email.split('@')[0];
+            const urlFoto = session.user.user_metadata.avatar_url || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
             document.getElementById('nombreUsuario').innerText = nombreCompleto.split(' ')[0];
             document.getElementById('fotoUsuario').src = urlFoto;
 
@@ -195,6 +213,9 @@
             document.getElementById('filtro_fecha_fin').value = (new Date(Date.now() - offsetZonaHoraria)).toISOString().split('T')[0];
             document.getElementById('filtro_fecha_inicio').value = ""; 
             await cargarSelectores();
+            
+            // Forzamos a cargar la tabla al inicio con el orden de Piso y Suite
+            await ejecutarBusqueda(); 
         });
 
         async function cerrarSesion() {
@@ -275,11 +296,7 @@
             document.getElementById('filtro_piso').value = ""; document.getElementById('filtro_bloque').value = ""; document.getElementById('filtro_suite').value = ""; document.getElementById('filtro_texto').value = "";
             const offsetZonaHoraria = (new Date()).getTimezoneOffset() * 60000; document.getElementById('filtro_fecha_fin').value = (new Date(Date.now() - offsetZonaHoraria)).toISOString().split('T')[0]; document.getElementById('filtro_fecha_inicio').value = "";
             cambiarTema(); 
-            document.querySelector("#tablaResultados tbody").innerHTML = '<tr><td colspan="8" class="estado-vacio">Filtros limpiados. Haz clic en Buscar.</td></tr>';
-            document.getElementById('contador_resultados').innerText = "0 registros encontrados";
-            
-            document.getElementById('btn_exportar').style.display = 'none';
-            window.datosParaExportar = [];
+            ejecutarBusqueda(); 
         }
 
         async function ejecutarBusqueda() {
@@ -290,7 +307,8 @@
 
             document.querySelector("#tablaResultados tbody").innerHTML = '<tr><td colspan="8" class="estado-vacio">Buscando en la base de datos... ⏳</td></tr>';
 
-            let query = supabaseClient.from('registros_produccion').select('*');
+            // Reportes procesa los 150 más recientes para estructurar el edificio
+            let query = supabaseClient.from('registros_produccion').select('*').limit(150);
 
             if (proyecto !== "Todos") query = query.eq('proyecto', proyecto);
             if (estado !== "Todos") query = query.eq('estado', estado);
@@ -312,6 +330,9 @@
                 });
             }
 
+            // ========================================================
+            // ORDEN ARQUITECTÓNICO: Organiza todo por Piso y Suite
+            // ========================================================
             datosFiltrados.sort((a, b) => {
                 const parseAlphaNum = (str) => {
                     if (!str) return [999999, ""];
@@ -369,10 +390,11 @@
 
                 let obsText = fila.observaciones || ''; let modText = fila.modificaciones || '';
                 
+                // NUEVO ORDEN DE COLUMNAS (Estado antes de Notas)
                 tbody.innerHTML += `<tr>
                         <td style="font-weight:bold;">${fechaCorta}</td><td><strong>${fila.codigo_proyecto || '-'}</strong></td><td>${ubicacionVisual}</td><td>${fila.producto} (${fila.espacio})</td>
-                        <td title="${obsText}"><span class="texto-truncado">${obsText}</span></td><td title="${modText}"><span class="texto-truncado">${modText}</span></td>
                         <td style="text-align: center;"><span class="badge-estado" style="${estiloBadge}">${nombreEstado}</span></td>
+                        <td title="${obsText}"><span class="texto-truncado">${obsText}</span></td><td title="${modText}"><span class="texto-truncado">${modText}</span></td>
                         <td class="acciones-col">
                             <button class="btn-accion" title="Ver Historial" onclick="verHistorial('${fila.id}', '${fila.codigo_proyecto || 'S/N'}', '${ubicacionVisual}')">⏱️</button>
                             <button class="btn-accion" title="Editar" onclick="editarDesdeReporte('${fila.id}')">✏️</button>
@@ -444,7 +466,7 @@
             }
             
             let tieneCreacion = historial.some(h => h.tipo_registro === 'Creación');
-            let html = `<div style="text-align: left; max-height: 400px; overflow-y: auto; overflow-x: hidden; font-size: 13px; padding: 5px 15px 5px 25px;">`;
+            let html = `<div style="text-align: left; max-height: 400px; overflow-y: auto; overflow-x: hidden; font-size: 13px; padding: 5px 10px 5px 25px;">`;
             html += `<h4 style="margin-top:0; border-bottom: 1px solid #ccc; padding-bottom: 8px; margin-bottom: 15px;">Cód: ${codigo} | ${ubicacion}</h4>`;
             
             if (!tieneCreacion && mueble && mueble.fecha) {
@@ -472,7 +494,7 @@
                         <div>
                             <strong style="color:#1e293b;">${nombreOp}</strong> <span style="color:#64748b; font-size:11px;">• ${fechaMostrada}</span><br>
                             ${icono} <b style="color:${colorAvatar};">${h.tipo_registro}</b> <span style="color:#64748b;">(${h.etapa})</span><br>
-                            <span style="color: #475569;">${h.comentarios || ''}</span>
+                            <div style="color: #475569;">${h.comentarios || ''}</div>
                         </div>
                     </div>`;
                 });
@@ -482,6 +504,24 @@
             
             html += `</div>`;
             Swal.fire({ title: '⏱️ Expediente de Trazabilidad', html: html, width: '600px', confirmButtonText: 'Cerrar', confirmButtonColor: '#475569' });
+        }
+
+        function exportarExcel() {
+            if (!window.datosParaExportar || window.datosParaExportar.length === 0) { alert("No hay datos para exportar."); return; }
+            let datosLimpios = window.datosParaExportar.map(fila => {
+                let fechaCorta = fila.fecha ? fila.fecha.split('T')[0] : "";
+                return { "Fecha": fechaCorta, "Código Interno": fila.codigo_proyecto || "N/A", "Proyecto": fila.proyecto, "Piso": fila.piso, "Bloque": fila.bloque || "N/A", "Suite": fila.suite, "Espacio": fila.espacio, "Producto": fila.producto, "Estado": fila.estado, "Observaciones": fila.observaciones || "", "Modificaciones": fila.modificaciones || "" };
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(datosLimpios);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte Producción");
+
+            const anchos = [ { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 40 }, { wch: 40 } ];
+            worksheet['!cols'] = anchos;
+
+            let fechaHoy = new Date().toISOString().split('T')[0];
+            XLSX.writeFile(workbook, `VetaCucine_Reporte_${fechaHoy}.xlsx`);
         }
 
         window.addEventListener('offline', () => { Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Sin conexión a Internet', showConfirmButton: false, background: '#fee2e2' }); });
