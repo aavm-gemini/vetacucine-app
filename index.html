@@ -401,7 +401,6 @@
                             operador: window.operadorActual,
                             tipo_registro: 'Edición en Sistema', 
                             comentarios: comentarioFinal
-                            // Eliminado el envío de la fecha manual; dejamos que Supabase la asigne automáticamente
                         }]);
                         
                         if (errHist) {
@@ -430,7 +429,6 @@
                         operador: window.operadorActual,
                         tipo_registro: 'Creación', 
                         comentarios: `Registro inicial de la pieza.`
-                        // Eliminado el envío de la fecha manual; dejamos que Supabase la asigne automáticamente
                     }]);
                     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '¡Mueble Creado!', showConfirmButton: false, timer: 2000 });
                 }
@@ -452,7 +450,11 @@
         }
 
         async function cargarTabla() {
-            const { data, error } = await supabaseClient.from('registros_produccion').select('*').order('id', { ascending: false }).limit(20);
+            const { data, error } = await supabaseClient.from('registros_produccion')
+                .select('*')
+                .order('created_at', { ascending: false }) // ORDENAMIENTO REPARADO
+                .limit(20);
+                
             if (error) { document.querySelector("#tablaRegistros tbody").innerHTML = `<tr><td colspan="8" class="estado-vacio" style="color:#ef4444;">Falla: ${error.message}</td></tr>`; return; }
             if (data) { window.registrosDescargados = data; renderizarTabla(data); }
         }
