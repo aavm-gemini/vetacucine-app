@@ -48,7 +48,8 @@
         .btn-salir:hover { background-color: #fef2f2; }
 
         .card { max-width: 950px; margin: 0 auto; background: white; padding: 15px 30px 25px 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 6px solid var(--tema-primario); transition: border-top 0.5s ease; }
-        .table-card { max-width: 950px; margin-top: 20px; margin-left: auto; margin-right: auto; overflow-x: auto; overflow-y: visible; margin-bottom: 40px; }
+        /* Permite que la tabla haga scroll horizontal nativo y suave en celulares */
+        .table-card { max-width: 950px; margin-top: 20px; margin-left: auto; margin-right: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 40px; }
         
         h2 { color: #333; text-align: center; margin-top: 0; margin-bottom: 15px; font-size: 22px; }
         h3 { color: #555; border-bottom: 2px solid #eee; padding-bottom: 8px; margin-top: 0; margin-bottom: 12px; font-size: 18px; }
@@ -91,17 +92,33 @@
         .badge-estado { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; white-space: nowrap; transition: 0.3s; }
         .estado-vacio { text-align: center; padding: 30px; color: #94a3b8; font-style: italic; }
 
+        /* ========================================================
+           CORRECCIONES MÓVILES (Celulares y Tablets pequeñas)
+           ======================================================== */
         @media (max-width: 768px) { 
             body { overflow: auto; }
             .app-container { flex-direction: column; height: auto; }
-            .sidebar { width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            .sidebar-header { padding: 15px; }
-            .nav-links { flex-direction: row; margin-top: 0; justify-content: space-around; background-color: #0f172a; }
-            .nav-links a { padding: 10px 5px; font-size: 12px; border-left: none; border-bottom: 3px solid transparent; flex-direction: column; gap: 4px; text-align: center; }
-            .nav-links a.active { border-left: none; border-bottom-color: #3b82f6; }
-            .main-content { padding: 15px; height: auto; overflow-y: visible; }
-            .row { flex-direction: column; gap: 0; } 
-            .header-top { flex-direction: column; align-items: flex-start; }
+            .sidebar { width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 100; }
+            .sidebar-header { padding: 15px; font-size: 20px; }
+            
+            /* Navegación deslizable (Swipe horizontal) en celulares */
+            .nav-links { flex-direction: row; margin-top: 0; justify-content: flex-start; background-color: #0f172a; overflow-x: auto; overflow-y: hidden; white-space: nowrap; -webkit-overflow-scrolling: touch; padding: 0 5px; }
+            .nav-links::-webkit-scrollbar { display: none; } /* Ocultar barrita fea en móvil */
+            .nav-links a { padding: 12px 15px; font-size: 13px; border-left: none; border-bottom: 3px solid transparent; flex-direction: row; flex: 0 0 auto; gap: 6px; }
+            .nav-links a.active { border-bottom-color: #3b82f6; }
+            
+            .main-content { padding: 10px; height: auto; overflow-y: visible; }
+            .row { flex-direction: column; gap: 12px; } 
+            .row .form-group { width: 100%; }
+            
+            /* Encabezado sin amontonarse (Centrado y organizado) */
+            .header-top { flex-direction: column; align-items: center; text-align: center; gap: 15px; margin-bottom: 20px; padding-bottom: 15px; }
+            .header-title { font-size: 22px; }
+            .perfil-usuario { flex-wrap: wrap; justify-content: center; gap: 10px; }
+            
+            /* LA MAGIA DE LA TABLA: Ancho mínimo forzado para que no se aplaste */
+            .table-card { padding: 10px; border-radius: 5px; }
+            table { min-width: 900px; /* Al obligarla a medir 900px, el celular generará scroll horizontal */ }
         }
     </style>
 </head>
@@ -450,9 +467,10 @@
         }
 
         async function cargarTabla() {
+            // AQUÍ CORREGIMOS EL ORDEN PARA QUE EL REGISTRO MÁS NUEVO SALGA SIEMPRE ARRIBA
             const { data, error } = await supabaseClient.from('registros_produccion')
                 .select('*')
-                .order('created_at', { ascending: false }) // ORDENAMIENTO REPARADO
+                .order('created_at', { ascending: false })
                 .limit(20);
                 
             if (error) { document.querySelector("#tablaRegistros tbody").innerHTML = `<tr><td colspan="8" class="estado-vacio" style="color:#ef4444;">Falla: ${error.message}</td></tr>`; return; }
