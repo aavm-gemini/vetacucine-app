@@ -324,7 +324,7 @@
             let estado = document.getElementById('estado').value; let proyecto = document.getElementById('proyecto').value;
             let piso = document.getElementById('piso').value.trim(); let bloque = document.getElementById('bloque').value.trim().toUpperCase(); let suite = document.getElementById('suite').value.trim().toUpperCase();
             let espacio = document.getElementById('espacio').value; let producto = document.getElementById('producto').value;
-            let observaciones = document.getElementById('observaciones').value; let modificaciones = document.getElementById('modificaciones').value;
+            let observaciones = document.getElementById('observaciones').value.trim(); let modificaciones = document.getElementById('modificaciones').value.trim();
             
             let codigo_proyecto = "000"; if (codigo_proyecto_raw !== "" && !/^0+$/.test(codigo_proyecto_raw)) codigo_proyecto = codigo_proyecto_raw;
             
@@ -340,8 +340,11 @@
 
             let id_generado = "P" + piso + bloque + "-S" + suite + "-" + producto + "-" + espacio;
             let btn = document.getElementById('btnGuardar'); btn.innerHTML = "Comprobando..."; btn.disabled = true;
+            
+            let mensajeExito = '¡Mueble guardado!'; // Mensaje por defecto
 
             const { data: existente } = await supabaseClient.from('registros_produccion').select('*').eq('id_generado', id_generado);
+            
             if (existente && existente.length > 0) {
                 let muebleAntiguo = existente[0];
                 let ca = muebleAntiguo.codigo_proyecto || "";
@@ -351,25 +354,33 @@
                     if (!result.isConfirmed) { btn.innerHTML = "Guardar Mueble"; btn.disabled = false; return; }
                 }
 
+                // === EL SUPER ESPÍA: VIGILA TODO TIPO DE CAMBIOS (Con limpieza de espacios) ===
                 let cambiosStr = [];
-                if ((muebleAntiguo.observaciones || "") !== observaciones) cambiosStr.push("Observaciones");
-                if ((muebleAntiguo.modificaciones || "") !== modificaciones) cambiosStr.push("Modificaciones");
-                if ((muebleAntiguo.estado || "") !== estado) cambiosStr.push(`Estado (a '${estado}')`);
-                if ((muebleAntiguo.codigo_proyecto || "") !== codigo_proyecto && codigo_proyecto !== "000") cambiosStr.push(`Cód Interno`);
+                let obsAntigua = (muebleAntiguo.observaciones || "").trim(); let modAntigua = (muebleAntiguo.modificaciones || "").trim();
+                let estadoAntiguo = (muebleAntiguo.estado || "").trim(); let codigoAntiguo = (muebleAntiguo.codigo_proyecto || "").trim();
+
+                if (obsAntigua !== observaciones) cambiosStr.push("Observaciones");
+                if (modAntigua !== modificaciones) cambiosStr.push("Modificaciones");
+                if (estadoAntiguo !== estado) cambiosStr.push(`Estado (a '${estado}')`);
+                if (codigoAntiguo !== codigo_proyecto && codigo_proyecto !== "000") cambiosStr.push(`Cód Interno`);
 
                 await supabaseClient.from('registros_produccion').update({ fecha, codigo_proyecto, observaciones, modificaciones, estado }).eq('id_generado', id_generado);
 
+                // Si detectó cualquier cambio, lo anota en el reloj de auditoría
                 if (cambiosStr.length > 0) {
-                    await supabaseClient.from('historial_trazabilidad').insert([{
+                    const { error: errHist } = await supabaseClient.from('historial_trazabilidad').insert([{
                         id_mueble: muebleAntiguo.id, etapa: estado, operador: window.operadorActual,
                         tipo_registro: 'Edición en Sistema', comentarios: `Actualizó: ${cambiosStr.join(', ')}.`
                     }]);
+                    
+                    if(!errHist) {
+                        mensajeExito = '¡Actualizado y registrado en el historial!'; // Confirmación de que el Espía funcionó
+                    }
                 }
+
             } else {
-                // AQUÍ EL SÚPER ESPÍA CAPTURA LA CREACIÓN ORIGINAL EXACTAMENTE
-                const { data: nuevoReg, error: errInsert } = await supabaseClient.from('registros_produccion').insert([{ fecha, codigo_proyecto, proyecto, piso, bloque, suite, espacio, producto, observaciones, modificaciones, estado, id_generado }]).select();
-                
-                if (!errInsert && nuevoReg && nuevoReg.length > 0) {
+                const { data: nuevoReg } = await supabaseClient.from('registros_produccion').insert([{ fecha, codigo_proyecto, proyecto, piso, bloque, suite, espacio, producto, observaciones, modificaciones, estado, id_generado }]).select();
+                if (nuevoReg && nuevoReg.length > 0) {
                     await supabaseClient.from('historial_trazabilidad').insert([{
                         id_mueble: nuevoReg[0].id, etapa: estado, operador: window.operadorActual,
                         tipo_registro: 'Creación', comentarios: `Registro inicial de la pieza.`
@@ -388,15 +399,11 @@
                 let itemVisual = window.registrosDescargados.splice(indexGuardado, 1)[0]; window.registrosDescargados.unshift(itemVisual); renderizarTabla(window.registrosDescargados);
             } else if (indexGuardado === -1) {
                 const { data: recienGuardado } = await supabaseClient.from('registros_produccion').select('*').eq('id_generado', id_generado).single();
-                if (recienGuardado) {
-                    window.registrosDescargados.unshift(recienGuardado);
-                    if(window.registrosDescargados.length > 20) window.registrosDescargados.pop();
-                    renderizarTabla(window.registrosDescargados);
-                }
+                if (recienGuardado) { window.registrosDescargados.unshift(recienGuardado); if(window.registrosDescargados.length > 20) window.registrosDescargados.pop(); renderizarTabla(window.registrosDescargados); }
             }
             
             window.history.replaceState({}, document.title, window.location.pathname);
-            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '¡Mueble guardado!', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: mensajeExito, showConfirmButton: false, timer: 2500, timerProgressBar: true });
         }
 
         async function eliminarRegistro(id, codigo, mueble) {
@@ -485,29 +492,28 @@
         }
 
         // =======================================================
-        // EXPEDIENTE RECONSTRUIDO Y A PRUEBA DE FALLOS
+        // EXPEDIENTE CON DISEÑO CORREGIDO (NO SE CORTA EL ICONO)
         // =======================================================
         async function verHistorial(id_mueble, codigo, ubicacion) {
             Swal.fire({ title: 'Cargando expediente...', didOpen: () => Swal.showLoading() });
             
             const { data: mueble } = await supabaseClient.from('registros_produccion').select('fecha').eq('id', id_mueble).single();
-            // Evitamos que Supabase falle al ordenar; traemos los datos en crudo y Javascript hace la magia matemática
             const { data: historialBruto } = await supabaseClient.from('historial_trazabilidad').select('*').eq('id_mueble', id_mueble);
             
             let historial = [];
             if (historialBruto) {
-                // Orden cronológico estricto de viejo a nuevo
                 historial = historialBruto.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
             }
             
             let tieneCreacion = historial.some(h => h.tipo_registro === 'Creación');
-            let html = `<div style="text-align: left; max-height: 400px; overflow-y: auto; font-size: 13px; padding-right: 5px;">`;
+            
+            // Se le agregó un padding-left de 25px para proteger los avatares
+            let html = `<div style="text-align: left; max-height: 400px; overflow-y: auto; overflow-x: hidden; font-size: 13px; padding: 5px 10px 5px 25px;">`;
             html += `<h4 style="margin-top:0; border-bottom: 1px solid #ccc; padding-bottom: 8px; margin-bottom: 15px;">Cód: ${codigo} | ${ubicacion}</h4>`;
             
-            // Si es un mueble viejo sin registro de creación, creamos uno "Fantasma" para estética
             if (!tieneCreacion && mueble && mueble.fecha) {
-                html += `<div style="display: flex; gap: 12px; margin-bottom: 15px; border-left: 2px solid #cbd5e1; padding-left: 12px; margin-left: 5px; position: relative;">
-                    <div style="position: absolute; left: -18px; top: 0; width: 32px; height: 32px; border-radius: 50%; background: #94a3b8; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2px solid white;">🤖</div>
+                html += `<div style="display: flex; gap: 12px; margin-bottom: 15px; border-left: 2px solid #cbd5e1; padding-left: 15px; position: relative;">
+                    <div style="position: absolute; left: -17px; top: 0; width: 32px; height: 32px; border-radius: 50%; background: #94a3b8; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2px solid white;">🤖</div>
                     <div>
                         <strong style="color:#1e293b;">Sistema Central</strong> <span style="color:#64748b; font-size:11px;">• ${formatearFechaEspanol(mueble.fecha)}</span><br>
                         ✨ <b style="color:#64748b;">Ingreso Básico</b><br>
@@ -525,8 +531,8 @@
                     let iniciales = obtenerIniciales(nombreOp);
                     let colorAvatar = obtenerColorAvatar(nombreOp);
 
-                    html += `<div style="display: flex; gap: 12px; margin-bottom: 15px; border-left: 2px solid ${colorAvatar}; padding-left: 12px; margin-left: 5px; position: relative;">
-                        <div style="position: absolute; left: -18px; top: 0; width: 32px; height: 32px; border-radius: 50%; background: ${colorAvatar}; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">${iniciales}</div>
+                    html += `<div style="display: flex; gap: 12px; margin-bottom: 15px; border-left: 2px solid ${colorAvatar}; padding-left: 15px; position: relative;">
+                        <div style="position: absolute; left: -17px; top: 0; width: 32px; height: 32px; border-radius: 50%; background: ${colorAvatar}; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">${iniciales}</div>
                         <div>
                             <strong style="color:#1e293b;">${nombreOp}</strong> <span style="color:#64748b; font-size:11px;">• ${fechaMostrada}</span><br>
                             ${icono} <b style="color:${colorAvatar};">${h.tipo_registro}</b> <span style="color:#64748b;">(${h.etapa})</span><br>

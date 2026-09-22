@@ -444,12 +444,12 @@
             }
             
             let tieneCreacion = historial.some(h => h.tipo_registro === 'Creación');
-            let html = `<div style="text-align: left; max-height: 400px; overflow-y: auto; font-size: 13px; padding-right: 5px;">`;
+            let html = `<div style="text-align: left; max-height: 400px; overflow-y: auto; overflow-x: hidden; font-size: 13px; padding: 5px 15px 5px 25px;">`;
             html += `<h4 style="margin-top:0; border-bottom: 1px solid #ccc; padding-bottom: 8px; margin-bottom: 15px;">Cód: ${codigo} | ${ubicacion}</h4>`;
             
             if (!tieneCreacion && mueble && mueble.fecha) {
-                html += `<div style="display: flex; gap: 12px; margin-bottom: 15px; border-left: 2px solid #cbd5e1; padding-left: 12px; margin-left: 5px; position: relative;">
-                    <div style="position: absolute; left: -18px; top: 0; width: 32px; height: 32px; border-radius: 50%; background: #94a3b8; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2px solid white;">🤖</div>
+                html += `<div style="display: flex; gap: 12px; margin-bottom: 15px; border-left: 2px solid #cbd5e1; padding-left: 15px; position: relative;">
+                    <div style="position: absolute; left: -17px; top: 0; width: 32px; height: 32px; border-radius: 50%; background: #94a3b8; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2px solid white;">🤖</div>
                     <div>
                         <strong style="color:#1e293b;">Sistema Central</strong> <span style="color:#64748b; font-size:11px;">• ${formatearFechaEspanol(mueble.fecha)}</span><br>
                         ✨ <b style="color:#64748b;">Ingreso Básico</b><br>
@@ -467,8 +467,8 @@
                     let iniciales = obtenerIniciales(nombreOp);
                     let colorAvatar = obtenerColorAvatar(nombreOp);
 
-                    html += `<div style="display: flex; gap: 12px; margin-bottom: 15px; border-left: 2px solid ${colorAvatar}; padding-left: 12px; margin-left: 5px; position: relative;">
-                        <div style="position: absolute; left: -18px; top: 0; width: 32px; height: 32px; border-radius: 50%; background: ${colorAvatar}; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">${iniciales}</div>
+                    html += `<div style="display: flex; gap: 12px; margin-bottom: 15px; border-left: 2px solid ${colorAvatar}; padding-left: 15px; position: relative;">
+                        <div style="position: absolute; left: -17px; top: 0; width: 32px; height: 32px; border-radius: 50%; background: ${colorAvatar}; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">${iniciales}</div>
                         <div>
                             <strong style="color:#1e293b;">${nombreOp}</strong> <span style="color:#64748b; font-size:11px;">• ${fechaMostrada}</span><br>
                             ${icono} <b style="color:${colorAvatar};">${h.tipo_registro}</b> <span style="color:#64748b;">(${h.etapa})</span><br>
