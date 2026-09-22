@@ -72,14 +72,13 @@
         th { background-color: #f8fafc; color: #333; }
         tr:hover td { background-color: #f1f5f9; }
         
-        /* NUEVO ORDEN DE TAMAÑOS DE COLUMNA */
         th:nth-child(1) { width: 9%; } 
         th:nth-child(2) { width: 9%; } 
         th:nth-child(3) { width: 17%; } 
         th:nth-child(4) { width: 11%; } 
-        th:nth-child(5) { width: 12%; text-align: center; } /* Estado */
-        th:nth-child(6) { width: 18%; } /* Observaciones */
-        th:nth-child(7) { width: 18%; } /* Modificaciones */
+        th:nth-child(5) { width: 12%; text-align: center; } 
+        th:nth-child(6) { width: 18%; } 
+        th:nth-child(7) { width: 18%; } 
         th:nth-child(8) { width: 6%; text-align: center; }  
 
         .col-texto { position: relative; font-size: 12px; color: #555; cursor: pointer; }
@@ -200,7 +199,6 @@
                 <h3>Últimos Registros Ingresados</h3>
                 <table id="tablaRegistros">
                     <thead>
-                        <!-- NUEVO ORDEN DE CABECERAS -->
                         <tr><th>Fecha</th><th>Cód. Int.</th><th>Ubicación</th><th>Mueble</th><th style="text-align: center;">Estado</th><th>Observaciones</th><th>Modificaciones</th><th>Acción</th></tr>
                     </thead>
                     <tbody></tbody>
@@ -361,6 +359,7 @@
             let btn = document.getElementById('btnGuardar'); 
             btn.innerHTML = "Guardar Mueble"; 
             btn.classList.remove('btn-editando');
+            btn.disabled = false; // <--- SOLUCIÓN AL BUG DEL BOTÓN BLOQUEADO
             document.getElementById('btnCancelarEdit').style.display = 'none';
             window.history.replaceState({}, document.title, window.location.pathname);
         }
@@ -379,74 +378,77 @@
 
             let id_generado = "P" + piso + bloque + "-S" + suite + "-" + producto + "-" + espacio;
             let btn = document.getElementById('btnGuardar'); btn.innerHTML = "Procesando..."; btn.disabled = true;
+            
+            let idParaActualizar = window.idMuebleEnEdicion;
+            let muebleAntiguo = null;
 
-            if (window.idMuebleEnEdicion) {
-                const { data: muebleAntiguo, error: errFetch } = await supabaseClient.from('registros_produccion').select('*').eq('id', window.idMuebleEnEdicion).single();
-                
-                if (muebleAntiguo) {
-                    let cambiosContador = 0;
-                    let detallesHTML = "";
-                    let obsAntigua = (muebleAntiguo.observaciones || "").trim(); let modAntigua = (muebleAntiguo.modificaciones || "").trim();
-                    let estadoAntiguo = (muebleAntiguo.estado || "").trim(); let codigoAntiguo = (muebleAntiguo.codigo_proyecto || "").trim();
+            // LÓGICA ANTI-CHOQUES: Si no estamos editando con lápiz, verifica si ya existe y pregunta qué hacer
+            if (!idParaActualizar) {
+                const { data: existente } = await supabaseClient.from('registros_produccion').select('*').eq('id_generado', id_generado);
+                if (existente && existente.length > 0) {
+                    const result = await Swal.fire({
+                        title: 'Ubicación Ocupada',
+                        text: `Ya hay un mueble registrado en esta suite (${producto}). ¿Deseas sobreescribir sus datos con lo que acabas de escribir?`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#f59e0b',
+                        cancelButtonColor: '#94a3b8',
+                        confirmButtonText: 'Sí, sobreescribir',
+                        cancelButtonText: 'Cancelar'
+                    });
+                    
+                    if (!result.isConfirmed) {
+                        btn.innerHTML = "Guardar Mueble"; btn.disabled = false; return;
+                    }
+                    
+                    // Activamos modo actualización silenciosa
+                    idParaActualizar = existente[0].id;
+                    muebleAntiguo = existente[0];
+                }
+            } else {
+                const { data: fetchAntiguo } = await supabaseClient.from('registros_produccion').select('*').eq('id', idParaActualizar).single();
+                muebleAntiguo = fetchAntiguo;
+            }
 
-                    if (obsAntigua !== observaciones) {
-                        cambiosContador++;
-                        detallesHTML += `<li style="margin-bottom:4px;"><b>Observaciones:</b> <span style="color:#0f172a;">${observaciones || '(Se dejó en blanco)'}</span></li>`;
-                    }
-                    if (modAntigua !== modificaciones) {
-                        cambiosContador++;
-                        detallesHTML += `<li style="margin-bottom:4px;"><b>Modificaciones:</b> <span style="color:#0f172a;">${modificaciones || '(Se dejó en blanco)'}</span></li>`;
-                    }
-                    if (estadoAntiguo !== estado) {
-                        cambiosContador++;
-                        detallesHTML += `<li style="margin-bottom:4px;"><b>Estado:</b> cambió a <span style="color:#0f172a;">${estado}</span></li>`;
-                    }
-                    if (codigoAntiguo !== codigo_proyecto && codigo_proyecto !== "000") {
-                        cambiosContador++;
-                        detallesHTML += `<li style="margin-bottom:4px;"><b>Cód Interno:</b> cambió a <span style="color:#0f172a;">${codigo_proyecto}</span></li>`;
-                    }
+            // ==========================================
+            // EJECUCIÓN (EDICIÓN O CREACIÓN)
+            // ==========================================
+            if (idParaActualizar && muebleAntiguo) {
+                let cambiosContador = 0;
+                let detallesHTML = "";
+                let obsAntigua = (muebleAntiguo.observaciones || "").trim(); let modAntigua = (muebleAntiguo.modificaciones || "").trim();
+                let estadoAntiguo = (muebleAntiguo.estado || "").trim(); let codigoAntiguo = (muebleAntiguo.codigo_proyecto || "").trim();
 
-                    const { error: errUpd } = await supabaseClient.from('registros_produccion')
-                        .update({ fecha, codigo_proyecto, observaciones, modificaciones, estado, proyecto, piso, bloque, suite, espacio, producto, id_generado })
-                        .eq('id', window.idMuebleEnEdicion);
+                if (obsAntigua !== observaciones) { cambiosContador++; detallesHTML += `<li style="margin-bottom:4px;"><b>Observaciones:</b> <span style="color:#0f172a;">${observaciones || '(Se dejó en blanco)'}</span></li>`; }
+                if (modAntigua !== modificaciones) { cambiosContador++; detallesHTML += `<li style="margin-bottom:4px;"><b>Modificaciones:</b> <span style="color:#0f172a;">${modificaciones || '(Se dejó en blanco)'}</span></li>`; }
+                if (estadoAntiguo !== estado) { cambiosContador++; detallesHTML += `<li style="margin-bottom:4px;"><b>Estado:</b> cambió a <span style="color:#0f172a;">${estado}</span></li>`; }
+                if (codigoAntiguo !== codigo_proyecto && codigo_proyecto !== "000") { cambiosContador++; detallesHTML += `<li style="margin-bottom:4px;"><b>Cód Interno:</b> cambió a <span style="color:#0f172a;">${codigo_proyecto}</span></li>`; }
 
-                    if (!errUpd && cambiosContador > 0) {
-                        let comentarioFinal = `Actualizó ${cambiosContador} campo(s). <details style="margin-top:6px; cursor:pointer; background:#f8fafc; padding:6px; border-radius:4px; border:1px solid #e2e8f0;"><summary style="color:#3b82f6; font-weight:bold; font-size:11px; outline:none;">Ver detalles</summary><ul style="margin:6px 0 0 0; padding-left:18px; font-size:11px; color:#475569;">${detallesHTML}</ul></details>`;
+                const { error: errUpd } = await supabaseClient.from('registros_produccion')
+                    .update({ fecha, codigo_proyecto, observaciones, modificaciones, estado, proyecto, piso, bloque, suite, espacio, producto, id_generado })
+                    .eq('id', idParaActualizar);
 
-                        const { error: errHist } = await supabaseClient.from('historial_trazabilidad').insert([{
-                            id_mueble: window.idMuebleEnEdicion, 
-                            etapa: estado, 
-                            operador: window.operadorActual,
-                            tipo_registro: 'Edición en Sistema', 
-                            comentarios: comentarioFinal
-                        }]);
-                        
-                        if (errHist) {
-                            Swal.fire('Advertencia', 'El mueble se guardó, pero falló la anotación en el historial: ' + errHist.message, 'warning');
-                        } else {
-                            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '¡Actualizado y registrado en el historial!', showConfirmButton: false, timer: 3000 });
-                        }
-                    } else if (cambiosContador === 0) {
-                        Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'No hubo cambios que registrar', showConfirmButton: false, timer: 2000 });
-                    }
+                if (!errUpd && cambiosContador > 0) {
+                    let comentarioFinal = `Actualizó ${cambiosContador} campo(s). <details style="margin-top:6px; cursor:pointer; background:#f8fafc; padding:6px; border-radius:4px; border:1px solid #e2e8f0;"><summary style="color:#3b82f6; font-weight:bold; font-size:11px; outline:none;">Ver detalles</summary><ul style="margin:6px 0 0 0; padding-left:18px; font-size:11px; color:#475569;">${detallesHTML}</ul></details>`;
+
+                    await supabaseClient.from('historial_trazabilidad').insert([{
+                        id_mueble: idParaActualizar, etapa: estado, operador: window.operadorActual,
+                        tipo_registro: window.idMuebleEnEdicion ? 'Edición en Sistema' : 'Sobreescritura Directa', 
+                        comentarios: comentarioFinal
+                    }]);
+                    
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '¡Actualizado y registrado!', showConfirmButton: false, timer: 3000 });
+                } else if (cambiosContador === 0) {
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Sobrescrito (Sin cambios)', showConfirmButton: false, timer: 2000 });
                 }
                 cancelarEdicion();
 
             } else {
-                const { data: existente } = await supabaseClient.from('registros_produccion').select('*').eq('id_generado', id_generado);
-                if (existente && existente.length > 0) {
-                    Swal.fire({ title: 'Error', text: `Ya existe un mueble registrado en esta ubicación exacta. Si deseas cambiarlo, búscalo en la tabla y presiona el botón Editar (✏️).`, icon: 'error', confirmButtonColor: '#475569' });
-                    btn.innerHTML = "Guardar Mueble"; btn.disabled = false; return;
-                }
-
                 const { data: nuevoReg } = await supabaseClient.from('registros_produccion').insert([{ fecha, codigo_proyecto, proyecto, piso, bloque, suite, espacio, producto, observaciones, modificaciones, estado, id_generado }]).select();
                 if (nuevoReg && nuevoReg.length > 0) {
                     await supabaseClient.from('historial_trazabilidad').insert([{
-                        id_mueble: nuevoReg[0].id, 
-                        etapa: estado, 
-                        operador: window.operadorActual,
-                        tipo_registro: 'Creación', 
-                        comentarios: `Registro inicial de la pieza.`
+                        id_mueble: nuevoReg[0].id, etapa: estado, operador: window.operadorActual,
+                        tipo_registro: 'Creación', comentarios: `Registro inicial de la pieza.`
                     }]);
                     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '¡Mueble Creado!', showConfirmButton: false, timer: 2000 });
                 }
@@ -468,10 +470,9 @@
         }
 
         async function cargarTabla() {
-            // Mantiene el orden de CREACIÓN (Bitácora más reciente primero)
             const { data, error } = await supabaseClient.from('registros_produccion')
                 .select('*')
-                .order('created_at', { ascending: false })
+                .order('created_at', { ascending: false }) 
                 .limit(20);
                 
             if (error) { document.querySelector("#tablaRegistros tbody").innerHTML = `<tr><td colspan="8" class="estado-vacio" style="color:#ef4444;">Falla: ${error.message}</td></tr>`; return; }
@@ -503,7 +504,6 @@
                 let obsHTML = fila.observaciones ? `<div class="texto-truncado">${fila.observaciones}</div><span class="tooltip-custom">${fila.observaciones}</span>` : '';
                 let modHTML = fila.modificaciones ? `<div class="texto-truncado">${fila.modificaciones}</div><span class="tooltip-custom">${fila.modificaciones}</span>` : '';
 
-                // NUEVO ORDEN DE COLUMNAS (Estado antes de Notas)
                 tbody.innerHTML += `<tr>
                     <td class="col-fecha">${fechaCorta}</td><td><strong>${fila.codigo_proyecto || '-'}</strong></td><td>${ubicacionVisual}</td><td>${fila.producto} (${fila.espacio})</td>
                     <td style="text-align: center;"><span class="badge-estado" style="${estiloBadge}">${nombreEstado}</span></td>
