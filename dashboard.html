@@ -153,7 +153,7 @@
                     <!-- WIDGET NOTAS EQUIPO -->
                     <div class="widget-notas">
                         <button id="btn-notas" class="btn-icono" title="Notas del Equipo">
-                            📝<span id="badge-notas" class="badge-notas-urgente">0</span>
+                            📝<span id="badge-notas" class="badge-notas-urgente" style="display: none;">0</span>
                         </button>
 
                         <div id="panel-notas" class="panel-desplegable">
@@ -260,11 +260,24 @@
         window.mueblesFiltradosGlobal = [];
         window.historialGlobal = []; 
         
-        // Variables Globales para las Notas
+        // Variables Globales para las Notas y Notificaciones del Sistema
         let USUARIO_ACTUAL_EMAIL = "";
         let USUARIO_ACTUAL_NOMBRE = "";
         const CACHE_NOTAS_KEY = 'ultima_revision_notas';
         let idNotaEnEdicion = null;
+        window.alertasNoLeidas = 0;
+        window.notasNoLeidas = 0;
+
+        function actualizarBadgeSistemaOS() {
+            if ('setAppBadge' in navigator) {
+                let total = window.alertasNoLeidas + window.notasNoLeidas;
+                if (total > 0) {
+                    navigator.setAppBadge(total).catch(error => console.log("Error en badge:", error));
+                } else {
+                    navigator.clearAppBadge().catch(error => console.log("Error limpiando badge:", error));
+                }
+            }
+        }
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -355,9 +368,12 @@
                 if (notifNuevas > 0) {
                     badge.style.display = 'block';
                     badge.innerText = notifNuevas > 99 ? '99+' : notifNuevas;
+                    window.alertasNoLeidas = notifNuevas; 
                 } else {
                     badge.style.display = 'none';
+                    window.alertasNoLeidas = 0; 
                 }
+                actualizarBadgeSistemaOS();
             }
 
             actualizarGraficasDinamicas();
@@ -374,6 +390,8 @@
 
             localStorage.setItem('ultimoIdNotifVeta', window.historialGlobal[0].id);
             document.getElementById('badge_notificaciones').style.display = 'none';
+            window.alertasNoLeidas = 0;
+            actualizarBadgeSistemaOS();
 
             let html = '<div style="text-align: left; max-height: 450px; overflow-y: auto;">';
             
@@ -443,6 +461,8 @@
                 panel.style.display = 'block';
                 localStorage.setItem(CACHE_NOTAS_KEY, new Date().toISOString());
                 document.getElementById('badge-notas').style.display = 'none';
+                window.notasNoLeidas = 0;
+                actualizarBadgeSistemaOS();
                 cargarNotasEquipo(); 
             } else {
                 panel.style.display = 'none';
@@ -489,7 +509,7 @@
                             <div class="nota-acciones">
                                 ${esMio ? `<span onclick="prepararEdicionNota('${nota.id}', \`${nota.contenido.replace(/`/g, '\\`')}\`, ${nota.importante})">✏️ Editar</span>` : ''}
                                 ${esMio ? `<span class="borrar" onclick="borrarNotaEquipo('${nota.id}')">🗑️ Borrar</span>` : ''}
-                                ${!esMio ? `<span onclick="ocultarNotaEquipo('${nota.id}')">👁‍🗨️️ Ocultar</span>` : ''}
+                                ${!esMio ? `<span onclick="ocultarNotaEquipo('${nota.id}')">👁‍🗨 Ocultar</span>` : ''}
                             </div>
                         </div>
                     `;
@@ -540,11 +560,18 @@
             const badge = document.getElementById('badge-notas');
             const panel = document.getElementById('panel-notas');
             
-            if (panel.style.display === 'block') { badge.style.display = 'none'; return; }
+            if (panel.style.display === 'block') { 
+                badge.style.display = 'none'; 
+                window.notasNoLeidas = 0;
+                actualizarBadgeSistemaOS();
+                return; 
+            }
 
             if (!ultimaRevisionStr) {
                 badge.innerText = notas.length > 9 ? '9+' : notas.length;
                 badge.style.display = notas.length > 0 ? 'flex' : 'none';
+                window.notasNoLeidas = notas.length;
+                actualizarBadgeSistemaOS();
                 return;
             }
 
@@ -554,9 +581,12 @@
             if (notasNuevas > 0) {
                 badge.innerText = notasNuevas > 9 ? '9+' : notasNuevas;
                 badge.style.display = 'flex';
+                window.notasNoLeidas = notasNuevas;
             } else {
                 badge.style.display = 'none';
+                window.notasNoLeidas = 0;
             }
+            actualizarBadgeSistemaOS();
         }
 
         function abrirCajaEdicion() {
