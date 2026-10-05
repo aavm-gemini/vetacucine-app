@@ -118,16 +118,17 @@
                     </table>
                 </div>
 
-                <div class="panel" style="border-top-color: #3b82f6;">
+                <div class="panel panel-full" style="border-top-color: #3b82f6;">
                     <h3>Catálogo de Proyectos</h3>
                     <div class="form-row">
                         <div class="form-group" style="flex: 0.5;"><label>Proyecto</label><input type="text" id="nombre_proyecto" placeholder="Ej: Promenade"></div>
                         <div class="form-group" style="flex: 0.3;"><label>Bloques (Ej: A,B,C)</label><input type="text" id="bloques_proyecto" placeholder="Vacío = No aplica" style="text-transform: uppercase;"></div>
-                        <div class="form-group" style="flex: 0.2;"><label>Color</label><input type="color" id="color_proyecto" value="#0066cc"></div>
+                        <div class="form-group" style="flex: 0.6;"><label>Suites (Ej: 1-15 o MIAMI, LONDRES)</label><input type="text" id="suites_proyecto" placeholder="Rango o nombres separados por coma" style="text-transform: uppercase;"></div>
+                        <div class="form-group" style="flex: 0.1;"><label>Color</label><input type="color" id="color_proyecto" value="#0066cc"></div>
                         <button id="btn_guardar_proyecto" class="btn-add" style="background-color: #3b82f6;" onclick="guardarProyecto()">Agregar</button>
                     </div>
                     <table>
-                        <thead><tr><th>Proyecto</th><th>Bloques</th><th style="width: 50px; text-align: center;">Acción</th></tr></thead>
+                        <thead><tr><th>Proyecto</th><th>Bloques</th><th>Suites Definidas</th><th style="width: 50px; text-align: center;">Acción</th></tr></thead>
                         <tbody id="tabla_proyectos"></tbody>
                     </table>
                 </div>
@@ -241,22 +242,32 @@
             }
         }
 
-        function prepararEdicionProyecto(id, nombre, color, bloques) {
-            idProyectoEditando = id; document.getElementById('nombre_proyecto').value = nombre; 
-            document.getElementById('color_proyecto').value = color; document.getElementById('bloques_proyecto').value = bloques || '';
-            document.getElementById('btn_guardar_proyecto').innerHTML = "Actualizar"; document.getElementById('btn_guardar_proyecto').style.backgroundColor = "#f97316"; 
+        function prepararEdicionProyecto(id, nombre, color, bloques, suites) {
+            idProyectoEditando = id; 
+            document.getElementById('nombre_proyecto').value = nombre; 
+            document.getElementById('color_proyecto').value = color; 
+            document.getElementById('bloques_proyecto').value = bloques || '';
+            document.getElementById('suites_proyecto').value = suites || '';
+            document.getElementById('btn_guardar_proyecto').innerHTML = "Actualizar"; 
+            document.getElementById('btn_guardar_proyecto').style.backgroundColor = "#f97316"; 
         }
 
         async function guardarProyecto() {
             let nombre = document.getElementById('nombre_proyecto').value.trim(); 
             let color = document.getElementById('color_proyecto').value; 
             let bloques = document.getElementById('bloques_proyecto').value.trim().toUpperCase();
+            let suites = document.getElementById('suites_proyecto').value.trim().toUpperCase();
+
             if (!nombre) return;
-            if (idProyectoEditando) await supabaseClient.from('catalogo_proyectos').update({ nombre, color, bloques }).eq('id', idProyectoEditando);
-            else await supabaseClient.from('catalogo_proyectos').insert([{ nombre, color, bloques }]);
+            if (idProyectoEditando) await supabaseClient.from('catalogo_proyectos').update({ nombre, color, bloques, suites }).eq('id', idProyectoEditando);
+            else await supabaseClient.from('catalogo_proyectos').insert([{ nombre, color, bloques, suites }]);
             
-            idProyectoEditando = null; document.getElementById('nombre_proyecto').value = ''; document.getElementById('bloques_proyecto').value = '';
-            document.getElementById('btn_guardar_proyecto').innerHTML = "Agregar"; document.getElementById('btn_guardar_proyecto').style.backgroundColor = "#3b82f6";
+            idProyectoEditando = null; 
+            document.getElementById('nombre_proyecto').value = ''; 
+            document.getElementById('bloques_proyecto').value = '';
+            document.getElementById('suites_proyecto').value = '';
+            document.getElementById('btn_guardar_proyecto').innerHTML = "Agregar"; 
+            document.getElementById('btn_guardar_proyecto').style.backgroundColor = "#3b82f6";
             cargarListaProyectos();
         }
 
@@ -267,7 +278,6 @@
                 const selProy = document.getElementById('meta_proyecto');
                 selProy.innerHTML = '<option value="">Selecciona...</option>';
                 data.forEach(item => {
-                    // DESGLOSAMOS LOS BLOQUES EN EL SELECTOR DE METAS
                     if (item.bloques && item.bloques.trim() !== "") {
                         let arrayBloques = item.bloques.split(',').map(b => b.trim()).filter(b => b !== "");
                         arrayBloques.forEach(b => {
@@ -278,8 +288,10 @@
                     }
 
                     let bloquesBadge = item.bloques ? item.bloques : '<em>Ninguno</em>';
+                    let suitesBadge = item.suites ? `<span style="font-size:11px; color:#64748b;">${item.suites}</span>` : '<em>Libre</em>';
+                    
                     tbody.innerHTML += `<tr><td><span class="color-dot" style="background-color: ${item.color};"></span><strong>${item.nombre}</strong></td>
-                    <td>${bloquesBadge}</td><td style="text-align: center;"><button class="btn-edit" onclick="prepararEdicionProyecto('${item.id}', '${item.nombre}', '${item.color}', '${item.bloques || ''}')">✏️</button>
+                    <td>${bloquesBadge}</td><td>${suitesBadge}</td><td style="text-align: center;"><button class="btn-edit" onclick="prepararEdicionProyecto('${item.id}', '${item.nombre}', '${item.color}', '${item.bloques || ''}', '${item.suites || ''}')">✏️</button>
                     <button class="btn-delete" onclick="eliminarDato('catalogo_proyectos', '${item.id}', '${item.nombre}')">🗑️</button></td></tr>`;
                 });
             }

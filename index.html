@@ -180,10 +180,18 @@
                         <input type="text" id="bloque" list="bloques_disponibles" placeholder="Ej: A" style="text-transform: uppercase;">
                         <datalist id="bloques_disponibles"></datalist>
                     </div>
-                    <div class="form-group" style="flex: 1.2;">
+                    
+                    <!-- CAMPO INTELIGENTE: Autocompletado de Suite -->
+                    <div class="form-group" style="flex: 1.2; position: relative;">
                         <label>Suite:</label>
-                        <input type="text" id="suite" placeholder="N° o Nombre" style="text-transform: uppercase;">
+                        <div style="position: relative;">
+                            <!-- El input fantasma por debajo (color gris clarito) -->
+                            <input type="text" id="suite_ghost" disabled style="position: absolute; top: 0; left: 0; width: 100%; padding: 8px 10px; border: 1px solid transparent; box-sizing: border-box; font-size: 14px; font-family: Arial, sans-serif; color: #94a3b8; background-color: transparent; z-index: 1; pointer-events: none;">
+                            <!-- El input real donde escribe el usuario (transparente por encima) -->
+                            <input type="text" id="suite" placeholder="N° o Nombre" style="position: relative; z-index: 2; background-color: transparent; text-transform: uppercase;" autocomplete="off" oninput="sugerirSuite()" onkeydown="autocompletarSuite(event)">
+                        </div>
                     </div>
+                    
                     <div class="form-group"><label>Espacio:</label><select id="espacio"><option value="" disabled selected>Seleccione...</option></select></div>
                     <div class="form-group"><label>Producto:</label><select id="producto"><option value="" disabled selected>Seleccione...</option></select></div>
                 </div>
@@ -219,6 +227,7 @@
         window.operadorActual = "Operador"; 
         
         window.idMuebleEnEdicion = null;
+        window.suitesDisponiblesActuales = []; // Array que guardará las suites válidas del proyecto
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -299,14 +308,38 @@
             let inputBloque = document.getElementById('bloque');
             let datalist = document.getElementById('bloques_disponibles');
             datalist.innerHTML = "";
+            
+            // Reiniciar Autocompletado de Suites
+            window.suitesDisponiblesActuales = [];
+            document.getElementById('suite_ghost').value = '';
+            document.getElementById('suite').value = '';
 
             if (proyectoReal) {
+                // Configurar bloques
                 if (proyectoReal.bloques && proyectoReal.bloques.trim() !== "") {
                     inputBloque.disabled = false; inputBloque.placeholder = "Requerido (Ej: A)";
                     let arrayBloques = proyectoReal.bloques.split(',').map(b => b.trim().toUpperCase());
                     arrayBloques.forEach(b => { datalist.innerHTML += `<option value="${b}"></option>`; });
                 } else {
                     inputBloque.value = ""; inputBloque.disabled = true; inputBloque.placeholder = "No aplica";
+                }
+
+                // Configurar lista interna de Suites
+                if (proyectoReal.suites && proyectoReal.suites.trim() !== "") {
+                    let s = proyectoReal.suites.trim();
+                    if (s.includes('-') && !s.includes(',')) {
+                        // Es un rango numérico, ej: 1-15
+                        let partes = s.split('-');
+                        let inicio = parseInt(partes[0]); let fin = parseInt(partes[1]);
+                        if (!isNaN(inicio) && !isNaN(fin)) {
+                            for (let i = inicio; i <= fin; i++) {
+                                window.suitesDisponiblesActuales.push(i.toString());
+                            }
+                        }
+                    } else {
+                        // Es una lista separada por comas, ej: MIAMI A1, LONDRES A2
+                        window.suitesDisponiblesActuales = s.split(',').map(x => x.trim().toUpperCase()).filter(x => x);
+                    }
                 }
 
                 if (proyectoReal.color) {
@@ -323,6 +356,41 @@
             if (window.registrosDescargados.length > 0) renderizarTabla(window.registrosDescargados);
         }
 
+        // ==========================================
+        // LÓGICA DE AUTOCOMPLETADO (GHOST TEXT)
+        // ==========================================
+        function sugerirSuite() {
+            let input = document.getElementById('suite');
+            let ghost = document.getElementById('suite_ghost');
+            let val = input.value.toUpperCase();
+
+            if (val === "" || window.suitesDisponiblesActuales.length === 0) {
+                ghost.value = "";
+                return;
+            }
+
+            // Busca la primera suite que comience con lo que el usuario está escribiendo
+            let match = window.suitesDisponiblesActuales.find(s => s.startsWith(val));
+            if (match) {
+                // Pone la coincidencia exacta debajo, creando el efecto fantasma
+                ghost.value = val + match.substring(val.length);
+            } else {
+                ghost.value = "";
+            }
+        }
+
+        function autocompletarSuite(e) {
+            let input = document.getElementById('suite');
+            let ghost = document.getElementById('suite_ghost');
+            
+            // Si presiona Tabulador o Flecha Derecha y hay un fantasma activo
+            if ((e.key === 'Tab' || e.key === 'ArrowRight') && ghost.value !== "") {
+                e.preventDefault(); // Evita saltar de campo
+                input.value = ghost.value; // Completa la palabra
+                ghost.value = ""; // Limpia el fantasma
+            }
+        }
+
         function cargarParaEditar(id) {
             let registro = window.registrosDescargados.find(r => r.id === id);
             if (!registro) return;
@@ -335,8 +403,8 @@
             document.getElementById('estado').value = registro.estado; document.getElementById('proyecto').value = registro.proyecto; 
             cambiarTema(); 
             document.getElementById('piso').value = registro.piso; document.getElementById('bloque').value = registro.bloque || ''; 
-            document.getElementById('suite').value = registro.suite; document.getElementById('espacio').value = registro.espacio; 
-            document.getElementById('producto').value = registro.producto; 
+            document.getElementById('suite').value = registro.suite; document.getElementById('suite_ghost').value = '';
+            document.getElementById('espacio').value = registro.espacio; document.getElementById('producto').value = registro.producto; 
             document.getElementById('observaciones').value = registro.observaciones || ''; 
             document.getElementById('modificaciones').value = registro.modificaciones || '';
             
@@ -355,11 +423,12 @@
             document.getElementById('codigo_proyecto').value = ''; 
             document.getElementById('observaciones').value = ''; 
             document.getElementById('modificaciones').value = '';
+            document.getElementById('suite_ghost').value = '';
             
             let btn = document.getElementById('btnGuardar'); 
             btn.innerHTML = "Guardar Mueble"; 
             btn.classList.remove('btn-editando');
-            btn.disabled = false; // <--- SOLUCIÓN AL BUG DEL BOTÓN BLOQUEADO
+            btn.disabled = false; 
             document.getElementById('btnCancelarEdit').style.display = 'none';
             window.history.replaceState({}, document.title, window.location.pathname);
         }
@@ -376,13 +445,23 @@
             if (!proyecto || !estado || !espacio || !producto) { Swal.fire({ icon: 'warning', title: 'Faltan datos', text: 'Por favor selecciona Proyecto, Estado, Espacio y Producto.', confirmButtonColor: '#475569' }); return; }
             if (!piso || !suite) { Swal.fire({ icon: 'warning', title: 'Faltan datos', text: 'Por favor completa el piso y la suite.', confirmButtonColor: '#475569' }); return; }
 
+            // VALIDACIÓN ESTRICTA DE SUITE (Si el proyecto tiene una lista definida)
+            if (window.suitesDisponiblesActuales.length > 0 && !window.suitesDisponiblesActuales.includes(suite)) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Suite Inválida',
+                    text: `La suite "${suite}" no existe en el catálogo de este proyecto. Verifica que esté bien escrita o agrégala en Administrador.`,
+                    confirmButtonColor: '#ef4444'
+                });
+                return;
+            }
+
             let id_generado = "P" + piso + bloque + "-S" + suite + "-" + producto + "-" + espacio;
             let btn = document.getElementById('btnGuardar'); btn.innerHTML = "Procesando..."; btn.disabled = true;
             
             let idParaActualizar = window.idMuebleEnEdicion;
             let muebleAntiguo = null;
 
-            // LÓGICA ANTI-CHOQUES: Si no estamos editando con lápiz, verifica si ya existe y pregunta qué hacer
             if (!idParaActualizar) {
                 const { data: existente } = await supabaseClient.from('registros_produccion').select('*').eq('id_generado', id_generado);
                 if (existente && existente.length > 0) {
@@ -401,7 +480,6 @@
                         btn.innerHTML = "Guardar Mueble"; btn.disabled = false; return;
                     }
                     
-                    // Activamos modo actualización silenciosa
                     idParaActualizar = existente[0].id;
                     muebleAntiguo = existente[0];
                 }
@@ -410,9 +488,6 @@
                 muebleAntiguo = fetchAntiguo;
             }
 
-            // ==========================================
-            // EJECUCIÓN (EDICIÓN O CREACIÓN)
-            // ==========================================
             if (idParaActualizar && muebleAntiguo) {
                 let cambiosContador = 0;
                 let detallesHTML = "";
@@ -454,6 +529,7 @@
                 }
                 
                 document.getElementById('codigo_proyecto').value = ''; document.getElementById('observaciones').value = ''; document.getElementById('modificaciones').value = '';
+                document.getElementById('suite_ghost').value = '';
                 document.getElementById('codigo_proyecto').focus(); 
                 btn.innerHTML = "Guardar Mueble"; btn.disabled = false; 
             }
