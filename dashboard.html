@@ -28,12 +28,43 @@
         .header-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
         .header-title { margin: 0; color: #1e293b; font-size: 24px; }
         
-        /* CAMPANA Y PERFIL */
+        /* CAMPANA, NOTAS Y PERFIL */
         .perfil-usuario { display: flex; align-items: center; gap: 15px; }
-        .campana-notificaciones { position: relative; cursor: pointer; font-size: 22px; margin-right: 10px; transition: 0.2s; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        
+        .campana-notificaciones { position: relative; cursor: pointer; font-size: 22px; transition: 0.2s; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .campana-notificaciones:hover { transform: scale(1.1); background: #f1f5f9; }
         .badge-campana { position: absolute; top: 0px; right: -2px; background-color: #ef4444; color: white; border-radius: 50%; padding: 2px 5px; font-size: 10px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: none; }
         
+        /* WIDGET DE NOTAS (NUEVO) */
+        .widget-notas { position: relative; display: inline-block; margin-right: 5px; }
+        .widget-notas .btn-icono { background: #fff; border: none; width: 40px; height: 40px; font-size: 20px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .widget-notas .btn-icono:hover { transform: scale(1.1); background: #f1f5f9; }
+        .badge-notas-urgente { position: absolute; top: -3px; right: -3px; background: #3b82f6; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; font-weight: bold; display: flex; justify-content: center; align-items: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: none; }
+        
+        .panel-desplegable { position: absolute; top: 50px; right: 0; width: 340px; background: white; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); z-index: 1000; border: 1px solid #e2e8f0; overflow: hidden; display: none; }
+        .panel-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+        .panel-header h4 { margin: 0; font-size: 14px; color: #1e293b; }
+        .btn-redondo { background: #3b82f6; color: white; border: none; border-radius: 50%; width: 26px; height: 26px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.2s; }
+        .btn-redondo:hover { background: #2563eb; transform: scale(1.05); }
+        
+        #caja-edicion-nota { padding: 15px; border-bottom: 1px solid #e2e8f0; background: #fff; }
+        #texto-nota { width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px; font-family: inherit; resize: vertical; box-sizing: border-box; font-size: 13px; outline: none; }
+        .controles-edicion { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 12px; }
+        .btn-primario { background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-secundario { background: #e2e8f0; color: #475569; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 5px; }
+        
+        .lista-scroll { max-height: 350px; overflow-y: auto; background: #fff; }
+        .nota-card { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; position: relative; }
+        .nota-card:hover { background: #f8fafc; }
+        .nota-card.urgente { border-left: 4px solid #ef4444; background: #fef2f2; }
+        .nota-header { display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 6px; }
+        .nota-autor { font-weight: bold; color: #1e293b; font-size: 12px; }
+        .nota-contenido { font-size: 13px; color: #334155; margin-bottom: 8px; white-space: pre-wrap; line-height: 1.4; }
+        .nota-acciones { display: flex; gap: 12px; font-size: 12px; font-weight: bold; }
+        .nota-acciones span { cursor: pointer; color: #64748b; }
+        .nota-acciones span:hover { color: #3b82f6; text-decoration: underline; }
+        .nota-acciones .borrar:hover { color: #ef4444; }
+
         .mensaje-bienvenida { font-size: 14px; color: #475569; }
         .mensaje-bienvenida span { font-weight: bold; color: #1e293b; }
         .foto-perfil { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid #3b82f6; }
@@ -76,7 +107,6 @@
         .tabla-alertas th, .tabla-alertas td { border-bottom: 1px solid #e2e8f0; padding: 8px; }
         .tabla-alertas th { background-color: #f1f5f9; color: #334155; }
 
-        /* Estilos de notificaciones */
         .notif-item { padding: 12px; border-bottom: 1px solid #e2e8f0; font-size: 13px; display: flex; gap: 12px; align-items: start; transition: 0.2s; }
         .notif-item:hover { background-color: #f8fafc; }
         .notif-item:last-child { border-bottom: none; }
@@ -97,6 +127,7 @@
             .main-content { padding: 15px; height: auto; overflow-y: visible; }
             .header-top { flex-direction: column; align-items: flex-start; }
             .stats-grid { grid-template-columns: 1fr; }
+            .panel-desplegable { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 350px; z-index: 2000; box-shadow: 0 0 0 1000px rgba(0,0,0,0.5); }
         }
     </style>
 </head>
@@ -118,6 +149,37 @@
             <div class="header-top">
                 <h2 class="header-title">Tablero de Producción</h2>
                 <div class="perfil-usuario">
+                    
+                    <!-- WIDGET NOTAS EQUIPO -->
+                    <div class="widget-notas">
+                        <button id="btn-notas" class="btn-icono" title="Notas del Equipo">
+                            📝<span id="badge-notas" class="badge-notas-urgente">0</span>
+                        </button>
+
+                        <div id="panel-notas" class="panel-desplegable">
+                            <div class="panel-header">
+                                <h4>Notas del Equipo</h4>
+                                <button id="btn-nueva-nota" class="btn-redondo" title="Crear nueva nota">+</button>
+                            </div>
+                            
+                            <div id="caja-edicion-nota" style="display: none;">
+                                <textarea id="texto-nota" placeholder="Escribe un anuncio o nota para el equipo..." rows="3"></textarea>
+                                <div class="controles-edicion">
+                                    <label><input type="checkbox" id="chk-importante"> 🚨 Urgente</label>
+                                    <div>
+                                        <button id="btn-cancelar-nota" class="btn-secundario">Cancelar</button>
+                                        <button id="btn-guardar-nota" class="btn-primario">Publicar</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="lista-notas" class="lista-scroll">
+                                <p style="text-align:center; font-size:12px; color:#94a3b8; padding:20px;">Cargando notas...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- FIN WIDGET NOTAS -->
+
                     <div class="campana-notificaciones" onclick="verNotificacionesGlobales()" title="Ver actividad reciente de la planta">
                         🔔<span class="badge-campana" id="badge_notificaciones">0</span>
                     </div>
@@ -197,13 +259,21 @@
         window.coloresProyectosGlobal = {}; 
         window.mueblesFiltradosGlobal = [];
         window.historialGlobal = []; 
+        
+        // Variables Globales para las Notas
+        let USUARIO_ACTUAL_EMAIL = "";
+        let USUARIO_ACTUAL_NOMBRE = "";
+        const CACHE_NOTAS_KEY = 'ultima_revision_notas';
+        let idNotaEnEdicion = null;
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (!session) { window.location.href = 'login.html'; return; }
 
-            const correoUsuario = session.user.email;
-            const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol').eq('email', correoUsuario).single();
+            USUARIO_ACTUAL_EMAIL = session.user.email;
+            USUARIO_ACTUAL_NOMBRE = session.user.user_metadata.full_name || session.user.email.split('@')[0];
+
+            const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol').eq('email', USUARIO_ACTUAL_EMAIL).single();
             const rolUsuario = (empleado && empleado.rol) ? empleado.rol.trim() : 'Operador'; 
 
             if (rolUsuario !== 'Administrador') {
@@ -211,12 +281,23 @@
                 if (linkAdmin) linkAdmin.parentElement.style.display = 'none';
             }
 
-            const nombreCompleto = session.user.user_metadata.full_name;
-            const urlFoto = session.user.user_metadata.avatar_url;
-            document.getElementById('nombreUsuario').innerText = nombreCompleto.split(' ')[0];
-            document.getElementById('fotoUsuario').src = urlFoto;
+            document.getElementById('nombreUsuario').innerText = USUARIO_ACTUAL_NOMBRE.split(' ')[0];
+            document.getElementById('fotoUsuario').src = session.user.user_metadata.avatar_url || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
 
             await cargarDatosDashboard();
+            
+            // Inicializar Notas
+            cargarNotasEquipo();
+            setInterval(cargarNotasEquipo, 120000); // Recargar notas cada 2 minutos
+            
+            // Cerrar panel de notas si se hace clic fuera de él
+            document.addEventListener('click', (e) => {
+                const widget = document.querySelector('.widget-notas');
+                const panel = document.getElementById('panel-notas');
+                if (widget && panel && !widget.contains(e.target) && panel.style.display === 'block') {
+                    panel.style.display = 'none';
+                }
+            });
         });
 
         async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; }
@@ -259,16 +340,14 @@
                 });
             }
 
-            // === CARGAMOS EL HISTORIAL DE NOTIFICACIONES (CORREGIDO PARA USAR ID) ===
+            // CARGAMOS EL HISTORIAL DE NOTIFICACIONES (LA CAMPANA ORIGINAL)
             const { data: historialReciente } = await supabaseClient.from('historial_trazabilidad')
                 .select('*')
-                .order('id', { ascending: false }) // ORDENAMOS POR ID, NO POR FECHA PARA EVITAR ERRORES
+                .order('id', { ascending: false })
                 .limit(50);
             
             if (historialReciente) {
                 window.historialGlobal = historialReciente;
-                
-                // === LÓGICA DE NOTIFICACIONES "NO LEÍDAS" POR USUARIO ===
                 let ultimoIdLeido = parseInt(localStorage.getItem('ultimoIdNotifVeta') || '0');
                 let notifNuevas = historialReciente.filter(h => h.id > ultimoIdLeido).length;
                 
@@ -284,16 +363,15 @@
             actualizarGraficasDinamicas();
         }
 
-        // ========================================================
-        // MOSTRAR LAS NOTIFICACIONES GLOBALES Y "MARCAR COMO LEÍDAS"
-        // ========================================================
+        // ==========================================
+        // LÓGICA DE LA CAMPANA (BITÁCORA)
+        // ==========================================
         function verNotificacionesGlobales() {
             if (!window.historialGlobal || window.historialGlobal.length === 0) {
                 Swal.fire({ icon: 'info', title: 'Sin actividad', text: 'No hay registros recientes en la planta.', confirmButtonColor: '#3b82f6' });
                 return;
             }
 
-            // Al abrir, el sistema guarda en tu computadora que ya viste el último ID y apaga la campana
             localStorage.setItem('ultimoIdNotifVeta', window.historialGlobal[0].id);
             document.getElementById('badge_notificaciones').style.display = 'none';
 
@@ -310,10 +388,10 @@
 
                 let icono = '▶️';
                 if (h.tipo_registro.includes('Falla')) icono = '🛑';
-                else if (h.tipo_registro.includes('Edición')) icono = '✏️';
+                else if (h.tipo_registro.includes('Edición') || h.tipo_registro.includes('Sobreescritura')) icono = '✏️';
                 else if (h.tipo_registro.includes('Creación')) icono = '✨';
 
-                let tiempo = tiempoTranscurrido(h.created_at || h.fecha); // Usamos created_at, o fecha como respaldo
+                let tiempo = tiempoTranscurrido(h.created_at || h.fecha);
 
                 html += `
                 <div class="notif-item">
@@ -356,9 +434,153 @@
             return dias + (dias === 1 ? " día" : " días");
         }
 
-        // ========================================================
-        // RESTO DEL CÓDIGO (MODALES Y GRÁFICAS)
-        // ========================================================
+        // ==========================================
+        // LÓGICA DEL PANEL DE NOTAS (NUEVO)
+        // ==========================================
+        document.getElementById('btn-notas').addEventListener('click', () => {
+            const panel = document.getElementById('panel-notas');
+            if (panel.style.display === 'none' || panel.style.display === '') {
+                panel.style.display = 'block';
+                localStorage.setItem(CACHE_NOTAS_KEY, new Date().toISOString());
+                document.getElementById('badge-notas').style.display = 'none';
+                cargarNotasEquipo(); 
+            } else {
+                panel.style.display = 'none';
+            }
+        });
+
+        document.getElementById('btn-nueva-nota').addEventListener('click', abrirCajaEdicion);
+        document.getElementById('btn-cancelar-nota').addEventListener('click', cerrarCajaEdicion);
+        document.getElementById('btn-guardar-nota').addEventListener('click', guardarNotaEquipo);
+
+        async function cargarNotasEquipo() {
+            const contenedor = document.getElementById('lista-notas');
+
+            // 1. Traer IDs ocultos por el usuario
+            const { data: ocultas } = await supabaseClient.from('notas_ocultas').select('nota_id').eq('usuario_email', USUARIO_ACTUAL_EMAIL);
+            const idsOcultas = ocultas ? ocultas.map(o => o.nota_id) : [];
+
+            // 2. Traer todas las notas
+            const { data: notas, error } = await supabaseClient.from('notas_equipo').select('*').order('fecha_actualizacion', { ascending: false });
+            if (error) { console.error("Error al cargar notas:", error.message); return; }
+
+            // 3. Filtrar las visibles
+            const notasVisibles = notas.filter(nota => !idsOcultas.includes(nota.id));
+            
+            contenedor.innerHTML = '';
+            if (notasVisibles.length === 0) {
+                contenedor.innerHTML = '<p style="text-align:center; font-size:12px; color:#94a3b8; padding:20px;">No hay notas del equipo por ahora.</p>';
+            } else {
+                notasVisibles.forEach(nota => {
+                    const esMio = nota.autor_email === USUARIO_ACTUAL_EMAIL;
+                    const editadaTexto = nota.editada ? ' <span style="font-style:italic; color:#94a3b8; font-size:10px;">(Editada)</span>' : '';
+                    const claseUrgente = nota.importante ? 'urgente' : '';
+                    
+                    const fechaObj = new Date(nota.fecha_actualizacion);
+                    const fechaFmt = `${fechaObj.getDate().toString().padStart(2, '0')}/${(fechaObj.getMonth()+1).toString().padStart(2, '0')} - ${fechaObj.getHours().toString().padStart(2, '0')}:${fechaObj.getMinutes().toString().padStart(2, '0')}`;
+
+                    contenedor.innerHTML += `
+                        <div class="nota-card ${claseUrgente}">
+                            <div class="nota-header">
+                                <span class="nota-autor">${nota.autor_nombre}</span>
+                                <span>${fechaFmt}${editadaTexto}</span>
+                            </div>
+                            <div class="nota-contenido">${nota.contenido}</div>
+                            <div class="nota-acciones">
+                                ${esMio ? `<span onclick="prepararEdicionNota('${nota.id}', \`${nota.contenido.replace(/`/g, '\\`')}\`, ${nota.importante})">✏️ Editar</span>` : ''}
+                                ${esMio ? `<span class="borrar" onclick="borrarNotaEquipo('${nota.id}')">🗑️ Borrar</span>` : ''}
+                                ${!esMio ? `<span onclick="ocultarNotaEquipo('${nota.id}')">👁‍🗨️️ Ocultar</span>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            actualizarCampanitaNotas(notasVisibles);
+        }
+
+        async function guardarNotaEquipo() {
+            const contenido = document.getElementById('texto-nota').value.trim();
+            const importante = document.getElementById('chk-importante').checked;
+            const btn = document.getElementById('btn-guardar-nota');
+
+            if (!contenido) return Swal.fire({toast: true, position: 'top-end', title: 'La nota está vacía', icon: 'warning', showConfirmButton: false, timer: 2000});
+
+            btn.disabled = true; btn.innerText = "Guardando...";
+
+            if (idNotaEnEdicion) {
+                await supabaseClient.from('notas_equipo').update({ 
+                    contenido: contenido, importante: importante, editada: true, fecha_actualizacion: new Date().toISOString() 
+                }).eq('id', idNotaEnEdicion);
+            } else {
+                await supabaseClient.from('notas_equipo').insert([{ 
+                    autor_email: USUARIO_ACTUAL_EMAIL, autor_nombre: USUARIO_ACTUAL_NOMBRE, contenido: contenido, importante: importante 
+                }]);
+            }
+
+            btn.disabled = false; btn.innerText = "Publicar";
+            cerrarCajaEdicion();
+            cargarNotasEquipo();
+        }
+
+        async function borrarNotaEquipo(id) {
+            const result = await Swal.fire({ title: '¿Borrar nota?', text: "Se eliminará para todos los usuarios", icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar' });
+            if (result.isConfirmed) {
+                await supabaseClient.from('notas_equipo').delete().eq('id', id);
+                cargarNotasEquipo();
+            }
+        }
+
+        async function ocultarNotaEquipo(id) {
+            await supabaseClient.from('notas_ocultas').insert([{ nota_id: id, usuario_email: USUARIO_ACTUAL_EMAIL }]);
+            cargarNotasEquipo();
+        }
+
+        function actualizarCampanitaNotas(notas) {
+            const ultimaRevisionStr = localStorage.getItem(CACHE_NOTAS_KEY);
+            const badge = document.getElementById('badge-notas');
+            const panel = document.getElementById('panel-notas');
+            
+            if (panel.style.display === 'block') { badge.style.display = 'none'; return; }
+
+            if (!ultimaRevisionStr) {
+                badge.innerText = notas.length > 9 ? '9+' : notas.length;
+                badge.style.display = notas.length > 0 ? 'flex' : 'none';
+                return;
+            }
+
+            const fechaUltimaRevision = new Date(ultimaRevisionStr);
+            const notasNuevas = notas.filter(nota => new Date(nota.fecha_actualizacion) > fechaUltimaRevision).length;
+
+            if (notasNuevas > 0) {
+                badge.innerText = notasNuevas > 9 ? '9+' : notasNuevas;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        function abrirCajaEdicion() {
+            document.getElementById('caja-edicion-nota').style.display = 'block';
+            document.getElementById('texto-nota').focus();
+        }
+
+        function cerrarCajaEdicion() {
+            document.getElementById('caja-edicion-nota').style.display = 'none';
+            document.getElementById('texto-nota').value = '';
+            document.getElementById('chk-importante').checked = false;
+            idNotaEnEdicion = null;
+        }
+
+        function prepararEdicionNota(id, contenido, importante) {
+            idNotaEnEdicion = id;
+            document.getElementById('texto-nota').value = contenido;
+            document.getElementById('chk-importante').checked = importante;
+            abrirCajaEdicion();
+        }
+
+        // ==========================================
+        // RESTO DE LAS FUNCIONES DE TU DASHBOARD (GRÁFICAS Y METAS)
+        // ==========================================
         function verListaModal(tipo) {
             let lista = []; let titulo = ""; let colorHex = "";
 
