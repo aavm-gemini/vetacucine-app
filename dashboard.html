@@ -36,7 +36,7 @@
         .campana-notificaciones:hover { transform: scale(1.1); background: #f1f5f9; }
         .badge-campana { position: absolute; top: 0px; right: -2px; background-color: #ef4444; color: white; border-radius: 50%; padding: 2px 5px; font-size: 10px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: none; }
         
-        /* WIDGET DE NOTAS (NUEVO) */
+        /* WIDGET DE NOTAS */
         .widget-notas { position: relative; display: inline-block; margin-right: 5px; }
         .widget-notas .btn-icono { background: #fff; border: none; width: 40px; height: 40px; font-size: 20px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .widget-notas .btn-icono:hover { transform: scale(1.1); background: #f1f5f9; }
@@ -116,18 +116,47 @@
         .notif-time { font-size: 11px; color: #94a3b8; margin-top: 5px; font-weight: bold; }
 
         @media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
+        
+        /* --- MENÚ MÓVIL DESLIZABLE UNIFICADO --- */
         @media (max-width: 768px) { 
             body { overflow: auto; }
             .app-container { flex-direction: column; height: auto; }
-            .sidebar { width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            .sidebar-header { padding: 15px; }
-            .nav-links { flex-direction: row; margin-top: 0; justify-content: space-around; background-color: #0f172a; }
-            .nav-links a { padding: 10px 5px; font-size: 12px; border-left: none; border-bottom: 3px solid transparent; flex-direction: column; gap: 4px; text-align: center; }
+            .sidebar { width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 100; }
+            .sidebar-header { padding: 15px; font-size: 20px; }
+            
+            .nav-links { 
+                flex-direction: row; 
+                margin-top: 0; 
+                justify-content: flex-start; 
+                background-color: #0f172a; 
+                overflow-x: auto; 
+                overflow-y: hidden; 
+                white-space: nowrap; 
+                -webkit-overflow-scrolling: touch; 
+                padding: 0 5px; 
+            }
+            .nav-links::-webkit-scrollbar { display: none; } 
+            
+            .nav-links a { 
+                padding: 12px 15px; 
+                font-size: 13px; 
+                border-left: none; 
+                border-bottom: 3px solid transparent; 
+                flex-direction: row; 
+                flex: 0 0 auto; 
+                gap: 6px; 
+                display: inline-flex;
+                align-items: center;
+            }
             .nav-links a.active { border-left: none; border-bottom-color: #3b82f6; }
+
             .main-content { padding: 15px; height: auto; overflow-y: visible; }
-            .header-top { flex-direction: column; align-items: flex-start; }
-            .stats-grid { grid-template-columns: 1fr; }
+            .header-top { flex-direction: column; align-items: center; text-align: center; gap: 15px; margin-bottom: 20px; padding-bottom: 15px; }
+            .header-title { font-size: 22px; margin: 0; }
+            .perfil-usuario { flex-wrap: wrap; justify-content: center; gap: 10px; }
+            
+            .stats-grid, .dashboard-grid { grid-template-columns: 1fr; }
+            .panel-full { grid-column: 1; }
             .panel-desplegable { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 350px; z-index: 2000; box-shadow: 0 0 0 1000px rgba(0,0,0,0.5); }
         }
     </style>
@@ -261,7 +290,6 @@
         window.mueblesFiltradosGlobal = [];
         window.historialGlobal = []; 
         
-        // Variables Globales para las Notas y Notificaciones del Sistema
         let USUARIO_ACTUAL_EMAIL = "";
         let USUARIO_ACTUAL_NOMBRE = "";
         const CACHE_NOTAS_KEY = 'ultima_revision_notas';
@@ -300,11 +328,9 @@
 
             await cargarDatosDashboard();
             
-            // Inicializar Notas
             cargarNotasEquipo();
-            setInterval(cargarNotasEquipo, 120000); // Recargar notas cada 2 minutos
+            setInterval(cargarNotasEquipo, 120000);
             
-            // Cerrar panel de notas si se hace clic fuera de él
             document.addEventListener('click', (e) => {
                 const widget = document.querySelector('.widget-notas');
                 const panel = document.getElementById('panel-notas');
@@ -354,7 +380,6 @@
                 });
             }
 
-            // CARGAMOS EL HISTORIAL DE NOTIFICACIONES (LA CAMPANA ORIGINAL)
             const { data: historialReciente } = await supabaseClient.from('historial_trazabilidad')
                 .select('*')
                 .order('id', { ascending: false })
@@ -380,10 +405,11 @@
             actualizarGraficasDinamicas();
         }
 
-        // ==========================================
-        // LÓGICA DE LA CAMPANA (BITÁCORA)
-        // ==========================================
         function verNotificacionesGlobales() {
+            if ('Notification' in window && Notification.permission !== 'granted') {
+                Notification.requestPermission().then(perm => console.log("Permiso:", perm));
+            }
+
             if (!window.historialGlobal || window.historialGlobal.length === 0) {
                 Swal.fire({ icon: 'info', title: 'Sin actividad', text: 'No hay registros recientes en la planta.', confirmButtonColor: '#3b82f6' });
                 return;
@@ -453,10 +479,11 @@
             return dias + (dias === 1 ? " día" : " días");
         }
 
-        // ==========================================
-        // LÓGICA DEL PANEL DE NOTAS (NUEVO)
-        // ==========================================
         document.getElementById('btn-notas').addEventListener('click', () => {
+            if ('Notification' in window && Notification.permission !== 'granted') {
+                Notification.requestPermission().then(perm => console.log("Permiso:", perm));
+            }
+
             const panel = document.getElementById('panel-notas');
             if (panel.style.display === 'none' || panel.style.display === '') {
                 panel.style.display = 'block';
@@ -477,15 +504,12 @@
         async function cargarNotasEquipo() {
             const contenedor = document.getElementById('lista-notas');
 
-            // 1. Traer IDs ocultos por el usuario
             const { data: ocultas } = await supabaseClient.from('notas_ocultas').select('nota_id').eq('usuario_email', USUARIO_ACTUAL_EMAIL);
             const idsOcultas = ocultas ? ocultas.map(o => o.nota_id) : [];
 
-            // 2. Traer todas las notas
             const { data: notas, error } = await supabaseClient.from('notas_equipo').select('*').order('fecha_actualizacion', { ascending: false });
             if (error) { console.error("Error al cargar notas:", error.message); return; }
 
-            // 3. Filtrar las visibles
             const notasVisibles = notas.filter(nota => !idsOcultas.includes(nota.id));
             
             contenedor.innerHTML = '';
@@ -609,9 +633,6 @@
             abrirCajaEdicion();
         }
 
-        // ==========================================
-        // RESTO DE LAS FUNCIONES DE TU DASHBOARD (GRÁFICAS Y METAS)
-        // ==========================================
         function verListaModal(tipo) {
             let lista = []; let titulo = ""; let colorHex = "";
 
@@ -622,20 +643,67 @@
 
             if(lista.length === 0) { Swal.fire({ icon: 'info', title: 'Lista vacía', text: 'No hay muebles en esta categoría con los filtros actuales.', confirmButtonColor: colorHex }); return; }
 
+            // MAGIA: Ordenamos la lista para que los urgentes queden de primeros
+            lista.sort((a, b) => (b.urgente === true) - (a.urgente === true));
+
             let htmlTabla = `<div style="max-height: 400px; overflow-y: auto; text-align: left;">
                 <table class="tabla-alertas" style="width: 100%;">
-                <thead style="position: sticky; top: 0; z-index: 1;"><tr><th>Cód.</th><th>Ubicación</th><th>Producto</th><th>Estado/Obs.</th></tr></thead><tbody>`;
+                <thead style="position: sticky; top: 0; z-index: 1; background: #f1f5f9;">
+                    <tr>
+                        <th style="width: 35px; text-align:center;" title="Prioridad">⭐</th>
+                        <th>Cód.</th>
+                        <th>Ubicación</th>
+                        <th>Producto</th>
+                        <th>Estado/Obs.</th>
+                    </tr>
+                </thead><tbody>`;
             
             lista.forEach(m => {
                 let blqStr = m.bloque ? ` - Blq ${m.bloque}` : '';
                 let ubi = `${m.proyecto} - P${m.piso}${blqStr}`;
                 let colorObs = m.estado.toLowerCase().includes('bloque') ? '#ef4444' : '#64748b';
                 let extra = m.observaciones ? `<br><small style="color:${colorObs};"><i>${m.observaciones}</i></small>` : '';
-                htmlTabla += `<tr><td><strong>${m.codigo_proyecto || 'S/N'}</strong></td><td>${ubi}<br><small>Suite ${m.suite}</small></td><td>${m.producto}</td><td><span style="font-weight:bold; color:${colorHex}">${m.estado}</span>${extra}</td></tr>`;
+                
+                // LÓGICA DE DISEÑO DE URGENCIA
+                let esUrgente = m.urgente === true;
+                let iconoUrgencia = esUrgente ? '⭐' : '<span style="color:#cbd5e1;">☆</span>';
+                let estiloFila = esUrgente ? 'background-color: #fffbeb; box-shadow: inset 4px 0 0 #f59e0b;' : '';
+
+                htmlTabla += `<tr style="${estiloFila}">
+                    <td style="text-align:center; cursor:pointer; font-size:18px; user-select:none;" onclick="marcarUrgencia('${m.id}', ${esUrgente}, '${tipo}')">${iconoUrgencia}</td>
+                    <td><strong>${m.codigo_proyecto || 'S/N'}</strong></td>
+                    <td>${ubi}<br><small>Suite ${m.suite}</small></td>
+                    <td>${m.producto}</td>
+                    <td><span style="font-weight:bold; color:${colorHex}">${m.estado}</span>${extra}</td>
+                </tr>`;
             });
             htmlTabla += `</tbody></table></div>`;
 
             Swal.fire({ title: titulo, html: htmlTabla, width: '800px', confirmButtonText: 'Cerrar', confirmButtonColor: '#475569' });
+        }
+
+        async function marcarUrgencia(id_mueble, estadoActual, tipoModal) {
+            let nuevoEstado = !estadoActual;
+            
+            // 1. Actualizamos nuestra memoria local para que la interfaz reaccione al instante
+            let mueble = window.mueblesCargados.find(m => m.id === id_mueble);
+            if(mueble) mueble.urgente = nuevoEstado;
+
+            // 2. Recargamos el modal para que el mueble salte arriba y cambie de color
+            verListaModal(tipoModal);
+
+            // 3. Enviamos el dato silenciosamente a Supabase
+            const { error } = await supabaseClient.from('registros_produccion')
+                .update({ urgente: nuevoEstado })
+                .eq('id', id_mueble);
+
+            if(error) {
+                console.error("Fallo al guardar urgencia:", error);
+                // Si falla el internet, revertimos el cambio visualmente
+                if(mueble) mueble.urgente = estadoActual;
+                verListaModal(tipoModal);
+                Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Error de conexión', showConfirmButton: false, timer: 2000 });
+            }
         }
 
         function actualizarFiltrosMetas() {
