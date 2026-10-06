@@ -43,6 +43,12 @@
         .filter-group input, .filter-group select { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; font-size: 13px; }
         input:disabled, select:disabled { background-color: #f1f5f9; color: #94a3b8; cursor: not-allowed; border-color: #e2e8f0; }
         
+        /* ESTILOS PARA EL TEXTO FANTASMA (AUTOCOMPLETADO) */
+        .suite-wrapper { position: relative; display: block; width: 100%; }
+        .input-ghost { position: absolute; top: 0; left: 0; width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; font-size: 13px; color: #94a3b8; background-color: white; z-index: 1; pointer-events: none; }
+        .input-real { position: relative; width: 100%; padding: 8px; border: 1px solid transparent; border-radius: 4px; box-sizing: border-box; font-size: 13px; color: #334155; background-color: transparent; z-index: 2; text-transform: uppercase; outline: none; }
+        .input-real:focus { border-color: var(--tema-primario); }
+        
         .btn-buscar { background-color: var(--tema-primario); color: white; border: none; padding: 9px 25px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s; height: 35px; }
         .btn-buscar:hover { filter: brightness(0.85); transform: scale(0.98); }
         .btn-limpiar { background-color: #e2e8f0; color: #475569; border: none; padding: 9px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; height: 35px; }
@@ -111,8 +117,8 @@
     <div class="app-container">
         <!-- SIDEBAR -->
         <nav class="sidebar">
-            <div class="sidebar-header">Veta<span>Cucine</span></div>
-               <ul class="nav-links">
+            <div class="sidebar-header">Veta<span>Cucine</span></div>   
+            <ul class="nav-links">
                 <li><a href="dashboard.html">📊 Dashboard</a></li>
                 <li><a href="taller.html">🏭 Panel Operador</a></li>
                 <li><a href="index.html">📝 Ingreso Muebles</a></li>
@@ -147,7 +153,15 @@
                             <option value="">Cualquier Bloque</option>
                         </select>
                     </div>
-                    <div class="filter-group" style="flex: 1;"><label>Suite</label><input type="text" id="filtro_suite" placeholder="Ej: MIAMI o 1" onkeypress="manejarEnter(event)" style="text-transform: uppercase;"></div>
+                    
+                    <!-- NUEVO CAMPO DE SUITE CON TEXTO FANTASMA -->
+                    <div class="filter-group" style="flex: 1;">
+                        <label>Suite</label>
+                        <div class="suite-wrapper">
+                            <input type="text" id="filtro_suite_ghost" class="input-ghost" disabled>
+                            <input type="text" id="filtro_suite" class="input-real" placeholder="Ej: MIAMI o 1" oninput="manejarInputSuite(this.value)" onkeydown="manejarTabSuite(event)">
+                        </div>
+                    </div>
                 </div>
 
                 <div class="filter-row">
@@ -177,6 +191,7 @@
                     </tbody>
                 </table>
             </div>
+
         </div>
     </div>
 
@@ -188,6 +203,7 @@
         window.estadosCargados = []; 
         window.proyectosCargados = []; 
         window.datosParaExportar = []; 
+        window.suitesDisponibles = []; // Almacenará las suites del proyecto seleccionado
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -210,6 +226,7 @@
             const offsetZonaHoraria = (new Date()).getTimezoneOffset() * 60000;
             document.getElementById('filtro_fecha_fin').value = (new Date(Date.now() - offsetZonaHoraria)).toISOString().split('T')[0];
             document.getElementById('filtro_fecha_inicio').value = ""; 
+
             await cargarSelectores();
             
             await ejecutarBusqueda(); 
@@ -227,12 +244,16 @@
             let selBloque = document.getElementById('filtro_bloque');
             
             selBloque.innerHTML = '<option value="">Cualquier Bloque</option>';
+            document.getElementById('filtro_suite_ghost').value = '';
+            document.getElementById('filtro_suite').value = '';
 
             if (nombreProyecto === "Todos") {
                 selBloque.disabled = false;
                 document.documentElement.style.setProperty('--tema-primario', '#3b82f6');
                 document.documentElement.style.setProperty('--tema-rgb', '59, 130, 246');
                 document.documentElement.style.setProperty('--tema-fondo', '#f8fafc');
+                
+                window.suitesDisponibles = []; // Desactiva autocompletado en búsqueda general
 
                 let todosLosBloques = new Set();
                 if (window.proyectosCargados) {
@@ -252,12 +273,46 @@
                     arrayBloques.forEach(b => { selBloque.innerHTML += `<option value="${b}">Bloque ${b}</option>`; });
                 } else { selBloque.disabled = true; }
 
+                // Extraer el catálogo de suites del proyecto para el autocompletado
+                if (proyectoReal && proyectoReal.suites) {
+                    window.suitesDisponibles = proyectoReal.suites.split(',').map(s => s.trim().toUpperCase()).filter(s => s !== "");
+                } else {
+                    window.suitesDisponibles = [];
+                }
+
                 if (proyectoReal && proyectoReal.color) {
                     let colorHex = proyectoReal.color; let colorRgb = hexToRgb(colorHex);
                     document.documentElement.style.setProperty('--tema-primario', colorHex);
                     document.documentElement.style.setProperty('--tema-fondo', colorHex + '15');
                     if (colorRgb) document.documentElement.style.setProperty('--tema-rgb', colorRgb);
                 }
+            }
+        }
+
+        // LÓGICA DE AUTOCOMPLETADO (GHOST TEXT) PARA SUITES
+        function manejarInputSuite(valor) {
+            valor = valor.toUpperCase();
+            let ghostInput = document.getElementById('filtro_suite_ghost');
+            if (valor === "") { ghostInput.value = ""; return; }
+            
+            let coincidencia = window.suitesDisponibles.find(s => s.startsWith(valor));
+            if (coincidencia) {
+                ghostInput.value = valor + coincidencia.substring(valor.length);
+            } else {
+                ghostInput.value = "";
+            }
+        }
+
+        function manejarTabSuite(e) {
+            if (e.key === 'Tab' || e.key === 'ArrowRight') {
+                let ghostValue = document.getElementById('filtro_suite_ghost').value;
+                if (ghostValue !== "") {
+                    e.preventDefault(); // Evita perder el foco o moverse a otro input
+                    document.getElementById('filtro_suite').value = ghostValue;
+                    manejarInputSuite(ghostValue);
+                }
+            } else if (e.key === 'Enter') {
+                ejecutarBusqueda();
             }
         }
 
@@ -277,18 +332,33 @@
         }
 
         function limpiarFiltros() {
-            document.getElementById('filtro_proyecto').value = "Todos"; document.getElementById('filtro_estado').value = "Todos"; document.getElementById('filtro_producto').value = "Todos"; 
-            document.getElementById('filtro_piso').value = ""; document.getElementById('filtro_bloque').value = ""; document.getElementById('filtro_suite').value = ""; document.getElementById('filtro_texto').value = "";
-            const offsetZonaHoraria = (new Date()).getTimezoneOffset() * 60000; document.getElementById('filtro_fecha_fin').value = (new Date(Date.now() - offsetZonaHoraria)).toISOString().split('T')[0]; document.getElementById('filtro_fecha_inicio').value = "";
+            document.getElementById('filtro_proyecto').value = "Todos"; 
+            document.getElementById('filtro_estado').value = "Todos"; 
+            document.getElementById('filtro_producto').value = "Todos"; 
+            document.getElementById('filtro_piso').value = ""; 
+            document.getElementById('filtro_bloque').value = ""; 
+            document.getElementById('filtro_suite').value = ""; 
+            document.getElementById('filtro_suite_ghost').value = ""; 
+            document.getElementById('filtro_texto').value = "";
+            
+            const offsetZonaHoraria = (new Date()).getTimezoneOffset() * 60000; 
+            document.getElementById('filtro_fecha_fin').value = (new Date(Date.now() - offsetZonaHoraria)).toISOString().split('T')[0]; 
+            document.getElementById('filtro_fecha_inicio').value = "";
+            
             cambiarTema(); 
             ejecutarBusqueda(); 
         }
 
         async function ejecutarBusqueda() {
-            let proyecto = document.getElementById('filtro_proyecto').value; let estado = document.getElementById('filtro_estado').value; let producto = document.getElementById('filtro_producto').value;
-            let piso = document.getElementById('filtro_piso').value.trim().toUpperCase(); let bloque = document.getElementById('filtro_bloque').value.trim().toUpperCase(); 
-            let suite = document.getElementById('filtro_suite').value.trim().toUpperCase(); let texto = document.getElementById('filtro_texto').value.trim().toLowerCase();
-            let fechaInicio = document.getElementById('filtro_fecha_inicio').value; let fechaFin = document.getElementById('filtro_fecha_fin').value;
+            let proyecto = document.getElementById('filtro_proyecto').value; 
+            let estado = document.getElementById('filtro_estado').value; 
+            let producto = document.getElementById('filtro_producto').value;
+            let piso = document.getElementById('filtro_piso').value.trim().toUpperCase(); 
+            let bloque = document.getElementById('filtro_bloque').value.trim().toUpperCase(); 
+            let suite = document.getElementById('filtro_suite').value.trim().toUpperCase(); 
+            let texto = document.getElementById('filtro_texto').value.trim().toLowerCase();
+            let fechaInicio = document.getElementById('filtro_fecha_inicio').value; 
+            let fechaFin = document.getElementById('filtro_fecha_fin').value;
 
             let hayFiltrosActivos = (proyecto !== "Todos" || estado !== "Todos" || producto !== "Todos" || piso !== "" || bloque !== "" || suite !== "" || texto !== "" || fechaInicio !== "");
 
@@ -315,7 +385,10 @@
             if (hayFiltrosActivos) {
                 if (piso !== "") datosFiltrados = datosFiltrados.filter(fila => (fila.piso || "").toUpperCase() === piso);
                 if (bloque !== "") datosFiltrados = datosFiltrados.filter(fila => (fila.bloque || "").toUpperCase() === bloque);
-                if (suite !== "") datosFiltrados = datosFiltrados.filter(fila => (fila.suite || "").toUpperCase() === suite);
+                
+                // MODIFICACIÓN CLAVE: Busqueda Parcial (Includes) en vez de coincidencia exacta
+                if (suite !== "") datosFiltrados = datosFiltrados.filter(fila => (fila.suite || "").toUpperCase().includes(suite));
+                
                 if (texto !== "") {
                     datosFiltrados = datosFiltrados.filter(fila => {
                         let codigo = (fila.codigo_proyecto || "").toLowerCase(); let obs = (fila.observaciones || "").toLowerCase(); let mod = (fila.modificaciones || "").toLowerCase();
@@ -385,8 +458,11 @@
 
                 let obsText = fila.observaciones || ''; let modText = fila.modificaciones || '';
                 
+                // Mostrar producto junto con su espacio (si lo tiene)
+                let prodEspacio = fila.espacio ? `${fila.producto} - ${fila.espacio}` : fila.producto;
+
                 tbody.innerHTML += `<tr>
-                        <td style="font-weight:bold;">${fechaCorta}</td><td><strong>${fila.codigo_proyecto || '-'}</strong></td><td>${ubicacionVisual}</td><td>${fila.producto} (${fila.espacio})</td>
+                        <td style="font-weight:bold;">${fechaCorta}</td><td><strong>${fila.codigo_proyecto || '-'}</strong></td><td>${ubicacionVisual}</td><td>${prodEspacio}</td>
                         <td style="text-align: center;"><span class="badge-estado" style="${estiloBadge}">${nombreEstado}</span></td>
                         <td title="${obsText}"><span class="texto-truncado">${obsText}</span></td><td title="${modText}"><span class="texto-truncado">${modText}</span></td>
                         <td class="acciones-col">
