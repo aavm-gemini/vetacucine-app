@@ -2,14 +2,18 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Taller - VetaCucine</title>
+    <link rel="manifest" href="manifest.json">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
-        /* --- ESTRUCTURA GENERAL --- */
-        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f8fafc; overflow: hidden; }
-        .app-container { display: flex; height: 100vh; width: 100vw; }
+        /* --- ESTRUCTURA GENERAL Y BLOQUEO LATERAL --- */
+        html, body { 
+            font-family: Arial, sans-serif; margin: 0; padding: 0; 
+            background-color: #f8fafc; width: 100vw; overflow-x: hidden; color: #1e293b;
+        }
+        .app-container { display: flex; height: 100vh; width: 100vw; overflow-x: hidden; }
         
         .sidebar { width: 250px; background-color: #1e293b; color: white; display: flex; flex-direction: column; transition: 0.3s; box-shadow: 2px 0 10px rgba(0,0,0,0.1); z-index: 10; }
         .sidebar-header { padding: 25px 20px; font-size: 22px; font-weight: bold; border-bottom: 1px solid #334155; text-align: center; letter-spacing: 1px; color: white; }
@@ -21,51 +25,119 @@
         .nav-links a:hover { background-color: #334155; color: white; }
         .nav-links a.active { background-color: #0f172a; border-left-color: #3b82f6; color: white; font-weight: bold; }
         
-        .main-content { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
+        .main-content { flex: 1; padding: 20px; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; align-items: center; box-sizing: border-box; }
 
-        /* --- DISEÑO ESPECÍFICO PARA EL TALLER (PANTALLAS TÁCTILES) --- */
-        .taller-header { width: 100%; max-width: 600px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        .operador-info { background: #e2e8f0; padding: 8px 15px; border-radius: 20px; font-weight: bold; color: #334155; font-size: 14px; display: flex; align-items: center; gap: 8px;}
+        /* --- CABECERA Y PESTAÑAS DE HERRAMIENTAS DEL OPERADOR --- */
+        .taller-header { width: 100%; max-width: 750px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+        .taller-titulo { font-size: 20px; font-weight: bold; color: #0f172a; margin: 0; }
+        .operador-info { background: #e2e8f0; padding: 6px 14px; border-radius: 20px; font-weight: bold; color: #334155; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+
+        .tabs-operador { display: flex; gap: 8px; width: 100%; max-width: 750px; margin-bottom: 20px; background: #e2e8f0; padding: 5px; border-radius: 10px; box-sizing: border-box; }
+        .tab-btn { flex: 1; padding: 12px 10px; border: none; background: transparent; border-radius: 8px; font-weight: bold; font-size: 13px; color: #475569; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+        .tab-btn.active { background: white; color: #2563eb; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+        .secciones-taller { width: 100%; max-width: 750px; display: flex; flex-direction: column; align-items: center; }
+
+        /* --- PESTAÑA 1: ESCÁNER Y PROCESAMIENTO DE LOTES --- */
+        .scanner-card { background: white; width: 100%; max-width: 550px; padding: 25px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; border-top: 8px solid #3b82f6; box-sizing: border-box; }
+        .scanner-card h2 { margin-top: 0; color: #1e293b; font-size: 22px; margin-bottom: 8px; }
+        .scanner-card p { color: #64748b; font-size: 14px; margin-bottom: 20px; }
         
-        .scanner-card { background: white; width: 100%; max-width: 500px; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; border-top: 8px solid #3b82f6; transition: 0.3s; }
-        .scanner-card h2 { margin-top: 0; color: #1e293b; font-size: 24px; margin-bottom: 10px; }
-        .scanner-card p { color: #64748b; font-size: 15px; margin-bottom: 25px; }
-        
-        .input-gigante { width: 100%; font-size: 36px; padding: 15px; text-align: center; font-weight: bold; border: 2px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; letter-spacing: 2px; color: #0f172a; outline: none; transition: 0.3s; }
+        .input-gigante { width: 100%; font-size: 32px; padding: 12px; text-align: center; font-weight: bold; border: 2px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; letter-spacing: 2px; color: #0f172a; outline: none; transition: 0.3s; }
         .input-gigante:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2); }
         
-        .btn-gigante { width: 100%; font-size: 20px; font-weight: bold; padding: 18px; margin-top: 20px; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 10px; }
+        .btn-gigante { width: 100%; font-size: 18px; font-weight: bold; padding: 16px; margin-top: 15px; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 10px; box-sizing: border-box; }
         .btn-buscar { background-color: #3b82f6; color: white; }
         .btn-buscar:hover { background-color: #2563eb; }
-        .btn-buscar:active { transform: scale(0.97); }
         
-        /* --- TARJETA DE VALIDACIÓN (RESULTADO) --- */
-        .resultado-card { width: 100%; max-width: 500px; background: white; margin-top: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); overflow: hidden; display: none; text-align: left; animation: aparecer 0.4s ease-out; }
-        @keyframes aparecer { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .resultado-card { width: 100%; max-width: 600px; background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); overflow: hidden; display: none; text-align: left; animation: aparecer 0.3s ease-out; box-sizing: border-box; }
+        @keyframes aparecer { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         
-        .res-header { background-color: #1e293b; color: white; padding: 15px 20px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        .res-header { background-color: #1e293b; color: white; padding: 15px 20px; font-size: 17px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
         .res-body { padding: 20px; }
-        .dato-grupo { margin-bottom: 15px; }
-        .dato-label { font-size: 12px; color: #64748b; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; margin-bottom: 4px; }
-        .dato-valor { font-size: 20px; color: #0f172a; font-weight: bold; }
-        .estado-actual { display: inline-block; background-color: #fef08a; color: #854d0e; padding: 6px 15px; border-radius: 20px; font-size: 14px; font-weight: bold; border: 1px solid #eab308; }
         
+        .lote-controles { display: flex; justify-content: space-between; align-items: center; background: #f1f5f9; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; font-weight: bold; }
+        .lista-piezas-lote { max-height: 260px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; }
+        .pieza-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #f1f5f9; gap: 10px; cursor: pointer; transition: 0.15s; }
+        .pieza-item:hover { background: #f8fafc; }
+        .pieza-item:last-child { border-bottom: none; }
+        .pieza-item input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; accent-color: #10b981; }
+        .pieza-info { flex: 1; font-size: 14px; }
+        .pieza-info strong { color: #0f172a; display: block; }
+        .pieza-info span { color: #64748b; font-size: 12px; }
+        .badge-estado-mini { background: #fef08a; color: #854d0e; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; border: 1px solid #eab308; white-space: nowrap; }
+
         .btn-accion-verde { background-color: #10b981; color: white; }
         .btn-accion-verde:hover { background-color: #059669; }
-        .btn-accion-verde:active { transform: scale(0.97); }
+        .btn-cancelar { width: 100%; font-size: 15px; padding: 10px; margin-top: 8px; border: none; background: transparent; color: #64748b; font-weight: bold; cursor: pointer; text-decoration: underline; }
 
-        .btn-cancelar { width: 100%; font-size: 16px; padding: 12px; margin-top: 10px; border: none; background: transparent; color: #64748b; font-weight: bold; cursor: pointer; text-decoration: underline; }
+        /* --- PESTAÑA 2: MI LISTA DE TRABAJO (ESTILO CHECKLIST CORTADOR) --- */
+        .checklist-card { background: white; width: 100%; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 6px solid #8b5cf6; box-sizing: border-box; }
+        .add-lote-bar { display: flex; gap: 10px; margin-bottom: 20px; }
+        .add-lote-bar input { flex: 1; padding: 12px; font-size: 15px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; }
+        .add-lote-bar button { background: #8b5cf6; color: white; border: none; padding: 0 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        
+        .mi-lote-item { display: flex; align-items: flex-start; gap: 12px; padding: 14px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; background: white; transition: 0.2s; }
+        .mi-lote-item.completado { background: #f8fafc; opacity: 0.75; border-left: 4px solid #10b981; }
+        .mi-lote-item.completado .lote-titulo { text-decoration: line-through; color: #64748b; }
+        .check-grande { width: 22px; height: 22px; margin-top: 2px; cursor: pointer; accent-color: #10b981; }
+        .lote-contenido { flex: 1; }
+        .lote-titulo { font-weight: bold; font-size: 15px; color: #0f172a; margin-bottom: 4px; }
+        .lote-sub { font-size: 12px; color: #475569; margin-bottom: 6px; }
+        .lote-nota-input { width: 100%; border: none; border-bottom: 1px dashed #cbd5e1; background: transparent; font-size: 12px; color: #0f172a; padding: 4px 0; outline: none; font-style: italic; }
+        .lote-nota-input:focus { border-bottom-color: #8b5cf6; }
 
+        /* --- PESTAÑA 3: BITÁCORA DE RELEVO DE TURNOS --- */
+        .relevo-grid { display: grid; grid-template-columns: 1fr; gap: 20px; width: 100%; }
+        .card-relevo { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 6px solid #f59e0b; box-sizing: border-box; }
+        .form-grid-relevo { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 12px; }
+        .campo-relevo label { display: block; font-size: 11px; font-weight: bold; color: #64748b; margin-bottom: 4px; text-transform: uppercase; }
+        .campo-relevo select, .campo-relevo input, .campo-relevo textarea { width: 100%; padding: 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; box-sizing: border-box; font-family: inherit; }
+        
+        .filtros-muro { display: flex; gap: 10px; flex-wrap: wrap; background: #f1f5f9; padding: 12px; border-radius: 8px; margin-bottom: 15px; align-items: end; }
+        .filtros-muro > div { flex: 1; min-width: 120px; }
+        .filtros-muro label { display: block; font-size: 11px; font-weight: bold; color: #475569; margin-bottom: 3px; }
+        .filtros-muro select, .filtros-muro input { width: 100%; padding: 7px; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 12px; box-sizing: border-box; }
+
+        .tarjeta-turno { border: 1px solid #e2e8f0; border-left: 5px solid #3b82f6; border-radius: 8px; padding: 15px; margin-bottom: 12px; background: white; position: relative; }
+        .tarjeta-turno.cat-Falla { border-left-color: #ef4444; background: #fef2f2; }
+        .tarjeta-turno.cat-Material { border-left-color: #f59e0b; background: #fffbeb; }
+        .tarjeta-turno.cat-Continuar { border-left-color: #10b981; }
+        
+        .turno-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px; font-size: 12px; }
+        .ruta-areas { background: #1e293b; color: white; padding: 3px 9px; border-radius: 12px; font-weight: bold; font-size: 11px; }
+        .badge-turno { padding: 3px 8px; border-radius: 6px; font-weight: bold; font-size: 11px; }
+        .turno-manana { background: #fef9c3; color: #854d0e; }
+        .turno-tarde { background: #e0e7ff; color: #1e40af; }
+        
+        .turno-proy { display: inline-block; background: #dbeafe; color: #1e40af; font-weight: bold; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-bottom: 6px; }
+        .turno-msj { font-size: 14px; color: #1e293b; line-height: 1.45; white-space: pre-wrap; margin: 6px 0 10px 0; }
+        .turno-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(0,0,0,0.06); padding-top: 8px; font-size: 11px; color: #64748b; flex-wrap: wrap; gap: 8px; }
+        .btn-enterado { background: #10b981; color: white; border: none; padding: 5px 12px; border-radius: 15px; font-size: 11px; font-weight: bold; cursor: pointer; }
+        .leido-tag { color: #059669; font-weight: bold; }
+
+        /* --- RESPONSIVO MÓVIL UNIFICADO --- */
         @media (max-width: 768px) { 
-            body { overflow: auto; }
-            .app-container { flex-direction: column; height: auto; }
-            .sidebar { width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            .sidebar-header { padding: 15px; }
-            .nav-links { flex-direction: row; margin-top: 0; justify-content: space-around; background-color: #0f172a; }
-            .nav-links a { padding: 10px 5px; font-size: 12px; flex-direction: column; gap: 4px; text-align: center; border:none; }
-            .nav-links a.active { border-bottom: 3px solid #3b82f6; }
-            .main-content { padding: 15px; height: auto; overflow-y: visible; justify-content: flex-start; }
-            .taller-header { margin-bottom: 15px; }
+            html, body { overflow-x: hidden !important; overflow-y: auto !important; }
+            .app-container { flex-direction: column; height: auto; width: 100%; overflow-x: hidden !important; }
+            .sidebar { width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 100; }
+            .sidebar-header { padding: 15px; font-size: 20px; }
+            
+            .nav-links { 
+                flex-direction: row; margin-top: 0; justify-content: flex-start; 
+                background-color: #0f172a; overflow-x: auto; overflow-y: hidden; 
+                white-space: nowrap; -webkit-overflow-scrolling: touch; padding: 0 5px; 
+            }
+            .nav-links::-webkit-scrollbar { display: none; }
+            .nav-links a { 
+                padding: 12px 15px; font-size: 13px; border-left: none; border-bottom: 3px solid transparent; 
+                flex: 0 0 auto; gap: 6px; display: inline-flex; align-items: center;
+            }
+            .nav-links a.active { border-left: none; border-bottom-color: #3b82f6; }
+            
+            .main-content { padding: 12px; height: auto; width: 100%; overflow-x: hidden !important; }
+            .tabs-operador { overflow-x: auto; }
+            .tab-btn { font-size: 12px; padding: 10px 8px; }
+            .form-grid-relevo { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -87,52 +159,203 @@
         <div class="main-content">
             
             <div class="taller-header">
-                <img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Logo" style="height: 30px; visibility: hidden;"> 
+                <h3 class="taller-titulo">Centro de Operaciones</h3>
                 <div class="operador-info">
                     👤 <span id="nombreOperador">Cargando...</span>
                 </div>
             </div>
 
-            <!-- 1. PANTALLA DE BÚSQUEDA -->
-            <div class="scanner-card" id="panel_busqueda">
-                <h2>Control de Planta</h2>
-                <p>Ingresa el código interno del mueble para procesarlo</p>
+            <!-- NAVEGACIÓN INTERNA DEL OPERADOR -->
+            <div class="tabs-operador">
+                <button class="tab-btn active" id="tab_btn_escaner" onclick="cambiarTab('escaner')">🔍 Procesar Lote</button>
+                <button class="tab-btn" id="tab_btn_lista" onclick="cambiarTab('lista')">📋 Mi Lista (Corte/Taller)</button>
+                <button class="tab-btn" id="tab_btn_relevo" onclick="cambiarTab('relevo')">🤝 Relevo de Turno</button>
+            </div>
+
+            <div class="secciones-taller">
                 
-                <input type="text" id="codigo_ingresado" class="input-gigante" placeholder="Ej: 033" onkeypress="manejarEnter(event)">
-                <button class="btn-gigante btn-buscar" onclick="buscarMueble()">🔍 Buscar Mueble</button>
-            </div>
+                <!-- =========================================================
+                     SECCIÓN 1: ESCÁNER Y PROCESADOR DE LOTES (SOLUCIÓN #516)
+                     ========================================================= -->
+                <div id="seccion_escaner" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                    <div class="scanner-card" id="panel_busqueda">
+                        <h2>Control de Planta</h2>
+                        <p>Ingresa el código de proyecto/lote para avanzar una o todas sus piezas</p>
+                        
+                        <input type="text" id="codigo_ingresado" class="input-gigante" placeholder="Ej: 516" onkeypress="manejarEnter(event)">
+                        <button class="btn-gigante btn-buscar" onclick="buscarMueble()">🔍 Buscar Código</button>
+                    </div>
 
-            <!-- 2. TARJETA DE VALIDACIÓN (Aparece tras buscar) -->
-            <div class="resultado-card" id="panel_resultado">
-                <div class="res-header">
-                    <span>Mueble Encontrado</span>
-                    <span id="res_codigo" style="color: #cbd5e1;">#033</span>
+                    <div class="resultado-card" id="panel_resultado">
+                        <div class="res-header">
+                            <span id="res_titulo_header">Lote Encontrado</span>
+                            <span id="res_codigo" style="color: #93c5fd;">#516</span>
+                        </div>
+                        <div class="res-body">
+                            <div style="margin-bottom: 12px;">
+                                <div style="font-size: 11px; color: #64748b; font-weight: bold; text-transform: uppercase;">Proyecto Principal</div>
+                                <div style="font-size: 18px; font-weight: bold; color: #0f172a;" id="res_proyecto_nombre">Quarzo Mohedano</div>
+                            </div>
+
+                            <!-- Controles de selección de piezas del lote -->
+                            <div class="lote-controles">
+                                <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                    <input type="checkbox" id="chk_seleccionar_todo" onchange="alternarSeleccionLote(this.checked)" style="width:18px; height:18px;">
+                                    Seleccionar todas las del mismo estado
+                                </label>
+                                <span id="contador_seleccionadas" style="color:#2563eb;">0 seleccionadas</span>
+                            </div>
+
+                            <!-- Lista de puertas/muebles asociados a ese código -->
+                            <div class="lista-piezas-lote" id="contenedor_piezas_lote"></div>
+
+                            <!-- Observación opcional al procesar -->
+                            <div style="margin-bottom: 10px;">
+                                <input type="text" id="nota_avance_lote" placeholder="Nota opcional (Ej: PDF elaborado, cantos listos...)" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; font-size:13px;">
+                            </div>
+
+                            <button class="btn-gigante btn-accion-verde" id="btn_procesar" onclick="registrarAvanceLote()">
+                                ✅ Procesar Seleccionadas
+                            </button>
+                            
+                            <button class="btn-cancelar" onclick="cancelarOperacion()">❌ Cancelar y buscar otro código</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="res-body">
-                    <div class="dato-grupo">
-                        <div class="dato-label">Proyecto y Ubicación</div>
-                        <div class="dato-valor" id="res_ubicacion">Promenade - Piso 9 - Suite Miami</div>
-                    </div>
-                    
-                    <div class="dato-grupo">
-                        <div class="dato-label">Producto</div>
-                        <div class="dato-valor" id="res_producto" style="color: #3b82f6;">Puerta Principal (COC)</div>
-                    </div>
 
-                    <div class="dato-grupo">
-                        <div class="dato-label">Estado Actual en Sistema</div>
-                        <div class="estado-actual" id="res_estado_actual">En Corte</div>
-                    </div>
+                <!-- =========================================================
+                     SECCIÓN 2: MI LISTA DE TRABAJO (REEMPLAZO BLOC DE NOTAS)
+                     ========================================================= -->
+                <div id="seccion_lista" style="width: 100%; display: none;">
+                    <div class="checklist-card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+                            <div>
+                                <h3 style="margin:0; color:#1e293b;">📋 Mi Hoja de Ruta del Turno</h3>
+                                <p style="margin:3px 0 0 0; font-size:12px; color:#64748b;">Anota los códigos que vas a trabajar hoy, escribe tus notas (PDF, capturas) y márcalos al terminar.</p>
+                            </div>
+                            <button onclick="limpiarCompletadosLista()" style="background:#f1f5f9; border:1px solid #cbd5e1; color:#475569; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">🧹 Limpiar Terminados</button>
+                        </div>
 
-                    <!-- El botón mágico que se adapta automáticamente -->
-                    <button class="btn-gigante btn-accion-verde" id="btn_procesar" onclick="registrarAvance()">
-                        ✅ Marcar Listo
-                    </button>
-                    
-                    <button class="btn-cancelar" onclick="cancelarOperacion()">❌ Cancelar y buscar otro</button>
+                        <div class="add-lote-bar">
+                            <input type="text" id="input_nuevo_lote_lista" placeholder="Escribe código (Ej: 474, 516) o descripción..." onkeypress="if(event.key==='Enter') agregarAMiLista()">
+                            <button onclick="agregarAMiLista()">+ Agregar</button>
+                        </div>
+
+                        <div id="contenedor_mi_lista"></div>
+                    </div>
                 </div>
-            </div>
 
+                <!-- =========================================================
+                     SECCIÓN 3: BITÁCORA DE RELEVO DE TURNOS POR ÁREA
+                     ========================================================= -->
+                <div id="seccion_relevo" style="width: 100%; display: none;">
+                    <div class="relevo-grid">
+                        
+                        <!-- Formulario para dejar reporte al turno siguiente -->
+                        <div class="card-relevo">
+                            <h3 style="margin-top:0; margin-bottom:12px; color:#1e293b;">📝 Dejar Reporte / Novedad de Turno</h3>
+                            
+                            <div class="form-grid-relevo">
+                                <div class="campo-relevo">
+                                    <label>Turno que reporta</label>
+                                    <select id="rel_turno">
+                                        <option value="Mañana">☀️ Turno Mañana</option>
+                                        <option value="Tarde">🌙 Turno Tarde</option>
+                                    </select>
+                                </div>
+                                <div class="campo-relevo">
+                                    <label>Cód. Proyecto / Lote</label>
+                                    <input type="text" id="rel_codigo" placeholder="Ej: 516 o General" style="text-transform:uppercase;">
+                                </div>
+                                <div class="campo-relevo">
+                                    <label>Desde mi Área (Origen)</label>
+                                    <select id="rel_origen">
+                                        <option value="Corte">🪚 Corte</option>
+                                        <option value="Canteo">📏 Canteo</option>
+                                        <option value="CNC (Pratix S)">⚙️ CNC (Pratix S)</option>
+                                        <option value="CNC (Z2)">🔩 CNC (Z2)</option>
+                                        <option value="Digitalización">📐 Digitalización</option>
+                                        <option value="Ensamblado">🔨 Ensamblado</option>
+                                    </select>
+                                </div>
+                                <div class="campo-relevo">
+                                    <label>Para el Área (Destino)</label>
+                                    <select id="rel_destino">
+                                        <option value="Todas">📢 Todas las Áreas</option>
+                                        <option value="Corte">🪚 Corte</option>
+                                        <option value="Canteo">📏 Canteo</option>
+                                        <option value="CNC (Pratix S)">⚙️ CNC (Pratix S)</option>
+                                        <option value="CNC (Z2)">🔩 CNC (Z2)</option>
+                                        <option value="Digitalización">📐 Digitalización</option>
+                                        <option value="Ensamblado">🔨 Ensamblado</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="campo-relevo" style="margin-bottom:12px;">
+                                <label>Tipo de Reporte</label>
+                                <select id="rel_categoria">
+                                    <option value="Continuar">🟢 Continuar Proceso / Avance del día</option>
+                                    <option value="Material">🟡 Falta de Material / Insumos / Herrajes</option>
+                                    <option value="Falla">🔴 Falla de Máquina / Bloqueo Urgente</option>
+                                    <option value="Aviso">🔵 Instrucción o Aviso General</option>
+                                </select>
+                            </div>
+
+                            <div class="campo-relevo" style="margin-bottom:15px;">
+                                <label>Actividades realizadas o Instrucciones para el compañero</label>
+                                <textarea id="rel_mensaje" rows="3" placeholder="Ej: Quedaron cortadas las 5 puertas del 516, falta cantear los cantos largos..."></textarea>
+                            </div>
+
+                            <button onclick="publicarReporteTurno()" id="btn_publicar_relevo" style="width:100%; background:#f59e0b; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; font-size:15px; cursor:pointer;">
+                                🚀 Guardar en Bitácora de Turno
+                            </button>
+                        </div>
+
+                        <!-- Muro de visualización y filtros -->
+                        <div class="card-relevo" style="border-top-color: #3b82f6;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+                                <h3 style="margin:0; color:#1e293b;">📖 Historial de Entregas de Turno</h3>
+                                <span id="subtitulo_muro_relevo" style="font-size:12px; font-weight:bold; color:#2563eb; background:#dbeafe; padding:4px 10px; border-radius:12px;">Cargando...</span>
+                            </div>
+
+                            <div class="filtros-muro">
+                                <div>
+                                    <label>Fecha (Vacío = Último día)</label>
+                                    <input type="date" id="filtro_rel_fecha" onchange="cargarBitacoraTurnos()">
+                                </div>
+                                <div>
+                                    <label>Turno</label>
+                                    <select id="filtro_rel_turno" onchange="cargarBitacoraTurnos()">
+                                        <option value="Todos">Ambos Turnos</option>
+                                        <option value="Mañana">☀️ Mañana</option>
+                                        <option value="Tarde">🌙 Tarde</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>Filtrar Área</label>
+                                    <select id="filtro_rel_area" onchange="cargarBitacoraTurnos()">
+                                        <option value="Todas">Todas las máquinas/áreas</option>
+                                        <option value="Corte">🪚 Corte</option>
+                                        <option value="Canteo">📏 Canteo</option>
+                                        <option value="CNC (Pratix S)">⚙️ CNC (Pratix S)</option>
+                                        <option value="CNC (Z2)">🔩 CNC (Z2)</option>
+                                        <option value="Digitalización">📐 Digitalización</option>
+                                        <option value="Ensamblado">🔨 Ensamblado</option>
+                                    </select>
+                                </div>
+                                <button onclick="limpiarFechaRelevo()" style="background:#e2e8f0; border:none; padding:8px 12px; border-radius:5px; font-size:12px; font-weight:bold; color:#334155; cursor:pointer;">Ver Últimos</button>
+                            </div>
+
+                            <div id="contenedor_muro_relevo">
+                                <p style="text-align:center; color:#94a3b8; padding:20px;">Cargando reportes de turno...</p>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
         </div>
     </div>
 
@@ -142,137 +365,501 @@
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
         
         let operadorNombreCompleto = "";
-        let muebleSeleccionado = null;
-        let estadoSiguienteReal = null;
+        let operadorEmail = "";
+        let catalogoEstadosGlobal = [];
+        let piezasLoteActual = [];
+        let estadoObjetivoLote = null;
+        let estadoSiguienteLote = null;
+
+        const STORAGE_LISTA_KEY = 'veta_mi_lista_taller_v1';
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (!session) { window.location.href = 'login.html'; return; }
 
-            // Guardamos el nombre del operador para la Trazabilidad
-            operadorNombreCompleto = session.user.user_metadata.full_name;
+            operadorEmail = session.user.email;
+            operadorNombreCompleto = session.user.user_metadata.full_name || operadorEmail.split('@')[0];
             document.getElementById('nombreOperador').innerText = operadorNombreCompleto.split(' ')[0];
 
-            // Revisamos si es admin para ocultar el link
-            const correoUsuario = session.user.email;
-            const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol').eq('email', correoUsuario).single();
+            const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol').eq('email', operadorEmail).single();
             const rolUsuario = empleado ? empleado.rol.trim() : 'Operador'; 
             if (rolUsuario !== 'Administrador') {
                 const linkAdmin = document.getElementById('link-admin');
                 if (linkAdmin) linkAdmin.parentElement.style.display = 'none';
             }
 
+            // Detectar turno automático según la hora (Antes de las 14:00 = Mañana, después = Tarde)
+            const horaActual = new Date().getHours();
+            document.getElementById('rel_turno').value = horaActual < 14 ? 'Mañana' : 'Tarde';
+
+            // Cargar el catálogo de estados en memoria para saber el orden y saltos
+            const { data: est } = await supabaseClient.from('catalogo_estados').select('*').order('orden', { ascending: true });
+            if (est) catalogoEstadosGlobal = est;
+
             document.getElementById('codigo_ingresado').focus();
+            renderizarMiLista();
         });
+
+        // =========================================================
+        // NAVEGACIÓN ENTRE LAS 3 PESTAÑAS DEL TALLER
+        // =========================================================
+        function cambiarTab(tab) {
+            document.getElementById('seccion_escaner').style.display = tab === 'escaner' ? 'flex' : 'none';
+            document.getElementById('seccion_lista').style.display = tab === 'lista' ? 'block' : 'none';
+            document.getElementById('seccion_relevo').style.display = tab === 'relevo' ? 'block' : 'none';
+
+            document.getElementById('tab_btn_escaner').classList.toggle('active', tab === 'escaner');
+            document.getElementById('tab_btn_lista').classList.toggle('active', tab === 'lista');
+            document.getElementById('tab_btn_relevo').classList.toggle('active', tab === 'relevo');
+
+            if (tab === 'lista') renderizarMiLista();
+            if (tab === 'relevo') cargarBitacoraTurnos();
+        }
 
         function manejarEnter(e) {
             if (e.key === 'Enter') buscarMueble();
         }
 
-        async function buscarMueble() {
-            let codigo = document.getElementById('codigo_ingresado').value.trim();
+        // =========================================================
+        // PESTAÑA 1: BUSCADOR Y PROCESADOR INTELIGENTE DE LOTES (#516)
+        // =========================================================
+        async function buscarMueble(codigoForzado = null) {
+            let codigo = codigoForzado || document.getElementById('codigo_ingresado').value.trim();
             if (!codigo) {
                 Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Escribe un código', showConfirmButton: false, timer: 1500 });
                 return;
             }
 
-            Swal.fire({ title: 'Buscando...', text: 'Verificando en la base de datos', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+            Swal.fire({ title: 'Buscando lote...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
-            // 1. Buscar el mueble en la tabla principal
-            const { data: muebles, error } = await supabaseClient.from('registros_produccion').select('*').eq('codigo_proyecto', codigo);
+            const { data: muebles, error } = await supabaseClient
+                .from('registros_produccion')
+                .select('*')
+                .eq('codigo_proyecto', codigo)
+                .order('piso', { ascending: true })
+                .order('suite', { ascending: true });
             
             if (error || !muebles || muebles.length === 0) {
-                Swal.fire({ icon: 'error', title: 'Código no encontrado', text: `No existe ningún mueble con el código "${codigo}". Verifica e intenta de nuevo.`, confirmButtonColor: '#1e293b' });
-                document.getElementById('codigo_ingresado').value = '';
-                document.getElementById('codigo_ingresado').focus();
+                Swal.fire({ icon: 'error', title: 'Código no encontrado', text: `No existe ningún mueble registrado con el código "${codigo}".`, confirmButtonColor: '#1e293b' });
                 return;
             }
 
-            // Si hay más de uno (no debería), tomamos el primero
-            muebleSeleccionado = muebles[0];
-
-            // 2. Buscar cuál es el estado siguiente según el catálogo
-            const { data: estadoCat } = await supabaseClient.from('catalogo_estados').select('estado_siguiente').eq('nombre', muebleSeleccionado.estado).single();
-            
-            estadoSiguienteReal = (estadoCat && estadoCat.estado_siguiente) ? estadoCat.estado_siguiente : null;
-
+            piezasLoteActual = muebles;
             Swal.close();
 
-            // 3. Mostrar los datos visuales
+            // Determinar cuál es el estado más atrasado del lote (para nivelar piezas rezagadas como en el 516)
+            let mapaOrden = {};
+            catalogoEstadosGlobal.forEach(e => { mapaOrden[e.nombre] = e.orden || 999; });
+
+            let piezasOrdenadasPorEtapa = [...muebles].sort((a, b) => (mapaOrden[a.estado] || 1) - (mapaOrden[b.estado] || 1));
+            estadoObjetivoLote = piezasOrdenadasPorEtapa[0].estado;
+
+            let infoEstado = catalogoEstadosGlobal.find(e => e.nombre === estadoObjetivoLote);
+            estadoSiguienteLote = (infoEstado && infoEstado.estado_siguiente) ? infoEstado.estado_siguiente : null;
+
+            // Mostrar interfaz de resultados
             document.getElementById('panel_busqueda').style.display = 'none';
             document.getElementById('panel_resultado').style.display = 'block';
 
-            document.getElementById('res_codigo').innerText = `#${muebleSeleccionado.codigo_proyecto}`;
-            let bloqueStr = muebleSeleccionado.bloque ? ` - Blq ${muebleSeleccionado.bloque}` : '';
-            document.getElementById('res_ubicacion').innerText = `${muebleSeleccionado.proyecto} | Piso ${muebleSeleccionado.piso}${bloqueStr} | Suite ${muebleSeleccionado.suite}`;
-            document.getElementById('res_producto').innerText = `${muebleSeleccionado.producto} (${muebleSeleccionado.espacio})`;
-            document.getElementById('res_estado_actual').innerText = muebleSeleccionado.estado;
+            document.getElementById('res_titulo_header').innerText = muebles.length > 1 ? `Lote Encontrado (${muebles.length} piezas)` : `Mueble Encontrado (1 pieza)`;
+            document.getElementById('res_codigo').innerText = `#${codigo}`;
+            document.getElementById('res_proyecto_nombre').innerText = muebles[0].proyecto;
+            document.getElementById('nota_avance_lote').value = '';
 
-            // 4. Lógica del Botón Mágico
+            dibujarListaPiezasLote();
+        }
+
+        function dibujarListaPiezasLote() {
+            const contenedor = document.getElementById('contenedor_piezas_lote');
+            contenedor.innerHTML = '';
+
+            piezasLoteActual.forEach((p, idx) => {
+                // Pre-seleccionamos automáticamente las piezas que están en la etapa más atrasada
+                let coincideEtapaActiva = (p.estado === estadoObjetivoLote);
+                let blq = p.bloque ? ` - Blq ${p.bloque}` : '';
+                let ubicacion = `Piso ${p.piso}${blq} | Suite ${p.suite}`;
+                let prod = `${p.producto} (${p.espacio || '-'})`;
+
+                contenedor.innerHTML += `
+                    <label class="pieza-item">
+                        <input type="checkbox" class="chk-pieza-lote" value="${p.id}" data-estado="${p.estado}" ${coincideEtapaActiva ? 'checked' : ''} onchange="actualizarBotonLote()">
+                        <div class="pieza-info">
+                            <strong>${ubicacion} — <span style="color:#2563eb;">${prod}</span></strong>
+                            <span>${p.observaciones ? '📌 ' + p.observaciones : 'Sin observaciones'}</span>
+                        </div>
+                        <span class="badge-estado-mini" onclick="event.preventDefault(); cambiarEtapaObjetivo('${p.estado}')" title="Toca para filtrar por este estado">${p.estado}</span>
+                    </label>
+                `;
+            });
+
+            document.getElementById('chk_seleccionar_todo').checked = true;
+            actualizarBotonLote();
+        }
+
+        function cambiarEtapaObjetivo(nuevoEstado) {
+            estadoObjetivoLote = nuevoEstado;
+            let infoEstado = catalogoEstadosGlobal.find(e => e.nombre === estadoObjetivoLote);
+            estadoSiguienteLote = (infoEstado && infoEstado.estado_siguiente) ? infoEstado.estado_siguiente : null;
+            dibujarListaPiezasLote();
+        }
+
+        function alternarSeleccionLote(marcar) {
+            const checks = document.querySelectorAll('.chk-pieza-lote');
+            checks.forEach(chk => {
+                if (marcar) {
+                    chk.checked = (chk.getAttribute('data-estado') === estadoObjetivoLote);
+                } else {
+                    chk.checked = false;
+                }
+            });
+            actualizarBotonLote();
+        }
+
+        function actualizarBotonLote() {
+            const seleccionados = Array.from(document.querySelectorAll('.chk-pieza-lote:checked'));
+            document.getElementById('contador_seleccionadas').innerText = `${seleccionados.length} de ${piezasLoteActual.length} seleccionadas`;
+
             let btnAccion = document.getElementById('btn_procesar');
-            
-            if (estadoSiguienteReal) {
-                btnAccion.style.display = 'flex';
-                btnAccion.innerHTML = `✅ Terminar y enviar a: <b>${estadoSiguienteReal}</b>`;
+            if (seleccionados.length === 0) {
+                btnAccion.innerHTML = `⚠️ Selecciona al menos 1 pieza`;
+                btnAccion.disabled = true;
+                btnAccion.style.backgroundColor = "#94a3b8";
+                return;
+            }
+
+            // Revisar el estado de la primera pieza marcada para definir hacia dónde salta
+            let primerEstado = seleccionados[0].getAttribute('data-estado');
+            let infoEst = catalogoEstadosGlobal.find(e => e.nombre === primerEstado);
+            estadoSiguienteLote = (infoEst && infoEst.estado_siguiente) ? infoEst.estado_siguiente : null;
+
+            if (estadoSiguienteLote) {
                 btnAccion.disabled = false;
                 btnAccion.className = "btn-gigante btn-accion-verde";
+                btnAccion.style.backgroundColor = "#10b981";
+                btnAccion.innerHTML = `✅ Terminar (${seleccionados.length}) y enviar a: <b>${estadoSiguienteLote}</b>`;
             } else {
-                // Si no hay estado siguiente, significa que el proceso terminó (Ej: Ya está Instalado)
-                btnAccion.style.display = 'flex';
-                btnAccion.innerHTML = `🏁 Este mueble ya finalizó su proceso`;
                 btnAccion.disabled = true;
-                btnAccion.className = "btn-gigante";
                 btnAccion.style.backgroundColor = "#94a3b8";
+                btnAccion.innerHTML = `🏁 Estas piezas ya finalizaron su proceso`;
             }
         }
 
-        async function registrarAvance() {
-            if (!muebleSeleccionado || !estadoSiguienteReal) return;
+        async function registrarAvanceLote() {
+            const checks = Array.from(document.querySelectorAll('.chk-pieza-lote:checked'));
+            if (checks.length === 0 || !estadoSiguienteLote) return;
+
+            let idsSeleccionados = checks.map(c => c.value);
+            let notaExtra = document.getElementById('nota_avance_lote').value.trim();
 
             let btnAccion = document.getElementById('btn_procesar');
-            btnAccion.innerHTML = "⏳ Procesando...";
+            btnAccion.innerHTML = `⏳ Actualizando ${idsSeleccionados.length} pieza(s)...`;
             btnAccion.disabled = true;
 
-            // PASO A: Anotar en el Historial de Trazabilidad quién lo hizo
-            const { error: errHistorial } = await supabaseClient.from('historial_trazabilidad').insert([{
-                id_mueble: muebleSeleccionado.id,
-                etapa: muebleSeleccionado.estado, // Registramos la etapa que acaba de terminar
-                operador: operadorNombreCompleto, // Registramos quién apretó el botón
-                tipo_registro: 'Avance Normal'
-            }]);
+            // 1. Crear registros de historial para todas las piezas seleccionadas
+            let filasHistorial = idsSeleccionados.map(idMueble => {
+                let piezaOriginal = piezasLoteActual.find(p => String(p.id) === String(idMueble));
+                return {
+                    id_mueble: idMueble,
+                    etapa: piezaOriginal ? piezaOriginal.estado : estadoObjetivoLote,
+                    operador: operadorNombreCompleto,
+                    tipo_registro: 'Avance de Lote',
+                    comentarios: notaExtra ? `Avanzó a ${estadoSiguienteLote}. Nota: ${notaExtra}` : `Avanzó a ${estadoSiguienteLote}`
+                };
+            });
 
+            const { error: errHistorial } = await supabaseClient.from('historial_trazabilidad').insert(filasHistorial);
             if (errHistorial) {
                 Swal.fire('Error', 'Falla al guardar el historial.', 'error');
                 btnAccion.disabled = false;
                 return;
             }
 
-            // PASO B: Mover el mueble al siguiente estado en la tabla principal
-            const { error: errMueble } = await supabaseClient.from('registros_produccion').update({
-                estado: estadoSiguienteReal
-            }).eq('id', muebleSeleccionado.id);
+            // 2. Actualizar todas las piezas en bloque usando .in()
+            let datosUpdate = { estado: estadoSiguienteLote };
+            if (notaExtra) {
+                // Si el operador escribió una nota (ej. "PDF elaborado"), se actualiza para cada una
+                for (let idM of idsSeleccionados) {
+                    let pOrig = piezasLoteActual.find(p => String(p.id) === String(idM));
+                    let obsNueva = pOrig && pOrig.observaciones ? `${pOrig.observaciones} | ${notaExtra}` : notaExtra;
+                    await supabaseClient.from('registros_produccion').update({ estado: estadoSiguienteLote, observaciones: obsNueva }).eq('id', idM);
+                }
+            } else {
+                const { error: errMueble } = await supabaseClient
+                    .from('registros_produccion')
+                    .update({ estado: estadoSiguienteLote })
+                    .in('id', idsSeleccionados);
 
-            if (errMueble) {
-                Swal.fire('Error', 'Falla al actualizar el mueble.', 'error');
-                btnAccion.disabled = false;
-                return;
+                if (errMueble) {
+                    Swal.fire('Error', 'Falla al actualizar las piezas.', 'error');
+                    btnAccion.disabled = false;
+                    return;
+                }
             }
 
-            // ÉXITO TOTAL: Volver a la pantalla principal limpios
-            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '¡Trabajo Registrado!', text: `Mueble enviado a ${estadoSiguienteReal}`, showConfirmButton: false, timer: 3000, timerProgressBar: true });
+            Swal.fire({ 
+                toast: true, position: 'top-end', icon: 'success', 
+                title: `¡${idsSeleccionados.length} pieza(s) actualizadas!`, 
+                text: `Enviadas a ${estadoSiguienteLote}`, 
+                showConfirmButton: false, timer: 3000 
+            });
             
-            cancelarOperacion(); // Esto limpia la pantalla y lo deja listo para el siguiente mueble
+            cancelarOperacion();
         }
 
         function cancelarOperacion() {
-            muebleSeleccionado = null;
-            estadoSiguienteReal = null;
+            piezasLoteActual = [];
+            estadoSiguienteLote = null;
             document.getElementById('codigo_ingresado').value = '';
-            
             document.getElementById('panel_resultado').style.display = 'none';
             document.getElementById('panel_busqueda').style.display = 'block';
-            
             document.getElementById('codigo_ingresado').focus();
+        }
+
+        // =========================================================
+        // PESTAÑA 2: MI LISTA PERSONAL DEL TURNO (CHECKLIST CORTADOR)
+        // =========================================================
+        function obtenerMiLista() {
+            try { return JSON.parse(localStorage.getItem(STORAGE_LISTA_KEY) || '[]'); } 
+            catch { return []; }
+        }
+
+        function guardarMiLista(lista) {
+            localStorage.setItem(STORAGE_LISTA_KEY, JSON.stringify(lista));
+        }
+
+        async function agregarAMiLista() {
+            const input = document.getElementById('input_nuevo_lote_lista');
+            let texto = input.value.trim();
+            if (!texto) return;
+
+            let lista = obtenerMiLista();
+            // Consultamos en Supabase si ese código existe para traer de una vez el nombre del proyecto y cantidad de piezas
+            let resumenProyecto = "Proyecto manual / Externo";
+            let estadoActual = "Pendiente";
+
+            const { data: encontrados } = await supabaseClient.from('registros_produccion').select('proyecto, producto, estado').eq('codigo_proyecto', texto);
+            if (encontrados && encontrados.length > 0) {
+                resumenProyecto = `${encontrados[0].proyecto} (${encontrados.length} ${encontrados[0].producto})`;
+                estadoActual = encontrados[0].estado;
+            }
+
+            lista.unshift({
+                id: Date.now(),
+                codigo: texto,
+                resumen: resumenProyecto,
+                estado: estadoActual,
+                nota: "PDF elaborado, captura enviada",
+                completado: false
+            });
+
+            guardarMiLista(lista);
+            input.value = '';
+            renderizarMiLista();
+        }
+
+        function renderizarMiLista() {
+            const contenedor = document.getElementById('contenedor_mi_lista');
+            let lista = obtenerMiLista();
+
+            if (lista.length === 0) {
+                contenedor.innerHTML = `<p style="text-align:center; color:#94a3b8; padding:25px; font-style:italic;">Tu lista está vacía. Agrega los códigos de hoy (Ej: 474, 516) arriba.</p>`;
+                return;
+            }
+
+            contenedor.innerHTML = '';
+            lista.forEach(item => {
+                contenedor.innerHTML += `
+                    <div class="mi-lote-item ${item.completado ? 'completado' : ''}">
+                        <input type="checkbox" class="check-grande" ${item.completado ? 'checked' : ''} onchange="marcarItemLista(${item.id}, this.checked)">
+                        <div class="lote-contenido">
+                            <div class="lote-titulo">#${item.codigo} — ${item.resumen}</div>
+                            <div class="lote-sub">Estado ref: <b>${item.estado}</b></div>
+                            <input type="text" class="lote-nota-input" value="${item.nota || ''}" placeholder="Escribe nota rápida (Ej: PDF elaborado...)" onchange="actualizarNotaLista(${item.id}, this.value)">
+                        </div>
+                        <button onclick="abrirEnEscaner('${item.codigo}')" style="background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; padding:6px 10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer; white-space:nowrap;">
+                            ⚡ Procesar
+                        </button>
+                    </div>
+                `;
+            });
+        }
+
+        function marcarItemLista(id, estadoCheck) {
+            let lista = obtenerMiLista();
+            let item = lista.find(x => x.id === id);
+            if (item) item.completado = estadoCheck;
+            guardarMiLista(lista);
+            renderizarMiLista();
+        }
+
+        function actualizarNotaLista(id, nuevaNota) {
+            let lista = obtenerMiLista();
+            let item = lista.find(x => x.id === id);
+            if (item) item.nota = nuevaNota;
+            guardarMiLista(lista);
+        }
+
+        function limpiarCompletadosLista() {
+            let lista = obtenerMiLista().filter(x => !x.completado);
+            guardarMiLista(lista);
+            renderizarMiLista();
+        }
+
+        function abrirEnEscaner(codigo) {
+            cambiarTab('escaner');
+            document.getElementById('codigo_ingresado').value = codigo;
+            buscarMueble(codigo);
+        }
+
+        // =========================================================
+        // PESTAÑA 3: BITÁCORA DE RELEVO DE TURNOS (POR MÁQUINA/ÁREA)
+        // =========================================================
+        async function publicarReporteTurno() {
+            const turno = document.getElementById('rel_turno').value;
+            const codigo = document.getElementById('rel_codigo').value.trim().toUpperCase() || 'GENERAL';
+            const origen = document.getElementById('rel_origen').value;
+            const destino = document.getElementById('rel_destino').value;
+            const categoria = document.getElementById('rel_categoria').value;
+            const mensaje = document.getElementById('rel_mensaje').value.trim();
+
+            if (!mensaje) {
+                Swal.fire('Falta el reporte', 'Escribe las actividades realizadas o las instrucciones para el siguiente turno.', 'warning');
+                return;
+            }
+
+            const btn = document.getElementById('btn_publicar_relevo');
+            btn.disabled = true; btn.innerText = "Guardando...";
+
+            const offset = (new Date()).getTimezoneOffset() * 60000;
+            const fechaHoyLocal = (new Date(Date.now() - offset)).toISOString().split('T')[0];
+
+            const { error } = await supabaseClient.from('bitacora_turnos').insert([{
+                fecha: fechaHoyLocal,
+                turno: turno,
+                area_origen: origen,
+                area_destino: destino,
+                codigo_proyecto: codigo,
+                categoria: categoria,
+                mensaje: mensaje,
+                autor_email: operadorEmail,
+                autor_nombre: operadorNombreCompleto
+            }]);
+
+            btn.disabled = false; btn.innerText = "🚀 Guardar en Bitácora de Turno";
+
+            if (error) {
+                Swal.fire('Error al guardar', 'Verifica haber creado la tabla bitacora_turnos en Supabase. Detalle: ' + error.message, 'error');
+                return;
+            }
+
+            document.getElementById('rel_mensaje').value = '';
+            document.getElementById('rel_codigo').value = '';
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Reporte de turno publicado', showConfirmButton: false, timer: 2000 });
+            cargarBitacoraTurnos();
+        }
+
+        function limpiarFechaRelevo() {
+            document.getElementById('filtro_rel_fecha').value = '';
+            document.getElementById('filtro_rel_turno').value = 'Todos';
+            document.getElementById('filtro_rel_area').value = 'Todas';
+            cargarBitacoraTurnos();
+        }
+
+        async function cargarBitacoraTurnos() {
+            const contenedor = document.getElementById('contenedor_muro_relevo');
+            const subtitulo = document.getElementById('subtitulo_muro_relevo');
+            
+            const fechaFiltro = document.getElementById('filtro_rel_fecha').value;
+            const turnoFiltro = document.getElementById('filtro_rel_turno').value;
+            const areaFiltro = document.getElementById('filtro_rel_area').value;
+
+            let query = supabaseClient.from('bitacora_turnos').select('*').order('created_at', { ascending: false }).limit(60);
+
+            if (fechaFiltro) {
+                query = query.eq('fecha', fechaFiltro);
+            }
+            if (turnoFiltro !== 'Todos') {
+                query = query.eq('turno', turnoFiltro);
+            }
+
+            const { data, error } = await query;
+
+            if (error) {
+                contenedor.innerHTML = `<p style="color:#ef4444; text-align:center; padding:15px;">⚠️ Falta crear la tabla <b>bitacora_turnos</b> en Supabase SQL Editor.</p>`;
+                return;
+            }
+
+            let registros = data || [];
+
+            // Si dejó la fecha vacía, filtramos automáticamente por la fecha del último reporte registrado para mostrar el consolidado de ese último día
+            if (!fechaFiltro && registros.length > 0) {
+                let ultimaFechaRegistrada = registros[0].fecha;
+                registros = registros.filter(r => r.fecha === ultimaFechaRegistrada);
+                subtitulo.innerText = `📅 Mostrando último día activo: ${formatearFechaBonita(ultimaFechaRegistrada)}`;
+            } else if (fechaFiltro) {
+                subtitulo.innerText = `📅 Fecha filtrada: ${formatearFechaBonita(fechaFiltro)}`;
+            } else {
+                subtitulo.innerText = `Sin registros`;
+            }
+
+            // Filtro por Área (muestra si el área es Origen, Destino o si va dirigido a "Todas")
+            if (areaFiltro !== 'Todas') {
+                registros = registros.filter(r => r.area_origen === areaFiltro || r.area_destino === areaFiltro || r.area_destino === 'Todas');
+            }
+
+            if (registros.length === 0) {
+                contenedor.innerHTML = `<p style="text-align:center; color:#94a3b8; padding:25px; font-style:italic;">No hay reportes para estos filtros.</p>`;
+                return;
+            }
+
+            contenedor.innerHTML = '';
+            registros.forEach(r => {
+                let d = new Date(r.created_at);
+                let horaStr = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true });
+                let fechaCorta = formatearFechaBonita(r.fecha);
+                let claseTurno = r.turno === 'Mañana' ? 'turno-manana' : 'turno-tarde';
+                let iconoTurno = r.turno === 'Mañana' ? '☀️ Mañana' : '🌙 Tarde';
+
+                let bloqueLectura = r.leido 
+                    ? `<span class="leido-tag">✔️ Enterado: ${r.leido_por}</span>`
+                    : `<button class="btn-enterado" onclick="confirmarLecturaTurno(${r.id})">✋ Marcar Recibido</button>`;
+
+                contenedor.innerHTML += `
+                    <div class="tarjeta-turno cat-${r.categoria}">
+                        <div class="turno-top">
+                            <span class="ruta-areas">${r.area_origen} ➡️ Para: ${r.area_destino}</span>
+                            <span class="badge-turno ${claseTurno}">${iconoTurno} • ${fechaCorta} (${horaStr})</span>
+                        </div>
+                        <div class="turno-proy">📦 Proy/Lote: #${r.codigo_proyecto}</div>
+                        <div class="turno-msj">${r.mensaje}</div>
+                        <div class="turno-footer">
+                            <span>✍️ Reportó: <b>${r.autor_nombre}</b></span>
+                            ${bloqueLectura}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        async function confirmarLecturaTurno(idReporte) {
+            const { error } = await supabaseClient
+                .from('bitacora_turnos')
+                .update({ 
+                    leido: true, 
+                    leido_por: operadorNombreCompleto.split(' ')[0],
+                    fecha_lectura: new Date().toISOString()
+                })
+                .eq('id', idReporte);
+
+            if (!error) {
+                cargarBitacoraTurnos();
+            }
+        }
+
+        function formatearFechaBonita(fechaISO) {
+            if (!fechaISO) return '';
+            let p = fechaISO.split('-');
+            return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : fechaISO;
         }
     </script>
 </body>
