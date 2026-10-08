@@ -141,14 +141,12 @@
         /* TARJETAS DEL HISTORIAL DIFERENCIADAS POR TURNO (MAÑANA VS TARDE/NOCHE) */
         .tarjeta-turno { border: 1px solid #e2e8f0; border-left: 6px solid #3b82f6; border-radius: 10px; padding: 15px; margin-bottom: 14px; background: white; position: relative; transition: 0.2s; }
         
-        /* Estilo visual en el muro cuando el reporte es de MAÑANA */
         .tarjeta-turno.card-turno-manana {
             background-color: #fffdf7;
             border-color: #fde68a;
             border-top: 3px solid #f59e0b;
             box-shadow: 0 3px 10px rgba(245, 158, 11, 0.06);
         }
-        /* Estilo visual en el muro cuando el reporte es de TARDE / NOCHE */
         .tarjeta-turno.card-turno-tarde {
             background-color: #f8faff;
             border-color: #c7d2fe;
@@ -156,7 +154,6 @@
             box-shadow: 0 3px 10px rgba(79, 70, 229, 0.07);
         }
 
-        /* El borde izquierdo mantiene la prioridad de categoría (Continuar, Material, Falla, Aviso) */
         .tarjeta-turno.cat-Continuar { border-left-color: #10b981; }
         .tarjeta-turno.cat-Material { border-left-color: #f59e0b; }
         .tarjeta-turno.cat-Falla { border-left-color: #ef4444; background: #fef2f2 !important; border-color: #fecaca !important; }
@@ -561,7 +558,6 @@
             piezasLoteActual = muebles;
             Swal.close();
 
-            // Determinar cuál es el estado más atrasado del lote (para nivelar piezas rezagadas como en el 516)
             let mapaOrden = {};
             catalogoEstadosGlobal.forEach(e => { mapaOrden[e.nombre] = e.orden || 999; });
 
@@ -571,7 +567,6 @@
             let infoEstado = catalogoEstadosGlobal.find(e => e.nombre === estadoObjetivoLote);
             estadoSiguienteLote = (infoEstado && infoEstado.estado_siguiente) ? infoEstado.estado_siguiente : null;
 
-            // Mostrar interfaz de resultados
             document.getElementById('panel_busqueda').style.display = 'none';
             document.getElementById('panel_resultado').style.display = 'block';
 
@@ -588,7 +583,6 @@
             contenedor.innerHTML = '';
 
             piezasLoteActual.forEach((p, idx) => {
-                // Pre-seleccionamos automáticamente las piezas que están en la etapa más atrasada
                 let coincideEtapaActiva = (p.estado === estadoObjetivoLote);
                 let blq = p.bloque ? ` - Blq ${p.bloque}` : '';
                 let ubicacion = `Piso ${p.piso}${blq} | Suite ${p.suite}`;
@@ -641,7 +635,6 @@
                 return;
             }
 
-            // Revisar el estado de la primera pieza marcada para definir hacia dónde salta
             let primerEstado = seleccionados[0].getAttribute('data-estado');
             let infoEst = catalogoEstadosGlobal.find(e => e.nombre === primerEstado);
             estadoSiguienteLote = (infoEst && infoEst.estado_siguiente) ? infoEst.estado_siguiente : null;
@@ -669,7 +662,6 @@
             btnAccion.innerHTML = `⏳ Actualizando ${idsSeleccionados.length} pieza(s)...`;
             btnAccion.disabled = true;
 
-            // 1. Crear registros de historial para todas las piezas seleccionadas
             let filasHistorial = idsSeleccionados.map(idMueble => {
                 let piezaOriginal = piezasLoteActual.find(p => String(p.id) === String(idMueble));
                 return {
@@ -688,9 +680,7 @@
                 return;
             }
 
-            // 2. Actualizar todas las piezas en bloque usando .in()
             if (notaExtra) {
-                // Si el operador escribió una nota (ej. "PDF elaborado"), se actualiza para cada una
                 for (let idM of idsSeleccionados) {
                     let pOrig = piezasLoteActual.find(p => String(p.id) === String(idM));
                     let obsNueva = pOrig && pOrig.observaciones ? `${pOrig.observaciones} | ${notaExtra}` : notaExtra;
@@ -788,12 +778,23 @@
                             <div class="lote-sub">Estado ref: <b>${item.estado}</b></div>
                             <input type="text" class="lote-nota-input" value="${item.nota || ''}" placeholder="Escribe nota rápida (Ej: PDF elaborado...)" onchange="actualizarNotaLista(${item.id}, this.value)">
                         </div>
-                        <button onclick="abrirEnEscaner('${item.codigo}')" style="background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; padding:6px 10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer; white-space:nowrap;">
-                            ⚡ Procesar
-                        </button>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <button onclick="abrirEnEscaner('${item.codigo}')" style="background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; padding:6px 10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer; white-space:nowrap;">
+                                ⚡ Procesar
+                            </button>
+                            <button onclick="eliminarItemLista(${item.id})" title="Quitar de mi lista" style="background:#fef2f2; color:#ef4444; border:1px solid #fecaca; padding:6px 9px; border-radius:6px; font-size:13px; cursor:pointer;">
+                                🗑️
+                            </button>
+                        </div>
                     </div>
                 `;
             });
+        }
+
+        function eliminarItemLista(id) {
+            let lista = obtenerMiLista().filter(x => x.id !== id);
+            guardarMiLista(lista);
+            renderizarMiLista();
         }
 
         function marcarItemLista(id, estadoCheck) {
@@ -905,7 +906,6 @@
 
             let registros = data || [];
 
-            // Si dejó la fecha vacía, filtramos automáticamente por la fecha del último reporte registrado
             if (!fechaFiltro && registros.length > 0) {
                 let ultimaFechaRegistrada = registros[0].fecha;
                 registros = registros.filter(r => r.fecha === ultimaFechaRegistrada);
@@ -916,7 +916,6 @@
                 subtitulo.innerText = `Sin registros`;
             }
 
-            // Filtro por Área (muestra si el área es Origen, Destino o si va dirigido a "Todas")
             if (areaFiltro !== 'Todas') {
                 registros = registros.filter(r => r.area_origen === areaFiltro || r.area_destino === areaFiltro || r.area_destino === 'Todas');
             }
@@ -937,6 +936,11 @@
                 let claseCardTurno = esManana ? 'card-turno-manana' : 'card-turno-tarde';
                 let iconoTurno = esManana ? '☀️ Turno Mañana' : '🌙 Turno Tarde / Noche';
 
+                let esMio = r.autor_email === operadorEmail;
+                let btnBorrarReporte = esMio 
+                    ? `<button onclick="eliminarReporteTurno(${r.id})" title="Borrar mi reporte" style="background:none; border:none; cursor:pointer; font-size:14px; margin-left:8px;">🗑️</button>` 
+                    : '';
+
                 let bloqueLectura = r.leido 
                     ? `<span class="leido-tag">✔️ Enterado: ${r.leido_por}</span>`
                     : `<button class="btn-enterado" onclick="confirmarLecturaTurno(${r.id})">✋ Marcar Recibido</button>`;
@@ -950,12 +954,29 @@
                         <div class="turno-proy">📦 Proy/Lote: #${r.codigo_proyecto}</div>
                         <div class="turno-msj">${r.mensaje}</div>
                         <div class="turno-footer">
-                            <span>✍️ Reportó: <b>${r.autor_nombre}</b></span>
+                            <span>✍️ Reportó: <b>${r.autor_nombre}</b> ${btnBorrarReporte}</span>
                             ${bloqueLectura}
                         </div>
                     </div>
                 `;
             });
+        }
+
+        async function eliminarReporteTurno(idReporte) {
+            const conf = await Swal.fire({
+                title: '¿Borrar este reporte?',
+                text: 'Se eliminará de la bitácora de turnos.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#94a3b8',
+                confirmButtonText: 'Sí, borrar',
+                cancelButtonText: 'Cancelar'
+            });
+            if (conf.isConfirmed) {
+                await supabaseClient.from('bitacora_turnos').delete().eq('id', idReporte);
+                cargarBitacoraTurnos();
+            }
         }
 
         async function confirmarLecturaTurno(idReporte) {
