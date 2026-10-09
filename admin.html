@@ -44,10 +44,15 @@
         label { display: block; font-size: 12px; font-weight: bold; color: #64748b; margin-bottom: 4px; }
         input, select { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; font-size: 13px; }
         input[type="color"] { padding: 2px; cursor: pointer; height: 33px; }
+        
+        /* Checkbox grande */
+        .checkbox-container { display: flex; align-items: center; justify-content: center; height: 33px; }
+        input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; accent-color: #8b5cf6; margin: 0; }
+
         .btn-add { background-color: #475569; color: white; border: none; padding: 9px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; white-space: nowrap; }
         .btn-add:hover { filter: brightness(0.8); }
         table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
-        th, td { border-bottom: 1px solid #e2e8f0; padding: 10px 8px; text-align: left; }
+        th, td { border-bottom: 1px solid #e2e8f0; padding: 10px 8px; text-align: left; vertical-align: middle; }
         th { background-color: #f8fafc; color: #475569; }
         tr:hover { background-color: #f1f5f9; }
         .btn-delete, .btn-edit { background: none; border: none; cursor: pointer; font-size: 16px; transition: 0.2s; padding: 0 4px; }
@@ -56,6 +61,8 @@
         .badge-orden { background-color: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
         .badge-auto { background-color: #dbeafe; color: #2563eb; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 5px; }
         .badge-todos { background-color: #fce7f3; color: #db2777; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+        .badge-visible { background-color: #d1fae5; color: #047857; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .badge-oculto { background-color: #f1f5f9; color: #94a3b8; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; text-decoration: line-through; }
 
         @media (max-width: 1000px) { .dashboard-grid { grid-template-columns: 1fr; } .panel-full { grid-column: 1; } }
         @media (max-width: 768px) { 
@@ -133,11 +140,22 @@
                     </table>
                 </div>
 
-                <div class="panel" style="border-top-color: #8b5cf6;">
-                    <h3>Flujo de Estados (Piloto Automático)</h3>
+                <!-- ==============================================
+                     NUEVA SECCIÓN MODIFICADA: FLUJO DE ESTADOS
+                     ============================================== -->
+                <div class="panel panel-full" style="border-top-color: #8b5cf6;">
+                    <h3>Flujo de Estados (Piloto Automático y Tablero)</h3>
                     <div class="form-row">
                         <div class="form-group" style="flex: 0.2;"><label>Orden</label><input type="number" id="orden_estado" placeholder="1" min="1"></div>
                         <div class="form-group" style="flex: 0.4;"><label>Estado Actual</label><input type="text" id="nombre_estado" placeholder="Ej: En Corte"></div>
+                        
+                        <div class="form-group" style="flex: 0.2; text-align: center;">
+                            <label>👁️ Ver en Tablero</label>
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="ver_en_tablero" checked title="Si lo marcas, este estado será una columna gigante en el tablero Trello">
+                            </div>
+                        </div>
+
                         <div class="form-group" style="flex: 0.4;">
                             <label>Al completarse salta a:</label>
                             <select id="estado_siguiente"><option value="">Cargando...</option></select>
@@ -145,7 +163,7 @@
                         <button id="btn_guardar_estado" class="btn-add" style="background-color: #8b5cf6;" onclick="guardarEstado()">Agregar</button>
                     </div>
                     <table>
-                        <thead><tr><th>Ord.</th><th>Estado</th><th>Salta a</th><th style="width: 50px; text-align: center;">Acc.</th></tr></thead>
+                        <thead><tr><th>Ord.</th><th>Estado</th><th style="text-align:center;">Visibilidad</th><th>Salta a</th><th style="width: 50px; text-align: center;">Acc.</th></tr></thead>
                         <tbody id="tabla_estados"></tbody>
                     </table>
                 </div>
@@ -297,16 +315,27 @@
             }
         }
 
-        function prepararEdicionEstado(id, nombre, orden, sigEstado) {
-            idEstadoEditando = id; document.getElementById('nombre_estado').value = nombre; 
-            document.getElementById('orden_estado').value = orden; document.getElementById('estado_siguiente').value = sigEstado || '';
-            document.getElementById('btn_guardar_estado').innerHTML = "Actualizar"; document.getElementById('btn_guardar_estado').style.backgroundColor = "#f97316"; 
+        // ==========================================
+        // FUNCIONES MODIFICADAS PARA EL TABLERO KANBAN
+        // ==========================================
+        function prepararEdicionEstado(id, nombre, orden, sigEstado, verTablero) {
+            idEstadoEditando = id; 
+            document.getElementById('nombre_estado').value = nombre; 
+            document.getElementById('orden_estado').value = orden; 
+            document.getElementById('estado_siguiente').value = sigEstado || '';
+            // Si verTablero es undefined o true, lo marcamos. Si es false, lo desmarcamos.
+            document.getElementById('ver_en_tablero').checked = (verTablero !== false);
+            
+            document.getElementById('btn_guardar_estado').innerHTML = "Actualizar"; 
+            document.getElementById('btn_guardar_estado').style.backgroundColor = "#f97316"; 
         }
 
         async function guardarEstado() {
             let nombre = document.getElementById('nombre_estado').value.trim(); 
             let ordenDeseado = parseInt(document.getElementById('orden_estado').value);
             let estadoSig = document.getElementById('estado_siguiente').value;
+            let verTab = document.getElementById('ver_en_tablero').checked;
+            
             if (!nombre) return;
             
             let btn = document.getElementById('btn_guardar_estado'); btn.innerHTML = "Guardando..."; btn.disabled = true;
@@ -325,16 +354,23 @@
             
             for (let item of nuevaSecuencia) {
                 if (item.isTarget) {
-                    if (idEstadoEditando) await supabaseClient.from('catalogo_estados').update({ nombre: item.nombre, orden: item.orden, estado_siguiente: estadoSig }).eq('id', idEstadoEditando);
-                    else await supabaseClient.from('catalogo_estados').insert([{ nombre: item.nombre, orden: item.orden, estado_siguiente: estadoSig }]);
+                    if (idEstadoEditando) {
+                        await supabaseClient.from('catalogo_estados').update({ nombre: item.nombre, orden: item.orden, estado_siguiente: estadoSig, ver_en_tablero: verTab }).eq('id', idEstadoEditando);
+                    } else {
+                        await supabaseClient.from('catalogo_estados').insert([{ nombre: item.nombre, orden: item.orden, estado_siguiente: estadoSig, ver_en_tablero: verTab }]);
+                    }
                 } else {
                     let oldItem = otrosEstados.find(e => e.id === item.id);
                     if (oldItem && oldItem.orden !== item.orden) await supabaseClient.from('catalogo_estados').update({ orden: item.orden }).eq('id', item.id);
                 }
             }
             
-            idEstadoEditando = null; document.getElementById('nombre_estado').value = ''; document.getElementById('orden_estado').value = '';
+            idEstadoEditando = null; 
+            document.getElementById('nombre_estado').value = ''; 
+            document.getElementById('orden_estado').value = '';
             document.getElementById('estado_siguiente').value = '';
+            document.getElementById('ver_en_tablero').checked = true;
+            
             btn.innerHTML = "Agregar"; btn.style.backgroundColor = "#8b5cf6"; btn.disabled = false; 
             cargarEstados();
         }
@@ -351,9 +387,14 @@
                 
                 data.forEach(item => { 
                     let badgeAuto = item.estado_siguiente ? `<span class="badge-auto">➡️ ${item.estado_siguiente}</span>` : '<em>Ninguno</em>';
-                    tbody.innerHTML += `<tr><td><span class="badge-orden">${item.orden}</span></td><td><strong>${item.nombre}</strong></td>
+                    let badgeTablero = item.ver_en_tablero !== false ? `<span class="badge-visible">👁️ Tablero</span>` : `<span class="badge-oculto">🙈 Oculto</span>`;
+                    
+                    tbody.innerHTML += `<tr>
+                    <td><span class="badge-orden">${item.orden}</span></td>
+                    <td><strong>${item.nombre}</strong></td>
+                    <td style="text-align:center;">${badgeTablero}</td>
                     <td>${badgeAuto}</td>
-                    <td style="text-align: center;"><button class="btn-edit" onclick="prepararEdicionEstado('${item.id}', '${item.nombre}', '${item.orden}', '${item.estado_siguiente || ''}')">✏️</button>
+                    <td style="text-align: center;"><button class="btn-edit" onclick="prepararEdicionEstado('${item.id}', '${item.nombre}', '${item.orden}', '${item.estado_siguiente || ''}', ${item.ver_en_tablero !== false})">✏️</button>
                     <button class="btn-delete" onclick="eliminarDato('catalogo_estados', '${item.id}', '${item.nombre}')">🗑️</button></td></tr>`;
                 });
             }
