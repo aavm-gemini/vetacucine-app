@@ -203,21 +203,21 @@
         async function inicializarTablero() {
             const board = document.getElementById('kanban_board');
             try {
-                board.innerHTML = '<p style="padding: 20px; color: #64748b;">⏳ Paso 1: Obteniendo columnas...</p>';
+                board.innerHTML = '<p style="padding: 20px; color: #64748b;">⏳ Obteniendo columnas...</p>';
                 const { data: estados, error: err1 } = await supabaseClient.from('catalogo_estados').select('*').eq('ver_en_tablero', true).order('orden');
                 if (err1) throw new Error("Error leyendo estados: " + err1.message);
 
-                board.innerHTML = '<p style="padding: 20px; color: #64748b;">⏳ Paso 2: Descargando tarjetas...</p>';
+                board.innerHTML = '<p style="padding: 20px; color: #64748b;">⏳ Descargando tarjetas...</p>';
                 const { data: tarjetas, error: err2 } = await supabaseClient.from('kanban_tarjetas').select('*');
-                if (err2) throw new Error("Error leyendo tarjetas: Verifica que la tabla exista. " + err2.message);
+                if (err2) throw new Error("Error leyendo tarjetas: " + err2.message);
                 tarjetasGlobales = tarjetas || [];
 
-                board.innerHTML = '<p style="padding: 20px; color: #64748b;">⏳ Paso 3: Analizando muebles...</p>';
+                board.innerHTML = '<p style="padding: 20px; color: #64748b;">⏳ Analizando muebles...</p>';
                 const { data: piezas, error: err3 } = await supabaseClient.from('registros_produccion').select('id, codigo_proyecto, producto, espacio, piso, bloque, suite, estado, observaciones');
                 if (err3) throw new Error("Error leyendo registros: " + err3.message);
                 piezasCompletasGlobales = piezas || [];
 
-                board.innerHTML = '<p style="padding: 20px; color: #64748b;">⏳ Paso 4: Dibujando tablero...</p>';
+                board.innerHTML = '<p style="padding: 20px; color: #64748b;">⏳ Dibujando tablero...</p>';
                 
                 tarjetasGlobales.forEach(t => {
                     if (t.es_sistema) {
@@ -226,7 +226,7 @@
                         if (piezasDeEsteLote.length > 0) {
                             let suitesUnicas = [...new Set(piezasDeEsteLote.map(p => p.suite))].filter(s => s).join(', ');
                             let pisosUnicos = [...new Set(piezasDeEsteLote.map(p => p.piso))].filter(s => s).join(', ');
-                            t.subtitulo_dinamico = `Pisos: ${pisosUnicos \vert{}\vert{} '-'} \vert{} Suites:${suitesUnicas || '-'}`;
+                            t.subtitulo_dinamico = "Pisos: " + (pisosUnicos || '-') + " | Suites: " + (suitesUnicas || '-');
                             t.cantidad_piezas = piezasDeEsteLote.length;
                         } else {
                             t.subtitulo_dinamico = t.subtitulo;
@@ -242,12 +242,10 @@
 
             } catch (error) {
                 // SISTEMA ANTI-FALLOS VISUAL
-                board.innerHTML = `
-                    <div style="background:#fee2e2; border:1px solid #ef4444; color:#b91c1c; padding:20px; border-radius:8px; max-width:600px; margin: 20px;">
-                        <h3 style="margin-top:0;">🛑 Error detectado</h3>
-                        <p>${error.message}</p>
-                    </div>
-                `;
+                let errorHtml = '<div style="background:#fee2e2; border:1px solid #ef4444; color:#b91c1c; padding:20px; border-radius:8px; max-width:600px; margin: 20px;">';
+                errorHtml += '<h3 style="margin-top:0;">🛑 Error detectado</h3>';
+                errorHtml += '<p>' + error.message + '</p></div>';
+                board.innerHTML = errorHtml;
                 console.error(error);
             }
         }
@@ -261,15 +259,24 @@
             estados.forEach((est, index) => {
                 let color = coloresTop[index % coloresTop.length];
                 let tarjetasColumna = tarjetasGlobales.filter(t => t.estado_macro === est.nombre);
+                
+                // Procesamos los valores antes de inyectarlos en HTML para blindarlos
+                let estId = est.nombre.replace(/\s+/g, '');
+                let countTarjetas = tarjetasColumna.length;
+                
+                let htmlTarjetas = '';
+                tarjetasColumna.forEach(t => {
+                    htmlTarjetas += generarHTMLTarjeta(t);
+                });
 
                 let colHTML = `
                     <div class="kanban-column" style="border-top-color: ${color};">
                         <div class="kanban-column-header">
                             <span>${est.nombre}</span>
-                            <span class="col-count" id="count_${est.nombre.replace(/\s+/g, '')}">${tarjetasColumna.length}</span>
+                            <span class="col-count" id="count_${estId}">${countTarjetas}</span>
                         </div>
                         <div class="kanban-cards-area" id="col_${est.nombre}" ondrop="drop(event, '${est.nombre}')" ondragover="allowDrop(event)">
-                            ${tarjetasColumna.map(t => generarHTMLTarjeta(t)).join('')}
+                            ${htmlTarjetas}
                         </div>
                     </div>
                 `;
@@ -282,8 +289,8 @@
             let bgAvatar = t.operador_asignado ? '#10b981' : '#cbd5e1';
             
             let candadoHTML = (t.es_sistema === true) 
-                ? `<span style="font-size:12px; color:#f59e0b;" title="Tarjeta Automática (Agrupa las piezas del sistema)">🔒</span>`
-                : ``;
+                ? '<span style="font-size:12px; color:#f59e0b;" title="Tarjeta Automática">🔒</span>'
+                : '';
 
             return `
                 <div class="kanban-card" draggable="true" id="card_${t.id}" ondragstart="drag(event, ${t.id})" onclick="abrirModalTarjeta(${t.id})">
@@ -312,9 +319,9 @@
             codigoProyectoActualModal = t.codigo_proyecto;
             esSistemaActualModal = t.es_sistema;
 
-            document.getElementById('modal_codigo').innerText = `#${t.codigo_proyecto}`;
+            document.getElementById('modal_codigo').innerText = "#" + t.codigo_proyecto;
             document.getElementById('modal_titulo').innerText = t.titulo;
-            document.getElementById('modal_subtitulo').innerText = `En columna: ${t.estado_macro} | Creado por: ${t.creado_por}`;
+            document.getElementById('modal_subtitulo').innerText = "En columna: " + t.estado_macro + " | Creado por: " + t.creado_por;
             
             document.getElementById('btn_borrar_tarjeta').style.display = t.es_sistema ? 'none' : 'flex';
 
@@ -339,17 +346,17 @@
             let contador = document.getElementById('modal_contador_piezas');
             
             if (!esSistemaActualModal) {
-                contenedor.innerHTML = '<p style="color:#64748b; font-size:13px; font-style:italic;">Esta es una tarjeta manual. No tiene piezas asociadas en el sistema principal de producción.</p>';
+                contenedor.innerHTML = '<p style="color:#64748b; font-size:13px; font-style:italic;">Esta es una tarjeta manual. No tiene piezas asociadas en el sistema principal.</p>';
                 contador.innerText = 'Lote Manual';
                 return;
             }
 
             let piezasDelLote = piezasCompletasGlobales.filter(p => String(p.codigo_proyecto) === String(codigoProyectoActualModal));
             
-            contador.innerText = `${piezasDelLote.length} piezas`;
+            contador.innerText = piezasDelLote.length + " piezas";
             
             if (piezasDelLote.length === 0) {
-                contenedor.innerHTML = '<p style="color:#ef4444; font-size:13px;">No se encontraron piezas en el sistema para este código. (Tal vez fueron borradas del Index).</p>';
+                contenedor.innerHTML = '<p style="color:#ef4444; font-size:13px;">No se encontraron piezas en el sistema para este código.</p>';
                 return;
             }
 
@@ -360,18 +367,20 @@
 
             contenedor.innerHTML = '';
             piezasDelLote.forEach(p => {
-                let blq = p.bloque ? ` - Blq ${p.bloque}` : '';
-                let ubicacion = `Piso ${p.piso}${blq} | Suite ${p.suite}`;
+                let blq = p.bloque ? " - Blq " + p.bloque : "";
+                let ubicacion = "Piso " + p.piso + blq + " | Suite " + p.suite;
+                let obsText = p.observaciones ? " | 📌 " + p.observaciones : "";
                 
-                contenedor.innerHTML += `
+                let piezaHtml = `
                     <div class="pieza-detalle-item">
                         <div class="pieza-info-texto">
                             <strong>${ubicacion} — ${p.producto} (${p.espacio})</strong>
-                            <span>Estado actual: <b style="color:#3b82f6;">${p.estado}</b> ${p.observaciones ? ' | 📌 ' + p.observaciones : ''}</span>
+                            <span>Estado actual: <b style="color:#3b82f6;">${p.estado}</b>${obsText}</span>
                         </div>
                         <button class="btn-historial-mini" onclick="verTrazabilidadPieza(${p.id}, '${ubicacion}')">⏱️ Historial</button>
                     </div>
                 `;
+                contenedor.innerHTML += piezaHtml;
             });
         }
 
@@ -380,26 +389,29 @@
             
             const { data: historialBruto } = await supabaseClient.from('historial_trazabilidad').select('*').eq('id_mueble', idMueble).order('created_at', { ascending: false });
             
-            let html = `<div style="text-align: left; max-height: 350px; overflow-y: auto; font-size: 13px; padding: 10px;">`;
-            html += `<h4 style="margin-top:0; border-bottom: 1px solid #ccc; padding-bottom: 8px;">Historial de: ${ubicacion}</h4>`;
+            let html = '<div style="text-align: left; max-height: 350px; overflow-y: auto; font-size: 13px; padding: 10px;">';
+            html += '<h4 style="margin-top:0; border-bottom: 1px solid #ccc; padding-bottom: 8px;">Historial de: ' + ubicacion + '</h4>';
             
             if (!historialBruto || historialBruto.length === 0) {
-                html += `<p style="color:#94a3b8; font-style:italic;">No hay movimientos registrados.</p>`;
+                html += '<p style="color:#94a3b8; font-style:italic;">No hay movimientos registrados.</p>';
             } else {
                 historialBruto.forEach(h => {
                     let d = new Date(h.created_at || h.fecha);
-                    let fechaFmt = `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+                    let fechaFmt = d.getDate().toString().padStart(2,'0') + '/' + (d.getMonth()+1).toString().padStart(2,'0') + '/' + d.getFullYear() + ' ' + d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
                     
+                    let hOperador = h.operador || 'Sistema';
+                    let hComentarios = h.comentarios || '';
+
                     html += `
                         <div style="margin-bottom:12px; border-left:3px solid #3b82f6; padding-left:10px;">
-                            <strong style="color:#1e293b;">${h.operador || 'Sistema'}</strong> <span style="color:#64748b; font-size:11px;">• ${fechaFmt}</span><br>
+                            <strong style="color:#1e293b;">${hOperador}</strong> <span style="color:#64748b; font-size:11px;">• ${fechaFmt}</span><br>
                             <span style="color:#3b82f6; font-weight:bold;">${h.tipo_registro}</span> (${h.etapa})<br>
-                            <div style="color:#475569; margin-top:2px;">${h.comentarios || ''}</div>
+                            <div style="color:#475569; margin-top:2px;">${hComentarios}</div>
                         </div>
                     `;
                 });
             }
-            html += `</div>`;
+            html += '</div>';
             Swal.fire({ title: '⏱️ Trazabilidad', html: html, confirmButtonText: 'Volver', confirmButtonColor: '#475569' });
         }
 
@@ -425,14 +437,14 @@
             contenedor.innerHTML = '';
             adjuntos.forEach(adj => {
                 let d = new Date(adj.created_at);
-                let fechaFmt = `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`;
+                let fechaFmt = d.getDate().toString().padStart(2,'0') + '/' + (d.getMonth()+1).toString().padStart(2,'0') + '/' + d.getFullYear();
                 
                 let icono = '📄';
                 let nombreB = adj.contenido.toLowerCase();
                 if (nombreB.endsWith('.pdf')) icono = '📑';
                 if (nombreB.endsWith('.jpg') || nombreB.endsWith('.png') || nombreB.endsWith('.jpeg')) icono = '🖼️';
 
-                contenedor.innerHTML += `
+                let adjHtml = `
                     <div class="adjunto-item">
                         <div class="adjunto-icono">${icono}</div>
                         <div class="adjunto-info">
@@ -442,6 +454,7 @@
                         <button class="btn-borrar-adj" onclick="borrarAdjunto(${adj.id}, '${adj.contenido}')" title="Borrar Archivo">🗑️</button>
                     </div>
                 `;
+                contenedor.innerHTML += adjHtml;
             });
         }
 
@@ -457,8 +470,8 @@
 
             Swal.fire({ title: 'Subiendo archivo...', html: 'Por favor espera', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
-            const fileName = `${Date.now()}_${archivo.name.replace(/[^a-zA-Z0-9.\-_]/g, '')}`;
-            const filePath = `lote_${codigoProyectoActualModal}/${fileName}`;
+            const fileName = Date.now() + "_" + archivo.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
+            const filePath = "lote_" + codigoProyectoActualModal + "/" + fileName;
 
             const { data: uploadData, error: uploadError } = await supabaseClient
                 .storage
@@ -467,7 +480,7 @@
 
             if (uploadError) {
                 console.error("Error al subir archivo:", uploadError);
-                Swal.fire('Error', 'No se pudo subir el archivo. Verifica que el Bucket "kanban_adjuntos" esté creado y sea público en Supabase.', 'error');
+                Swal.fire('Error', 'No se pudo subir el archivo. Verifica que el Bucket "kanban_adjuntos" esté creado y sea público.', 'error');
                 inputElement.value = "";
                 return;
             }
@@ -490,7 +503,7 @@
             inputElement.value = ""; 
             
             if (dbError) {
-                Swal.fire('Error', 'El archivo se subió pero no se pudo guardar el registro.', 'error');
+                Swal.fire('Error', 'El archivo se subió pero no se guardó el registro.', 'error');
             } else {
                 Swal.fire({toast:true, position:'top-end', icon:'success', title:'Archivo guardado', showConfirmButton:false, timer:2000});
                 cargarAdjuntosEnModal(); 
@@ -500,7 +513,7 @@
         async function borrarAdjunto(idDetalle, nombreArchivo) {
             const conf = await Swal.fire({
                 title: '¿Borrar archivo?',
-                text: `Se eliminará "${nombreArchivo}".`,
+                text: 'Se eliminará "' + nombreArchivo + '".',
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#ef4444',
