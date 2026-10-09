@@ -31,7 +31,16 @@
         /* --- KANBAN BOARD (SCROLL HORIZONTAL) --- */
         .kanban-container { flex: 1; display: flex; gap: 20px; padding: 20px; overflow-x: auto; align-items: flex-start; }
         
+        /* Columna Normal (Sin subdivisiones) */
         .kanban-column { background: #f8fafc; min-width: 320px; max-width: 320px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; max-height: 100%; border-top: 4px solid #94a3b8; }
+        
+        /* Columna Agrupada (Con Carriles/Swimlanes) */
+        .kanban-column-group { background: #f8fafc; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; max-height: 100%; border-top: 4px solid #94a3b8; }
+        .kanban-subcolumns-container { display: flex; flex: 1; overflow: hidden; }
+        .kanban-subcolumn { width: 300px; min-width: 300px; display: flex; flex-direction: column; border-right: 1px solid #e2e8f0; }
+        .kanban-subcolumn:last-child { border-right: none; }
+        .kanban-subcolumn-header { padding: 10px 15px; font-size: 13px; font-weight: bold; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+
         .kanban-column-header { padding: 12px 15px; font-weight: bold; color: #334155; font-size: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; }
         .col-count { background: #e2e8f0; color: #475569; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
 
@@ -47,7 +56,7 @@
         .card-sub { font-size: 12px; color: #64748b; margin-bottom: 10px; }
         
         .card-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 8px; font-size: 12px; color: #94a3b8; }
-        .avatar-mini { width: 24px; height: 24px; background: #3b82f6; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; title: "Asignado"; }
+        .avatar-mini { width: 24px; height: 24px; background: #3b82f6; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; }
 
         /* Estilo para cuando arrastramos la tarjeta */
         .dragging { opacity: 0.5; border: 2px dashed #3b82f6; }
@@ -171,7 +180,6 @@
                     <div class="sidebar-acciones">
                         <h4 style="margin:0 0 10px 0; color:#475569; font-size:13px; text-transform:uppercase;">Acciones</h4>
                         <button class="btn-accion-lateral">✔️ Añadir Checklist</button>
-                        <button class="btn-accion-lateral">👤 Asignar Operador</button>
                         <button class="btn-accion-lateral" style="color:#ef4444;" id="btn_borrar_tarjeta" onclick="intentarBorrarDesdeModal()">🗑️ Borrar Tarjeta</button>
                     </div>
                 </div>
@@ -188,6 +196,9 @@
         let currentUser = "Usuario";
         let tarjetasGlobales = [];
         let piezasCompletasGlobales = []; 
+        let empleadosGlobales = []; // Para los roles
+        let estadosGlobales = [];
+
         let idTarjetaActualModal = null;
         let codigoProyectoActualModal = null;
         let esSistemaActualModal = false;
@@ -203,13 +214,18 @@
         async function inicializarTablero() {
             const board = document.getElementById('kanban_board');
             try {
+                board.innerHTML = '<p style="padding: 20px; color: #64748b;">⏳ Obteniendo empleados y roles...</p>';
+                const { data: empleados } = await supabaseClient.from('empleados_autorizados').select('*');
+                empleadosGlobales = empleados || [];
+
                 board.innerHTML = '<p style="padding: 20px; color: #64748b;">⏳ Obteniendo columnas...</p>';
                 const { data: estados, error: err1 } = await supabaseClient.from('catalogo_estados').select('*').eq('ver_en_tablero', true).order('orden');
                 if (err1) throw new Error("Error leyendo estados: " + err1.message);
+                estadosGlobales = estados || [];
 
                 board.innerHTML = '<p style="padding: 20px; color: #64748b;">⏳ Descargando tarjetas...</p>';
                 const { data: tarjetas, error: err2 } = await supabaseClient.from('kanban_tarjetas').select('*');
-                if (err2) throw new Error("Error leyendo tarjetas: " + err2.message);
+                if (err2) throw new Error("Error leyendo tarjetas: Verifica que la tabla exista. " + err2.message);
                 tarjetasGlobales = tarjetas || [];
 
                 board.innerHTML = '<p style="padding: 20px; color: #64748b;">⏳ Analizando muebles...</p>';
@@ -238,10 +254,9 @@
                     }
                 });
 
-                dibujarTablero(estados || []);
+                dibujarTablero(estadosGlobales);
 
             } catch (error) {
-                // SISTEMA ANTI-FALLOS VISUAL
                 let errorHtml = '<div style="background:#fee2e2; border:1px solid #ef4444; color:#b91c1c; padding:20px; border-radius:8px; max-width:600px; margin: 20px;">';
                 errorHtml += '<h3 style="margin-top:0;">🛑 Error detectado</h3>';
                 errorHtml += '<p>' + error.message + '</p></div>';
@@ -254,39 +269,105 @@
             const board = document.getElementById('kanban_board');
             board.innerHTML = '';
 
-            const coloresTop = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#64748b'];
+            const coloresTop = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#64748b', '#14b8a6', '#f43f5e'];
 
             estados.forEach((est, index) => {
                 let color = coloresTop[index % coloresTop.length];
-                let tarjetasColumna = tarjetasGlobales.filter(t => t.estado_macro === est.nombre);
+                let tarjetasEstado = tarjetasGlobales.filter(t => t.estado_macro === est.nombre);
                 
-                // Procesamos los valores antes de inyectarlos en HTML para blindarlos
+                // Buscar si hay operadores asignados a esta Área/Estado
+                let operadoresEnArea = empleadosGlobales.filter(emp => emp.rol_taller === est.nombre);
+                
                 let estId = est.nombre.replace(/\s+/g, '');
-                let countTarjetas = tarjetasColumna.length;
-                
-                let htmlTarjetas = '';
-                tarjetasColumna.forEach(t => {
-                    htmlTarjetas += generarHTMLTarjeta(t);
-                });
+                let countTarjetas = tarjetasEstado.length;
 
-                let colHTML = `
-                    <div class="kanban-column" style="border-top-color: ${color};">
-                        <div class="kanban-column-header">
-                            <span>${est.nombre}</span>
-                            <span class="col-count" id="count_${estId}">${countTarjetas}</span>
+                // 🌟 LÓGICA DE CARRILES (SWIMLANES)
+                if (operadoresEnArea.length === 0) {
+                    // COLUMNA NORMAL (Nadie asignado específicamente a esta área)
+                    let htmlTarjetas = '';
+                    tarjetasEstado.forEach(t => { htmlTarjetas += generarHTMLTarjeta(t); });
+
+                    let colHTML = `
+                        <div class="kanban-column" style="border-top-color: ${color};">
+                            <div class="kanban-column-header">
+                                <span>${est.nombre}</span>
+                                <span class="col-count" id="count_${estId}">${countTarjetas}</span>
+                            </div>
+                            <div class="kanban-cards-area" id="col_${est.nombre}_null" ondrop="drop(event, '${est.nombre}', 'null')" ondragover="allowDrop(event)">
+                                ${htmlTarjetas}
+                            </div>
                         </div>
-                        <div class="kanban-cards-area" id="col_${est.nombre}" ondrop="drop(event, '${est.nombre}')" ondragover="allowDrop(event)">
-                            ${htmlTarjetas}
+                    `;
+                    board.innerHTML += colHTML;
+
+                } else {
+                    // COLUMNA DIVIDIDA (Hay operarios en esta área, ej: Mario y Axel en Corte)
+                    let subcolsHTML = '';
+                    
+                    // 1. Bandeja General (Por Definir)
+                    let tarjetasPorDefinir = tarjetasEstado.filter(t => !t.operador_asignado);
+                    let htmlPorDefinir = '';
+                    tarjetasPorDefinir.forEach(t => { htmlPorDefinir += generarHTMLTarjeta(t); });
+                    
+                    subcolsHTML += `
+                        <div class="kanban-subcolumn">
+                            <div class="kanban-subcolumn-header" style="background:#f1f5f9; color:#475569;">
+                                📥 Por Definir <span class="col-count">${tarjetasPorDefinir.length}</span>
+                            </div>
+                            <div class="kanban-cards-area" id="col_${est.nombre}_null" ondrop="drop(event, '${est.nombre}', 'null')" ondragover="allowDrop(event)">
+                                ${htmlPorDefinir}
+                            </div>
                         </div>
-                    </div>
-                `;
-                board.innerHTML += colHTML;
+                    `;
+
+                    // 2. Un carril por cada Operador Asignado a esta área
+                    operadoresEnArea.forEach(op => {
+                        let nombreCorto = op.nombre ? op.nombre.split(' ')[0] : op.email.split('@')[0];
+                        let tarjetasOp = tarjetasEstado.filter(t => t.operador_asignado === op.email);
+                        let htmlOp = '';
+                        tarjetasOp.forEach(t => { htmlOp += generarHTMLTarjeta(t); });
+
+                        subcolsHTML += `
+                            <div class="kanban-subcolumn">
+                                <div class="kanban-subcolumn-header" style="background:#e0e7ff; color:#3730a3;">
+                                    👨‍🔧 ${nombreCorto} <span class="col-count" style="background:#c7d2fe;">${tarjetasOp.length}</span>
+                                </div>
+                                <div class="kanban-cards-area" id="col_${est.nombre}_${op.email}" ondrop="drop(event, '${est.nombre}', '${op.email}')" ondragover="allowDrop(event)">
+                                    ${htmlOp}
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    let colHTML = `
+                        <div class="kanban-column-group" style="border-top-color: ${color};">
+                            <div class="kanban-column-header">
+                                <span>${est.nombre}</span>
+                                <span class="col-count" id="count_${estId}">${countTarjetas}</span>
+                            </div>
+                            <div class="kanban-subcolumns-container">
+                                ${subcolsHTML}
+                            </div>
+                        </div>
+                    `;
+                    board.innerHTML += colHTML;
+                }
             });
         }
 
         function generarHTMLTarjeta(t) {
-            let inicialesOp = t.operador_asignado ? t.operador_asignado.substring(0,2).toUpperCase() : '👤';
-            let bgAvatar = t.operador_asignado ? '#10b981' : '#cbd5e1';
+            let inicialesOp = '👤';
+            let bgAvatar = '#cbd5e1';
+            let toolTipOp = 'Sin asignar';
+
+            // Si la tarjeta tiene a alguien asignado, buscamos su nombre para el Avatar
+            if (t.operador_asignado) {
+                let emp = empleadosGlobales.find(e => e.email === t.operador_asignado);
+                let nombreCompleto = emp ? (emp.nombre || emp.email.split('@')[0]) : t.operador_asignado.split('@')[0];
+                inicialesOp = nombreCompleto.substring(0, 2).toUpperCase();
+                bgAvatar = '#10b981';
+                toolTipOp = 'Asignado a: ' + nombreCompleto;
+            }
             
             let candadoHTML = (t.es_sistema === true) 
                 ? '<span style="font-size:12px; color:#f59e0b;" title="Tarjeta Automática">🔒</span>'
@@ -302,10 +383,75 @@
                     <div class="card-sub">${t.subtitulo_dinamico}</div>
                     <div class="card-footer">
                         <span title="Click para ver contenido">📦 ${t.cantidad_piezas} piezas</span>
-                        <div class="avatar-mini" style="background: ${bgAvatar};">${inicialesOp}</div>
+                        <div class="avatar-mini" style="background: ${bgAvatar};" title="${toolTipOp}">${inicialesOp}</div>
                     </div>
                 </div>
             `;
+        }
+
+        // ==========================================
+        // GESTIÓN DE ROLES DE EQUIPO (NUEVO MODAL)
+        // ==========================================
+        async function abrirModalRoles() {
+            if (empleadosGlobales.length === 0) {
+                Swal.fire('Info', 'No hay empleados registrados en el sistema.', 'info');
+                return;
+            }
+
+            let html = '<div style="max-height:400px; overflow-y:auto; text-align:left;">';
+            html += '<p style="font-size:13px; color:#64748b; margin-top:0;">Asigna a cada persona a un área de la fábrica para crearle su propia columna de trabajo (Ej: Cortador, Digitalizador, Ensamblador).</p>';
+            html += '<table style="width:100%; border-collapse:collapse; font-size:13px;">';
+            html += '<tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;"><th style="padding:10px;">Operador / Email</th><th style="padding:10px;">Área Asignada (Sub-Columna)</th></tr>';
+            
+            empleadosGlobales.forEach(emp => {
+                let nombreMostrar = emp.nombre || emp.email.split('@')[0];
+                let opcionesAreas = `<option value="">-- Sin Área Específica --</option>`;
+                
+                estadosGlobales.forEach(e => {
+                    let isSelected = emp.rol_taller === e.nombre ? 'selected' : '';
+                    opcionesAreas += `<option value="${e.nombre}" ${isSelected}>${e.nombre}</option>`;
+                });
+
+                html += `
+                    <tr style="border-bottom:1px solid #e2e8f0;">
+                        <td style="padding:10px;"><strong>${nombreMostrar}</strong><br><span style="font-size:10px; color:#64748b;">${emp.email}</span></td>
+                        <td style="padding:10px;">
+                            <select class="sel-rol-taller" data-email="${emp.email}" style="width:100%; padding:6px; border-radius:4px; border:1px solid #cbd5e1; outline:none;">
+                                ${opcionesAreas}
+                            </select>
+                        </td>
+                    </tr>
+                `;
+            });
+            html += '</table></div>';
+            
+            Swal.fire({
+                title: '👥 Asignar Carriles por Área',
+                html: html,
+                width: '600px',
+                showCancelButton: true,
+                confirmButtonColor: '#8b5cf6',
+                cancelButtonColor: '#94a3b8',
+                confirmButtonText: '💾 Guardar Asignaciones',
+                cancelButtonText: 'Cancelar'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
+                    let selects = document.querySelectorAll('.sel-rol-taller');
+                    
+                    for (let sel of selects) {
+                        let email = sel.getAttribute('data-email');
+                        let nuevoRol = sel.value;
+                        let empAntiguo = empleadosGlobales.find(e => e.email === email);
+                        
+                        if (empAntiguo && empAntiguo.rol_taller !== nuevoRol) {
+                            await supabaseClient.from('empleados_autorizados').update({ rol_taller: nuevoRol }).eq('email', email);
+                        }
+                    }
+                    Swal.fire({toast:true, position:'top-end', icon:'success', title:'Roles y Columnas actualizados', showConfirmButton:false, timer:2000});
+                    inicializarTablero(); // Redibujar el tablero con las nuevas columnas
+                }
+            });
         }
 
         // ==========================================
@@ -552,7 +698,7 @@
             ev.currentTarget.classList.add('dragging');
         }
 
-        async function drop(ev, nuevoEstado) {
+        async function drop(ev, nuevoEstado, operadorEmail) {
             ev.preventDefault();
             
             document.querySelectorAll('.kanban-cards-area').forEach(el => el.classList.remove('drag-over'));
@@ -560,14 +706,17 @@
 
             if (!idTarjetaArrastrada) return;
 
-            let tarjetaDOM = document.getElementById(`card_${idTarjetaArrastrada}`);
-            let zonaDestino = document.getElementById(`col_${nuevoEstado}`);
+            let operadorFinal = (operadorEmail === 'null') ? null : operadorEmail;
             
-            zonaDestino.appendChild(tarjetaDOM);
+            let tarjetaDOM = document.getElementById(`card_${idTarjetaArrastrada}`);
+            let idDestino = `col_${nuevoEstado}_${operadorEmail}`;
+            let zonaDestino = document.getElementById(idDestino);
+            
+            if(zonaDestino) zonaDestino.appendChild(tarjetaDOM);
 
             const { error } = await supabaseClient
                 .from('kanban_tarjetas')
-                .update({ estado_macro: nuevoEstado })
+                .update({ estado_macro: nuevoEstado, operador_asignado: operadorFinal })
                 .eq('id', idTarjetaArrastrada);
 
             if (error) {
@@ -633,10 +782,6 @@
                     inicializarTablero();
                 }
             }
-        }
-
-        function abrirModalRoles() {
-            Swal.fire('Próximamente', 'Aquí crearemos la lista de personal para asignarles sus columnas (Mario, Axel, etc.) y cargarles los Checklists de PDF del Nesting.', 'info');
         }
     </script>
 </body>
