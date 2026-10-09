@@ -7,446 +7,370 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
-        /* --- ESTRUCTURA DEL MENÚ LATERAL (SIDEBAR) --- */
-        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f1f5f9; overflow: hidden; }
-        .app-container { display: flex; height: 100vh; width: 100vw; }
+        /* --- ESTRUCTURA BASE --- */
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f1f5f9; }
+        .app-container { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
         
-        .sidebar { width: 250px; background-color: #1e293b; color: white; display: flex; flex-direction: column; transition: 0.3s; box-shadow: 2px 0 10px rgba(0,0,0,0.1); z-index: 10; }
-        .sidebar-header { padding: 25px 20px; font-size: 22px; font-weight: bold; border-bottom: 1px solid #334155; text-align: center; letter-spacing: 1px; color: white; }
+        .sidebar { width: 250px; background-color: #1e293b; color: white; display: flex; flex-direction: column; z-index: 10; box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
+        .sidebar-header { padding: 25px 20px; font-size: 22px; font-weight: bold; border-bottom: 1px solid #334155; text-align: center; }
         .sidebar-header span { color: #3b82f6; }
         
         .nav-links { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; flex-grow: 1; margin-top: 15px; }
-        .nav-links li { margin: 0; }
-        .nav-links a { display: block; padding: 16px 25px; color: #cbd5e1; text-decoration: none; font-size: 15px; border-left: 4px solid transparent; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
+        .nav-links a { display: block; padding: 16px 25px; color: #cbd5e1; text-decoration: none; font-size: 15px; border-left: 4px solid transparent; display: flex; align-items: center; gap: 10px; transition: 0.2s; }
         .nav-links a:hover { background-color: #334155; color: white; }
         .nav-links a.active { background-color: #0f172a; border-left-color: #3b82f6; color: white; font-weight: bold; }
+
+        .main-content { flex: 1; padding: 25px; overflow-y: auto; background-color: #f1f5f9; }
+
+        .header-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 25px; }
+        .header-title { margin: 0; color: #1e293b; font-size: 24px; font-weight:bold; }
+        .badge-admin { background:#ef4444; color:white; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:bold; letter-spacing:1px; }
+
+        /* --- TARJETAS --- */
+        .card { max-width: 1050px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 30px; border-top: 4px solid #3b82f6; }
+        h3 { color: #334155; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; margin-top: 0; margin-bottom: 20px; font-size: 18px; }
         
-        /* --- ÁREA DE TRABAJO PRINCIPAL --- */
-        .main-content { flex: 1; padding: 25px; overflow-y: auto; background-color: #f1f5f9; scroll-behavior: smooth; }
+        .form-row { display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 15px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .form-group { display: flex; flex-direction: column; }
+        label { font-size: 12px; font-weight: bold; color: #475569; margin-bottom: 5px; }
+        input[type="text"], input[type="number"], select { padding: 8px 10px; border-radius: 4px; border: 1px solid #cbd5e1; outline: none; font-size: 14px; }
+        input[type="text"]:focus, input[type="number"]:focus, select:focus { border-color: #3b82f6; }
+        input[type="checkbox"] { transform: scale(1.3); margin-top: 8px; cursor: pointer; }
 
-        .header-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
-        .perfil-usuario { display: flex; align-items: center; gap: 15px; }
-        .mensaje-bienvenida { font-size: 14px; color: #475569; }
-        .mensaje-bienvenida span { font-weight: bold; color: #1e293b; }
-        .foto-perfil { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid #3b82f6; }
-        .btn-salir { background-color: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-left: 5px; }
-        .btn-salir:hover { background-color: #fef2f2; }
+        .btn-add { background: #8b5cf6; color: white; border: none; padding: 9px 18px; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-add:hover { background: #7c3aed; }
+        .btn-del { background: transparent; border: none; cursor: pointer; font-size: 16px; opacity: 0.7; transition: 0.2s; }
+        .btn-del:hover { opacity: 1; transform: scale(1.1); color: #ef4444; }
 
-        /* ESTILOS INTERNOS DE ADMIN */
-        .header-admin { text-align: left; color: #1e293b; margin: 0; }
-        .header-admin span { background-color: #ef4444; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; vertical-align: middle; margin-left: 10px; }
-        .dashboard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; max-width: 1100px; margin: 0 auto; }
-        .panel { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid #475569; }
-        .panel-full { grid-column: 1 / -1; }
-        h3 { color: #334155; margin-top: 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; font-size: 16px; }
-        .form-row { display: flex; gap: 10px; margin-bottom: 15px; align-items: end; flex-wrap: wrap; }
-        .form-group { flex: 1; min-width: 120px; }
-        label { display: block; font-size: 12px; font-weight: bold; color: #64748b; margin-bottom: 4px; }
-        input, select { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; font-size: 13px; }
-        input[type="color"] { padding: 2px; cursor: pointer; height: 33px; }
-        
-        /* Checkbox grande */
-        .checkbox-container { display: flex; align-items: center; justify-content: center; height: 33px; }
-        input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; accent-color: #8b5cf6; margin: 0; }
-
-        .btn-add { background-color: #475569; color: white; border: none; padding: 9px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; white-space: nowrap; }
-        .btn-add:hover { filter: brightness(0.8); }
         table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
-        th, td { border-bottom: 1px solid #e2e8f0; padding: 10px 8px; text-align: left; vertical-align: middle; }
-        th { background-color: #f8fafc; color: #475569; }
-        tr:hover { background-color: #f1f5f9; }
-        .btn-delete, .btn-edit { background: none; border: none; cursor: pointer; font-size: 16px; transition: 0.2s; padding: 0 4px; }
-        .btn-delete:hover, .btn-edit:hover { transform: scale(1.2); }
-        .color-dot { display: inline-block; width: 16px; height: 16px; border-radius: 50%; vertical-align: middle; margin-right: 8px; border: 1px solid #ccc; }
-        .badge-orden { background-color: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
-        .badge-auto { background-color: #dbeafe; color: #2563eb; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 5px; }
-        .badge-todos { background-color: #fce7f3; color: #db2777; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
-        .badge-visible { background-color: #d1fae5; color: #047857; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
-        .badge-oculto { background-color: #f1f5f9; color: #94a3b8; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; text-decoration: line-through; }
+        th { background: #f1f5f9; padding: 10px; text-align: left; color: #475569; border-bottom: 2px solid #cbd5e1; }
+        td { padding: 10px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
+        tr:hover td { background: #f8fafc; }
 
-        @media (max-width: 1000px) { .dashboard-grid { grid-template-columns: 1fr; } .panel-full { grid-column: 1; } }
-        @media (max-width: 768px) { 
-            body { overflow: auto; }
-            .app-container { flex-direction: column; height: auto; }
-            .sidebar { width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            .sidebar-header { padding: 15px; }
-            .nav-links { flex-direction: row; margin-top: 0; justify-content: space-around; background-color: #0f172a; }
-            .nav-links a { padding: 10px 5px; font-size: 12px; border-left: none; border-bottom: 3px solid transparent; flex-direction: column; gap: 4px; text-align: center; }
-            .nav-links a.active { border-left: none; border-bottom-color: #3b82f6; }
-            .main-content { padding: 15px; height: auto; overflow-y: visible; }
-            .header-top { flex-direction: column; align-items: flex-start; }
-        }
     </style>
 </head>
 <body>
+
     <div class="app-container">
+        <!-- SIDEBAR -->
         <nav class="sidebar">
             <div class="sidebar-header">Veta<span>Cucine</span></div>
             <ul class="nav-links">
                 <li><a href="dashboard.html">📊 Dashboard</a></li>
                 <li><a href="taller.html">🏭 Panel Operador</a></li>
                 <li><a href="index.html">📝 Ingreso Muebles</a></li>
+                <li><a href="tablero.html">📋 Tablero Kanban</a></li>
                 <li><a href="reportes.html">🔍 Buscar y Reportes</a></li>
-                <li><a href="admin.html" class="active" id="link-admin">⚙️ Administrador</a></li>
+                <li><a href="admin.html" class="active">⚙️ Administrador</a></li>
             </ul>
         </nav>
 
         <div class="main-content">
             <div class="header-top">
-                <div class="header-admin">
-                    <h2 style="margin: 0;">Panel de Configuración <span>ACCESO RESTRINGIDO</span></h2>
-                    <p style="color: #64748b; margin: 0; font-size: 14px; margin-top: 5px;">Administración de catálogos y automatización</p>
-                </div>
-                
-                <div class="perfil-usuario">
-                    <div class="mensaje-bienvenida">Hola, <span id="nombreUsuario">Cargando...</span></div>
-                    <img id="fotoUsuario" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Foto" class="foto-perfil">
-                    <button class="btn-salir" onclick="cerrarSesion()">Salir</button>
-                </div>
+                <h2 class="header-title">Panel de Configuración <span class="badge-admin">ACCESO RESTRINGIDO</span></h2>
             </div>
 
-            <div class="dashboard-grid">
+            <!-- ============================================== -->
+            <!-- FLUJO DE ESTADOS (NUEVA VERSIÓN)               -->
+            <!-- ============================================== -->
+            <div class="card" style="border-top-color: #8b5cf6;">
+                <h3>Flujo de Estados (Piloto Automático y Tablero)</h3>
                 
-                <div class="panel panel-full" style="border-top-color: #ec4899;">
-                    <h3>🎯 Control de Metas (Reglas y Excepciones)</h3>
-                    <div class="form-row">
-                        <div class="form-group"><label>Proyecto (o Bloque)</label><select id="meta_proyecto"><option value="">Cargando...</option></select></div>
-                        <div class="form-group" style="flex: 0.6;">
-                            <label>Piso (Vacío = TODOS)</label>
-                            <input type="text" id="meta_piso" placeholder="Deja vacío para general" style="text-transform: uppercase;">
-                        </div>
-                        <div class="form-group"><label>Producto</label><select id="meta_producto"><option value="">Cargando...</option></select></div>
-                        <div class="form-group" style="flex: 0.5;"><label>Cant. Total</label><input type="number" id="meta_cantidad" placeholder="Ej: 9" min="1"></div>
-                        <button class="btn-add" style="background-color: #ec4899;" onclick="guardarMeta()">Fijar Meta</button>
+                <div class="form-row">
+                    <div class="form-group" style="width: 70px;">
+                        <label>Orden</label>
+                        <input type="number" id="est_orden" placeholder="Ej: 1">
                     </div>
-                    <table>
-                        <thead><tr><th>Proyecto / Bloque</th><th>Aplica a Piso</th><th>Producto</th><th>Cantidad Requerida</th><th style="width: 30px;"></th></tr></thead>
-                        <tbody id="tabla_metas"></tbody>
-                    </table>
+                    <div class="form-group" style="width: 150px;">
+                        <label>Estado Actual</label>
+                        <input type="text" id="est_nombre" placeholder="Ej: En Corte">
+                    </div>
+                    
+                    <div class="form-group" style="width: 140px;">
+                        <label style="color: #3b82f6;">Grupo Carril (Parejas)</label>
+                        <input type="text" id="est_grupo" placeholder="Ej: Corte" style="border-color: #3b82f6;">
+                    </div>
+                    <div class="form-group" style="align-items: center; width: 60px;">
+                        <label style="color: #f59e0b;" title="Marcar si es el estado de trabajo. Ej: Cortando">¿Activo?</label>
+                        <input type="checkbox" id="est_activo">
+                    </div>
+                    
+                    <div class="form-group" style="align-items: center; width: 70px;">
+                        <label>👁️ Tablero</label>
+                        <input type="checkbox" id="est_tablero" checked>
+                    </div>
+                    <div class="form-group" style="width: 160px;">
+                        <label>Al completarse salta a:</label>
+                        <select id="est_siguiente">
+                            <option value="">Ninguno (Fin)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <button class="btn-add" onclick="agregarEstado()">Agregar</button>
+                    </div>
                 </div>
 
-                <div class="panel panel-full" style="border-top-color: #3b82f6;">
-                    <h3>Catálogo de Proyectos</h3>
-                    <div class="form-row">
-                        <div class="form-group" style="flex: 0.5;"><label>Proyecto</label><input type="text" id="nombre_proyecto" placeholder="Ej: Promenade"></div>
-                        <div class="form-group" style="flex: 0.3;"><label>Bloques (Ej: A,B,C)</label><input type="text" id="bloques_proyecto" placeholder="Vacío = No aplica" style="text-transform: uppercase;"></div>
-                        <div class="form-group" style="flex: 0.6;"><label>Suites (Ej: 1-15 o MIAMI, LONDRES)</label><input type="text" id="suites_proyecto" placeholder="Rango o nombres separados por coma" style="text-transform: uppercase;"></div>
-                        <div class="form-group" style="flex: 0.1;"><label>Color</label><input type="color" id="color_proyecto" value="#0066cc"></div>
-                        <button id="btn_guardar_proyecto" class="btn-add" style="background-color: #3b82f6;" onclick="guardarProyecto()">Agregar</button>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">Ord.</th>
+                            <th>Estado</th>
+                            <th>Grupo Tablero</th>
+                            <th>Visibilidad</th>
+                            <th>Salta a</th>
+                            <th style="text-align:center; width:60px;">Acc.</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla_estados">
+                        <tr><td colspan="6" style="text-align:center; color:#94a3b8;">Cargando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+
+            <!-- ============================================== -->
+            <!-- CATÁLOGO DE PROYECTOS                          -->
+            <!-- ============================================== -->
+            <div class="card">
+                <h3>Catálogo de Proyectos</h3>
+                <div class="form-row">
+                    <div class="form-group" style="flex:1;">
+                        <label>Proyecto</label>
+                        <input type="text" id="pry_nombre" placeholder="Ej: Promenade">
                     </div>
-                    <table>
-                        <thead><tr><th>Proyecto</th><th>Bloques</th><th>Suites Definidas</th><th style="width: 50px; text-align: center;">Acción</th></tr></thead>
-                        <tbody id="tabla_proyectos"></tbody>
-                    </table>
-                </div>
-
-                <!-- ==============================================
-                     NUEVA SECCIÓN MODIFICADA: FLUJO DE ESTADOS
-                     ============================================== -->
-                <div class="panel panel-full" style="border-top-color: #8b5cf6;">
-                    <h3>Flujo de Estados (Piloto Automático y Tablero)</h3>
-                    <div class="form-row">
-                        <div class="form-group" style="flex: 0.2;"><label>Orden</label><input type="number" id="orden_estado" placeholder="1" min="1"></div>
-                        <div class="form-group" style="flex: 0.4;"><label>Estado Actual</label><input type="text" id="nombre_estado" placeholder="Ej: En Corte"></div>
-                        
-                        <div class="form-group" style="flex: 0.2; text-align: center;">
-                            <label>👁️ Ver en Tablero</label>
-                            <div class="checkbox-container">
-                                <input type="checkbox" id="ver_en_tablero" checked title="Si lo marcas, este estado será una columna gigante en el tablero Trello">
-                            </div>
-                        </div>
-
-                        <div class="form-group" style="flex: 0.4;">
-                            <label>Al completarse salta a:</label>
-                            <select id="estado_siguiente"><option value="">Cargando...</option></select>
-                        </div>
-                        <button id="btn_guardar_estado" class="btn-add" style="background-color: #8b5cf6;" onclick="guardarEstado()">Agregar</button>
+                    <div class="form-group" style="flex:1;">
+                        <label>Bloques (Opcional, separados por coma)</label>
+                        <input type="text" id="pry_bloques" placeholder="Ej: A, B, C">
                     </div>
-                    <table>
-                        <thead><tr><th>Ord.</th><th>Estado</th><th style="text-align:center;">Visibilidad</th><th>Salta a</th><th style="width: 50px; text-align: center;">Acc.</th></tr></thead>
-                        <tbody id="tabla_estados"></tbody>
-                    </table>
-                </div>
-
-                <div class="panel" style="border-top-color: #f59e0b;">
-                    <h3>Catálogo de Productos</h3>
-                    <div class="form-row">
-                        <div class="form-group" style="flex: 0.4;"><label>Sigla</label><input type="text" id="sigla_producto" placeholder="PP" style="text-transform: uppercase;"></div>
-                        <div class="form-group"><label>Nombre</label><input type="text" id="nombre_producto" placeholder="Puerta Ppal"></div>
-                        <button class="btn-add" style="background-color: #f59e0b;" onclick="agregarDato('catalogo_productos', 'sigla_producto', 'nombre_producto')">Agregar</button>
+                    <div class="form-group" style="flex:1;">
+                        <label>Suites (Opcional, Ej: 1-10 o A,B)</label>
+                        <input type="text" id="pry_suites" placeholder="Ej: 1-10">
                     </div>
-                    <table>
-                        <thead><tr><th>Sigla</th><th>Nombre</th><th style="width: 30px;"></th></tr></thead>
-                        <tbody id="tabla_productos"></tbody>
-                    </table>
+                    <div class="form-group" style="width: 60px;">
+                        <label>Color</label>
+                        <input type="color" id="pry_color" value="#3b82f6" style="height:34px; width:100%; cursor:pointer; padding:0; border:none;">
+                    </div>
+                    <div class="form-group">
+                        <button class="btn-add" onclick="agregarProyecto()">Agregar</button>
+                    </div>
                 </div>
+                <table>
+                    <thead><tr><th>Proyecto</th><th>Bloques</th><th>Suites</th><th>Color</th><th style="text-align:center;">Acc.</th></tr></thead>
+                    <tbody id="tabla_proyectos"></tbody>
+                </table>
+            </div>
 
-                <div class="panel" style="border-top-color: #10b981;">
+            <!-- ============================================== -->
+            <!-- CATÁLOGOS MENORES (ESPACIOS Y PRODUCTOS)       -->
+            <!-- ============================================== -->
+            <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                
+                <div class="card" style="flex:1; min-width:350px;">
                     <h3>Catálogo de Espacios</h3>
                     <div class="form-row">
-                        <div class="form-group" style="flex: 0.4;"><label>Sigla</label><input type="text" id="sigla_espacio" placeholder="HP" style="text-transform: uppercase;"></div>
-                        <div class="form-group"><label>Nombre</label><input type="text" id="nombre_espacio" placeholder="Hab. Principal"></div>
-                        <button class="btn-add" style="background-color: #10b981;" onclick="agregarDato('catalogo_espacios', 'sigla_espacio', 'nombre_espacio')">Agregar</button>
+                        <div class="form-group" style="width: 60px;"><label>Sigla</label><input type="text" id="esp_sigla" placeholder="Ej: B1"></div>
+                        <div class="form-group" style="flex:1;"><label>Nombre</label><input type="text" id="esp_nombre" placeholder="Ej: Baño Principal"></div>
+                        <div class="form-group"><button class="btn-add" onclick="agregarEspacio()">Add</button></div>
                     </div>
                     <table>
-                        <thead><tr><th>Sigla</th><th>Nombre</th><th style="width: 30px;"></th></tr></thead>
+                        <thead><tr><th>Sigla</th><th>Nombre</th><th style="text-align:center;">Acc.</th></tr></thead>
                         <tbody id="tabla_espacios"></tbody>
                     </table>
                 </div>
 
+                <div class="card" style="flex:1; min-width:350px;">
+                    <h3>Catálogo de Productos</h3>
+                    <div class="form-row">
+                        <div class="form-group" style="width: 60px;"><label>Sigla</label><input type="text" id="prd_sigla" placeholder="Ej: ME"></div>
+                        <div class="form-group" style="flex:1;"><label>Nombre</label><input type="text" id="prd_nombre" placeholder="Ej: Mueble Espejo"></div>
+                        <div class="form-group"><button class="btn-add" onclick="agregarProducto()">Add</button></div>
+                    </div>
+                    <table>
+                        <thead><tr><th>Sigla</th><th>Nombre</th><th style="text-align:center;">Acc.</th></tr></thead>
+                        <tbody id="tabla_productos"></tbody>
+                    </table>
+                </div>
+
             </div>
+
         </div>
     </div>
 
     <script>
+        // Configuración de Supabase
         const supabaseUrl = 'https://pnrntmkcisgymyvmzson.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBucm50bWtjaXNneW15dm16c29uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNzAwODQsImV4cCI6MjEwNDc0NjA4NH0.fdW9mj9rkO0rxHXB8rBeJc6a32QSQxtvsNtu9_rL6yc';
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
-        
-        let idProyectoEditando = null; let idEstadoEditando = null;
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (!session) { window.location.href = 'login.html'; return; }
-
-            const correoUsuario = session.user.email;
-            const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol').eq('email', correoUsuario).single();
-            const rolUsuario = empleado ? empleado.rol.trim() : 'Operador'; 
-
-            if (rolUsuario !== 'Administrador') {
-                await Swal.fire({ icon: 'error', title: 'Acceso Denegado', text: 'No tienes permisos de Administrador para ver esta página.', confirmButtonColor: '#ef4444' });
-                window.location.href = 'dashboard.html';
+            
+            // Verificar si es administrador
+            const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol').eq('email', session.user.email).single();
+            if (!empleado || empleado.rol !== 'Administrador') {
+                Swal.fire('Acceso Denegado', 'No tienes permisos de Administrador', 'error').then(() => window.location.href = 'index.html');
                 return;
             }
 
-            const nombreCompleto = session.user.user_metadata.full_name;
-            const urlFoto = session.user.user_metadata.avatar_url;
-            document.getElementById('nombreUsuario').innerText = nombreCompleto.split(' ')[0];
-            document.getElementById('fotoUsuario').src = urlFoto;
-
-            cargarListaProyectos(); 
-            cargarLista('catalogo_espacios', 'tabla_espacios');
-            cargarLista('catalogo_productos', 'tabla_productos'); 
-            cargarEstados(); 
-            cargarMetas();
+            cargarEstados();
+            cargarProyectos();
+            cargarEspacios();
+            cargarProductos();
         });
 
-        async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; }
-
-        async function agregarDato(tabla, idInputSigla, idInputNombre) {
-            let sigla = document.getElementById(idInputSigla).value.trim().toUpperCase(); 
-            let nombre = document.getElementById(idInputNombre).value.trim();
-            if (!sigla || !nombre) { Swal.fire('Faltan datos', 'Completa los campos.', 'warning'); return; }
-            const { error } = await supabaseClient.from(tabla).insert([{ sigla, nombre }]);
-            if (!error) { 
-                document.getElementById(idInputSigla).value = ''; document.getElementById(idInputNombre).value = ''; 
-                cargarLista(tabla, tabla === 'catalogo_espacios' ? 'tabla_espacios' : 'tabla_productos'); 
-            }
-        }
-
-        async function cargarLista(tabla, idTbody) {
-            const { data } = await supabaseClient.from(tabla).select('*').order('sigla', { ascending: true }); 
-            const tbody = document.getElementById(idTbody); 
-            tbody.innerHTML = ""; 
-            if(data) {
-                data.forEach(item => { 
-                    tbody.innerHTML += `<tr><td><strong>${item.sigla}</strong></td><td>${item.nombre}</td><td><button class="btn-delete" onclick="eliminarDato('${tabla}', '${item.id}', '${item.sigla}')">🗑️</button></td></tr>`; 
-                });
-                if(tabla === 'catalogo_productos') {
-                    const selProd = document.getElementById('meta_producto');
-                    selProd.innerHTML = '<option value="">Selecciona...</option>';
-                    data.forEach(p => selProd.innerHTML += `<option value="${p.sigla}">${p.sigla} - ${p.nombre}</option>`);
-                }
-            }
-        }
-
-        function prepararEdicionProyecto(id, nombre, color, bloques, suites) {
-            idProyectoEditando = id; 
-            document.getElementById('nombre_proyecto').value = nombre; 
-            document.getElementById('color_proyecto').value = color; 
-            document.getElementById('bloques_proyecto').value = bloques || '';
-            document.getElementById('suites_proyecto').value = suites || '';
-            document.getElementById('btn_guardar_proyecto').innerHTML = "Actualizar"; 
-            document.getElementById('btn_guardar_proyecto').style.backgroundColor = "#f97316"; 
-        }
-
-        async function guardarProyecto() {
-            let nombre = document.getElementById('nombre_proyecto').value.trim(); 
-            let color = document.getElementById('color_proyecto').value; 
-            let bloques = document.getElementById('bloques_proyecto').value.trim().toUpperCase();
-            let suites = document.getElementById('suites_proyecto').value.trim().toUpperCase();
-
-            if (!nombre) return;
-            if (idProyectoEditando) await supabaseClient.from('catalogo_proyectos').update({ nombre, color, bloques, suites }).eq('id', idProyectoEditando);
-            else await supabaseClient.from('catalogo_proyectos').insert([{ nombre, color, bloques, suites }]);
-            
-            idProyectoEditando = null; 
-            document.getElementById('nombre_proyecto').value = ''; 
-            document.getElementById('bloques_proyecto').value = '';
-            document.getElementById('suites_proyecto').value = '';
-            document.getElementById('btn_guardar_proyecto').innerHTML = "Agregar"; 
-            document.getElementById('btn_guardar_proyecto').style.backgroundColor = "#3b82f6";
-            cargarListaProyectos();
-        }
-
-        async function cargarListaProyectos() {
-            const { data } = await supabaseClient.from('catalogo_proyectos').select('*').order('nombre', { ascending: true }); 
-            const tbody = document.getElementById('tabla_proyectos'); tbody.innerHTML = ""; 
-            if(data) {
-                const selProy = document.getElementById('meta_proyecto');
-                selProy.innerHTML = '<option value="">Selecciona...</option>';
-                data.forEach(item => {
-                    if (item.bloques && item.bloques.trim() !== "") {
-                        let arrayBloques = item.bloques.split(',').map(b => b.trim()).filter(b => b !== "");
-                        arrayBloques.forEach(b => {
-                            selProy.innerHTML += `<option value="${item.nombre} - Bloque ${b}">${item.nombre} - Bloque ${b}</option>`;
-                        });
-                    } else {
-                        selProy.innerHTML += `<option value="${item.nombre}">${item.nombre}</option>`;
-                    }
-
-                    let bloquesBadge = item.bloques ? item.bloques : '<em>Ninguno</em>';
-                    let suitesBadge = item.suites ? `<span style="font-size:11px; color:#64748b;">${item.suites}</span>` : '<em>Libre</em>';
-                    
-                    tbody.innerHTML += `<tr><td><span class="color-dot" style="background-color: ${item.color};"></span><strong>${item.nombre}</strong></td>
-                    <td>${bloquesBadge}</td><td>${suitesBadge}</td><td style="text-align: center;"><button class="btn-edit" onclick="prepararEdicionProyecto('${item.id}', '${item.nombre}', '${item.color}', '${item.bloques || ''}', '${item.suites || ''}')">✏️</button>
-                    <button class="btn-delete" onclick="eliminarDato('catalogo_proyectos', '${item.id}', '${item.nombre}')">🗑️</button></td></tr>`;
-                });
-            }
-        }
-
         // ==========================================
-        // FUNCIONES MODIFICADAS PARA EL TABLERO KANBAN
+        // 1. GESTIÓN DE ESTADOS (NUEVO)
         // ==========================================
-        function prepararEdicionEstado(id, nombre, orden, sigEstado, verTablero) {
-            idEstadoEditando = id; 
-            document.getElementById('nombre_estado').value = nombre; 
-            document.getElementById('orden_estado').value = orden; 
-            document.getElementById('estado_siguiente').value = sigEstado || '';
-            // Si verTablero es undefined o true, lo marcamos. Si es false, lo desmarcamos.
-            document.getElementById('ver_en_tablero').checked = (verTablero !== false);
-            
-            document.getElementById('btn_guardar_estado').innerHTML = "Actualizar"; 
-            document.getElementById('btn_guardar_estado').style.backgroundColor = "#f97316"; 
-        }
-
-        async function guardarEstado() {
-            let nombre = document.getElementById('nombre_estado').value.trim(); 
-            let ordenDeseado = parseInt(document.getElementById('orden_estado').value);
-            let estadoSig = document.getElementById('estado_siguiente').value;
-            let verTab = document.getElementById('ver_en_tablero').checked;
-            
-            if (!nombre) return;
-            
-            let btn = document.getElementById('btn_guardar_estado'); btn.innerHTML = "Guardando..."; btn.disabled = true;
-            
-            const { data: estadosDb } = await supabaseClient.from('catalogo_estados').select('*').order('orden', { ascending: true });
-            let otrosEstados = idEstadoEditando ? estadosDb.filter(e => e.id !== idEstadoEditando) : estadosDb;
-            let maxOrden = otrosEstados.length > 0 ? Math.max(...otrosEstados.map(e => e.orden)) : 0;
-            if (isNaN(ordenDeseado) || ordenDeseado <= 0) ordenDeseado = maxOrden + 1;
-            
-            let nuevaSecuencia = []; let indexRelativo = 1; let insertado = false;
-            for (let i = 0; i < otrosEstados.length; i++) {
-                if (indexRelativo === ordenDeseado && !insertado) { nuevaSecuencia.push({ isTarget: true, nombre: nombre, orden: indexRelativo }); insertado = true; indexRelativo++; }
-                nuevaSecuencia.push({ id: otrosEstados[i].id, nombre: otrosEstados[i].nombre, orden: indexRelativo }); indexRelativo++;
-            }
-            if (!insertado) nuevaSecuencia.push({ isTarget: true, nombre: nombre, orden: ordenDeseado > indexRelativo ? indexRelativo : ordenDeseado });
-            
-            for (let item of nuevaSecuencia) {
-                if (item.isTarget) {
-                    if (idEstadoEditando) {
-                        await supabaseClient.from('catalogo_estados').update({ nombre: item.nombre, orden: item.orden, estado_siguiente: estadoSig, ver_en_tablero: verTab }).eq('id', idEstadoEditando);
-                    } else {
-                        await supabaseClient.from('catalogo_estados').insert([{ nombre: item.nombre, orden: item.orden, estado_siguiente: estadoSig, ver_en_tablero: verTab }]);
-                    }
-                } else {
-                    let oldItem = otrosEstados.find(e => e.id === item.id);
-                    if (oldItem && oldItem.orden !== item.orden) await supabaseClient.from('catalogo_estados').update({ orden: item.orden }).eq('id', item.id);
-                }
-            }
-            
-            idEstadoEditando = null; 
-            document.getElementById('nombre_estado').value = ''; 
-            document.getElementById('orden_estado').value = '';
-            document.getElementById('estado_siguiente').value = '';
-            document.getElementById('ver_en_tablero').checked = true;
-            
-            btn.innerHTML = "Agregar"; btn.style.backgroundColor = "#8b5cf6"; btn.disabled = false; 
-            cargarEstados();
-        }
-
         async function cargarEstados() {
-            const { data } = await supabaseClient.from('catalogo_estados').select('*').order('orden', { ascending: true }); 
-            const tbody = document.getElementById('tabla_estados'); 
-            const selSiguiente = document.getElementById('estado_siguiente');
-            tbody.innerHTML = ""; 
+            const { data, error } = await supabaseClient.from('catalogo_estados').select('*').order('orden');
+            if (error) { console.error(error); return; }
             
-            selSiguiente.innerHTML = '<option value="">Ninguno (Fin del proceso)</option>';
-            if(data) {
-                data.forEach(item => { selSiguiente.innerHTML += `<option value="${item.nombre}">${item.nombre}</option>`; });
+            let tbody = document.getElementById('tabla_estados');
+            let selectSiguiente = document.getElementById('est_siguiente');
+            
+            tbody.innerHTML = '';
+            selectSiguiente.innerHTML = '<option value="">Ninguno (Fin del proceso)</option>';
+
+            if(data.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No hay estados</td></tr>'; return; }
+
+            data.forEach(e => {
+                selectSiguiente.innerHTML += `<option value="${e.nombre}">${e.nombre}</option>`;
+
+                let badgeTablero = e.ver_en_tablero ? '<span style="background:#dcfce7; color:#166534; padding:2px 6px; border-radius:10px; font-size:11px; font-weight:bold;">👁️ Tablero</span>' : '<span style="color:#94a3b8; font-size:11px;">Oculto</span>';
+                let badgeSalto = e.siguiente_estado ? `<span style="background:#dbeafe; color:#1e40af; padding:2px 6px; border-radius:10px; font-size:11px; font-weight:bold;">➡️ ${e.siguiente_estado}</span>` : '<span style="color:#94a3b8; font-style:italic;">Ninguno</span>';
                 
-                data.forEach(item => { 
-                    let badgeAuto = item.estado_siguiente ? `<span class="badge-auto">➡️ ${item.estado_siguiente}</span>` : '<em>Ninguno</em>';
-                    let badgeTablero = item.ver_en_tablero !== false ? `<span class="badge-visible">👁️ Tablero</span>` : `<span class="badge-oculto">🙈 Oculto</span>`;
-                    
-                    tbody.innerHTML += `<tr>
-                    <td><span class="badge-orden">${item.orden}</span></td>
-                    <td><strong>${item.nombre}</strong></td>
-                    <td style="text-align:center;">${badgeTablero}</td>
-                    <td>${badgeAuto}</td>
-                    <td style="text-align: center;"><button class="btn-edit" onclick="prepararEdicionEstado('${item.id}', '${item.nombre}', '${item.orden}', '${item.estado_siguiente || ''}', ${item.ver_en_tablero !== false})">✏️</button>
-                    <button class="btn-delete" onclick="eliminarDato('catalogo_estados', '${item.id}', '${item.nombre}')">🗑️</button></td></tr>`;
-                });
-            }
-        }
+                let txtGrupo = e.grupo_carril ? `<b style="color:#3b82f6;">${e.grupo_carril}</b>` : '<span style="color:#cbd5e1;">-</span>';
+                let txtActivo = e.es_estado_activo ? '<span style="background:#fef3c7; color:#d97706; padding:2px 6px; border-radius:10px; font-size:10px; font-weight:bold; margin-left:8px;">⚡ ACTIVO</span>' : '';
 
-        async function guardarMeta() {
-            let proyecto = document.getElementById('meta_proyecto').value;
-            let pisoRaw = document.getElementById('meta_piso').value.trim().toUpperCase();
-            let piso = pisoRaw === "" ? "TODOS" : pisoRaw; 
-            let producto = document.getElementById('meta_producto').value;
-            let cantidad = parseInt(document.getElementById('meta_cantidad').value);
-
-            if (!proyecto || !producto || isNaN(cantidad)) {
-                Swal.fire('Campos incompletos', 'Selecciona el proyecto, producto y la cantidad total.', 'warning'); return;
-            }
-
-            const { error } = await supabaseClient.from('metas_produccion').insert([{ proyecto, piso, producto, cantidad_esperada: cantidad }]);
-            if (!error) {
-                document.getElementById('meta_piso').value = ''; document.getElementById('meta_cantidad').value = '';
-                cargarMetas();
-                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Meta guardada', showConfirmButton: false, timer: 1500 });
-            }
-        }
-
-        async function cargarMetas() {
-            const { data } = await supabaseClient.from('metas_produccion').select('*').order('proyecto').order('piso');
-            const tbody = document.getElementById('tabla_metas'); tbody.innerHTML = "";
-            if (data) {
-                data.forEach(item => {
-                    let pisoDisplay = item.piso === "TODOS" ? '<span class="badge-todos">🏢 TODOS LOS PISOS</span>' : `Piso <strong>${item.piso}</strong>`;
-                    
-                    tbody.innerHTML += `<tr><td><strong>${item.proyecto}</strong></td><td>${pisoDisplay}</td>
-                    <td>${item.producto}</td><td><strong>${item.cantidad_esperada} unds.</strong></td>
-                    <td><button class="btn-delete" onclick="eliminarDato('metas_produccion', '${item.id}', 'esta regla de meta')">🗑️</button></td></tr>`;
-                });
-            }
-        }
-
-        async function eliminarDato(tabla, id, identificador) {
-            const result = await Swal.fire({
-                title: '¿Estás seguro?', html: `Estás a punto de borrar:<br><b>${identificador}</b>`,
-                icon: 'error', showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Sí, borrar'
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="font-weight:bold; color:#64748b;">${e.orden}</td>
+                        <td style="font-weight:bold; color:#1e293b;">${e.nombre} ${txtActivo}</td>
+                        <td>${txtGrupo}</td>
+                        <td>${badgeTablero}</td>
+                        <td>${badgeSalto}</td>
+                        <td style="text-align:center;">
+                            <button class="btn-del" onclick="eliminarRegistro('catalogo_estados', ${e.id})" title="Borrar">🗑️</button>
+                        </td>
+                    </tr>
+                `;
             });
+        }
 
-            if (result.isConfirmed) {
-                await supabaseClient.from(tabla).delete().eq('id', id);
-                if (tabla === 'catalogo_proyectos') cargarListaProyectos(); 
-                else if (tabla === 'catalogo_estados') cargarEstados(); 
-                else if (tabla === 'metas_produccion') cargarMetas();
-                else cargarLista(tabla, tabla === 'catalogo_espacios' ? 'tabla_espacios' : 'tabla_productos');
+        async function agregarEstado() {
+            let orden = document.getElementById('est_orden').value;
+            let nombre = document.getElementById('est_nombre').value.trim();
+            let grupo = document.getElementById('est_grupo').value.trim();
+            let activo = document.getElementById('est_activo').checked;
+            let tablero = document.getElementById('est_tablero').checked;
+            let siguiente = document.getElementById('est_siguiente').value;
+
+            if(!orden || !nombre) { Swal.fire('Error', 'Orden y Nombre son obligatorios', 'warning'); return; }
+
+            const { error } = await supabaseClient.from('catalogo_estados').insert([{
+                orden: parseInt(orden),
+                nombre: nombre,
+                grupo_carril: grupo !== '' ? grupo : null,
+                es_estado_activo: activo,
+                ver_en_tablero: tablero,
+                siguiente_estado: siguiente !== '' ? siguiente : null
+            }]);
+
+            if(error) { Swal.fire('Error', error.message, 'error'); } 
+            else {
+                document.getElementById('est_orden').value = '';
+                document.getElementById('est_nombre').value = '';
+                document.getElementById('est_grupo').value = '';
+                document.getElementById('est_activo').checked = false;
+                document.getElementById('est_siguiente').value = '';
+                cargarEstados();
+                mensajeExito();
             }
         }
+
+        // ==========================================
+        // 2. GESTIÓN DE PROYECTOS
+        // ==========================================
+        async function cargarProyectos() {
+            const { data } = await supabaseClient.from('catalogo_proyectos').select('*').order('nombre');
+            let tbody = document.getElementById('tabla_proyectos');
+            tbody.innerHTML = '';
+            if(data) {
+                data.forEach(p => {
+                    let colorDiv = `<div style="width:20px; height:20px; border-radius:50%; background-color:${p.color || '#ccc'};"></div>`;
+                    tbody.innerHTML += `<tr>
+                        <td style="font-weight:bold;">${p.nombre}</td>
+                        <td>${p.bloques || '-'}</td>
+                        <td>${p.suites || '-'}</td>
+                        <td>${colorDiv}</td>
+                        <td style="text-align:center;"><button class="btn-del" onclick="eliminarRegistro('catalogo_proyectos', ${p.id})">🗑️</button></td>
+                    </tr>`;
+                });
+            }
+        }
+
+        async function agregarProyecto() {
+            let nombre = document.getElementById('pry_nombre').value.trim();
+            let bloques = document.getElementById('pry_bloques').value.trim();
+            let suites = document.getElementById('pry_suites').value.trim();
+            let color = document.getElementById('pry_color').value;
+
+            if(!nombre) return Swal.fire('Falta Nombre', '', 'warning');
+
+            const { error } = await supabaseClient.from('catalogo_proyectos').insert([{
+                nombre: nombre, bloques: bloques, suites: suites, color: color
+            }]);
+            
+            if(!error) {
+                document.getElementById('pry_nombre').value = ''; document.getElementById('pry_bloques').value = ''; document.getElementById('pry_suites').value = '';
+                cargarProyectos(); mensajeExito();
+            }
+        }
+
+        // ==========================================
+        // 3. ESPACIOS Y PRODUCTOS
+        // ==========================================
+        async function cargarEspacios() {
+            const { data } = await supabaseClient.from('catalogo_espacios').select('*').order('sigla');
+            let tbody = document.getElementById('tabla_espacios'); tbody.innerHTML = '';
+            if(data) data.forEach(e => tbody.innerHTML += `<tr><td><b>${e.sigla}</b></td><td>${e.nombre}</td><td style="text-align:center;"><button class="btn-del" onclick="eliminarRegistro('catalogo_espacios', ${e.id})">🗑️</button></td></tr>`);
+        }
+        async function agregarEspacio() {
+            let sigla = document.getElementById('esp_sigla').value.trim().toUpperCase(); let nombre = document.getElementById('esp_nombre').value.trim();
+            if(!sigla || !nombre) return;
+            const { error } = await supabaseClient.from('catalogo_espacios').insert([{ sigla, nombre }]);
+            if(!error) { document.getElementById('esp_sigla').value = ''; document.getElementById('esp_nombre').value = ''; cargarEspacios(); mensajeExito(); }
+        }
+
+        async function cargarProductos() {
+            const { data } = await supabaseClient.from('catalogo_productos').select('*').order('sigla');
+            let tbody = document.getElementById('tabla_productos'); tbody.innerHTML = '';
+            if(data) data.forEach(p => tbody.innerHTML += `<tr><td><b>${p.sigla}</b></td><td>${p.nombre}</td><td style="text-align:center;"><button class="btn-del" onclick="eliminarRegistro('catalogo_productos', ${p.id})">🗑️</button></td></tr>`);
+        }
+        async function agregarProducto() {
+            let sigla = document.getElementById('prd_sigla').value.trim().toUpperCase(); let nombre = document.getElementById('prd_nombre').value.trim();
+            if(!sigla || !nombre) return;
+            const { error } = await supabaseClient.from('catalogo_productos').insert([{ sigla, nombre }]);
+            if(!error) { document.getElementById('prd_sigla').value = ''; document.getElementById('prd_nombre').value = ''; cargarProductos(); mensajeExito(); }
+        }
+
+        // ==========================================
+        // FUNCIÓN GLOBAL PARA ELIMINAR
+        // ==========================================
+        async function eliminarRegistro(tabla, id) {
+            const conf = await Swal.fire({ title: '¿Seguro?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444' });
+            if (conf.isConfirmed) {
+                await supabaseClient.from(tabla).delete().eq('id', id);
+                if(tabla === 'catalogo_estados') cargarEstados();
+                if(tabla === 'catalogo_proyectos') cargarProyectos();
+                if(tabla === 'catalogo_espacios') cargarEspacios();
+                if(tabla === 'catalogo_productos') cargarProductos();
+                Swal.fire({toast:true, position:'top-end', icon:'success', title:'Borrado', showConfirmButton:false, timer:1500});
+            }
+        }
+
+        function mensajeExito() { Swal.fire({toast:true, position:'top-end', icon:'success', title:'Guardado', showConfirmButton:false, timer:1500}); }
     </script>
 </body>
 </html>
