@@ -131,6 +131,7 @@
                 <li><a href="dashboard.html">📊 Dashboard</a></li>
                 <li><a href="taller.html">🏭 Panel Operador</a></li>
                 <li><a href="index.html" class="active">📝 Ingreso Muebles</a></li>
+                <li><a href="tablero.html">📋 Tablero Kanban</a></li>
                 <li><a href="reportes.html">🔍 Buscar y Reportes</a></li>
                 <li><a href="admin.html" id="link-admin">⚙️ Administrador</a></li>
             </ul>
@@ -223,7 +224,7 @@
         window.proyectosCargados = []; 
         window.estadosCargados = []; 
         window.operadorActual = "Operador"; 
-        window.rolGlobal = "Operador"; // Vatiable para guardar el rol
+        window.rolGlobal = "Operador"; 
         
         window.idMuebleEnEdicion = null;
         window.suitesDisponiblesActuales = []; 
@@ -275,14 +276,12 @@
         function bloquearFormularioNuevo() {
             document.getElementById('tituloFormulario').innerText = "🔒 Modo Operador: Solo Edición de Observaciones";
             
-            // Deshabilitar todos los campos estructurales
             const camposBloqueados = ['fecha', 'codigo_proyecto', 'estado', 'proyecto', 'piso', 'bloque', 'suite', 'espacio', 'producto'];
             camposBloqueados.forEach(id => {
                 let el = document.getElementById(id);
                 if (el) el.disabled = true;
             });
 
-            // Ocultar botón de guardar (hasta que no haga click en "Editar" abajo)
             document.getElementById('btnGuardar').style.display = 'none';
         }
 
@@ -328,14 +327,12 @@
             let datalist = document.getElementById('bloques_disponibles');
             datalist.innerHTML = "";
             
-            // Reiniciar Autocompletado de Suites
             window.suitesDisponiblesActuales = [];
             document.getElementById('suite_ghost').value = '';
             document.getElementById('suite').value = '';
 
             if (proyectoReal) {
                 if (proyectoReal.bloques && proyectoReal.bloques.trim() !== "") {
-                    // Solo habilitamos el bloque si el usuario es Administrador
                     if (window.rolGlobal === 'Administrador') {
                         inputBloque.disabled = false; inputBloque.placeholder = "Requerido (Ej: A)";
                     }
@@ -413,7 +410,6 @@
                 document.getElementById('tituloFormulario').innerText = "✏️ Editando Mueble";
             } else {
                 document.getElementById('tituloFormulario').innerText = "✏️ Escribiendo Observaciones";
-                // Mostramos el botón de guardar que estaba oculto para el operador
                 document.getElementById('btnGuardar').style.display = 'block';
             }
             
@@ -442,7 +438,6 @@
             if (window.rolGlobal === 'Administrador') {
                 document.getElementById('tituloFormulario').innerText = "Registrar Nuevo Mueble";
             } else {
-                // Volvemos a modo bloqueo para el operador
                 bloquearFormularioNuevo();
             }
 
@@ -460,7 +455,6 @@
         }
 
         async function guardarRegistro() {
-            // Validar que el operador no intente crear un registro nuevo
             let idParaActualizar = window.idMuebleEnEdicion;
 
             if (window.rolGlobal !== 'Administrador' && !idParaActualizar) {
@@ -503,7 +497,6 @@
             let muebleAntiguo = null;
 
             if (!idParaActualizar) {
-                // Lógica de Creación (Solo Administrador)
                 const { data: existente } = await supabaseClient.from('registros_produccion').select('*').eq('id_generado', id_generado);
                 if (existente && existente.length > 0) {
                     const result = await Swal.fire({
@@ -530,7 +523,7 @@
             }
 
             if (idParaActualizar && muebleAntiguo) {
-                // Lógica de Actualización
+                // Actualización
                 let cambiosContador = 0;
                 let detallesHTML = "";
                 let obsAntigua = (muebleAntiguo.observaciones || "").trim(); let modAntigua = (muebleAntiguo.modificaciones || "").trim();
@@ -542,13 +535,11 @@
                 let updatePayload = {};
 
                 if (window.rolGlobal === 'Administrador') {
-                    // El Admin puede actualizar todo
                     if (estadoAntiguo !== estado) { cambiosContador++; detallesHTML += `<li style="margin-bottom:4px;"><b>Estado:</b> cambió a <span style="color:#0f172a;">${estado}</span></li>`; }
                     if (codigoAntiguo !== codigo_proyecto && codigo_proyecto !== "000") { cambiosContador++; detallesHTML += `<li style="margin-bottom:4px;"><b>Cód Interno:</b> cambió a <span style="color:#0f172a;">${codigo_proyecto}</span></li>`; }
                     
                     updatePayload = { fecha, codigo_proyecto, observaciones, modificaciones, estado, proyecto, piso, bloque, suite, espacio, producto, id_generado };
                 } else {
-                    // El Operador SOLO actualiza estas dos columnas, sin importar qué manipuló en pantalla
                     updatePayload = { observaciones, modificaciones };
                 }
 
@@ -574,13 +565,37 @@
                 cancelarEdicion();
 
             } else {
-                // Solo llega aquí si es Administrador y es un mueble 100% nuevo
+                // Creación 100% Nueva
                 const { data: nuevoReg } = await supabaseClient.from('registros_produccion').insert([{ fecha, codigo_proyecto, proyecto, piso, bloque, suite, espacio, producto, observaciones, modificaciones, estado, id_generado }]).select();
                 if (nuevoReg && nuevoReg.length > 0) {
                     await supabaseClient.from('historial_trazabilidad').insert([{
                         id_mueble: nuevoReg[0].id, etapa: estado, operador: window.operadorActual,
                         tipo_registro: 'Creación', comentarios: `Registro inicial de la pieza.`
                     }]);
+                    
+                    // --- NUEVA LÓGICA: CREAR TARJETA AUTOMÁTICA EN EL TABLERO KANBAN ---
+                    if (codigo_proyecto !== "000") {
+                        const { data: tarjetasExistentes } = await supabaseClient
+                            .from('kanban_tarjetas')
+                            .select('id')
+                            .eq('codigo_proyecto', codigo_proyecto);
+
+                        if (!tarjetasExistentes || tarjetasExistentes.length === 0) {
+                            let tituloTarjeta = `${proyecto} - ${producto}`;
+                            let subtituloTarjeta = `Piso ${piso} ${bloque ? '- Blq ' + bloque : ''} - Suite ${suite}`;
+                            
+                            await supabaseClient.from('kanban_tarjetas').insert([{
+                                codigo_proyecto: codigo_proyecto,
+                                titulo: tituloTarjeta,
+                                subtitulo: subtituloTarjeta,
+                                estado_macro: estado, 
+                                creado_por: 'Sistema Automático',
+                                es_sistema: true
+                            }]);
+                        }
+                    }
+                    // -------------------------------------------------------------------
+                    
                     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '¡Mueble Creado!', showConfirmButton: false, timer: 2000 });
                 }
                 
@@ -636,7 +651,6 @@
                 let obsHTML = fila.observaciones ? `<div class="texto-truncado">${fila.observaciones}</div><span class="tooltip-custom">${fila.observaciones}</span>` : '';
                 let modHTML = fila.modificaciones ? `<div class="texto-truncado">${fila.modificaciones}</div><span class="tooltip-custom">${fila.modificaciones}</span>` : '';
 
-                // Ocultar botón borrar si no es administrador
                 let btnBorrarHTML = window.rolGlobal === 'Administrador' ? `<button class="btn-accion" title="Borrar" onclick="eliminarRegistro('${fila.id}', '${fila.codigo_proyecto || '-'}', '${ubicacionVisual}')">🗑️</button>` : '';
 
                 tbody.innerHTML += `<tr>
