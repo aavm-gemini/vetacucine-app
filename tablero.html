@@ -31,10 +31,7 @@
         /* --- KANBAN BOARD (SCROLL HORIZONTAL) --- */
         .kanban-container { flex: 1; display: flex; gap: 20px; padding: 20px; overflow-x: auto; align-items: flex-start; }
         
-        /* Columna Normal (Sin subdivisiones) */
         .kanban-column { background: #f8fafc; min-width: 320px; max-width: 320px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; max-height: 100%; border-top: 4px solid #94a3b8; }
-        
-        /* Columna Agrupada (Con Carriles/Swimlanes) */
         .kanban-column-group { background: #f8fafc; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; max-height: 100%; border-top: 4px solid #94a3b8; }
         .kanban-subcolumns-container { display: flex; flex: 1; overflow: hidden; }
         .kanban-subcolumn { width: 300px; min-width: 300px; display: flex; flex-direction: column; border-right: 1px solid #e2e8f0; }
@@ -51,6 +48,11 @@
         .kanban-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.12); }
         .kanban-card:active { cursor: grabbing; }
 
+        /* CLASES PARA TARJETAS EN PROCESO (HIGHLIGHT DINÁMICO) */
+        .card-proceso { border: 2px solid #f59e0b !important; background: #fffbeb !important; }
+        @keyframes pulse-badge { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .badge-proceso { font-size:10px; background:#f59e0b; color:white; padding:2px 6px; border-radius:4px; margin-bottom:6px; display:inline-block; font-weight:bold; letter-spacing:0.5px; animation: pulse-badge 2s infinite; }
+
         .card-code { font-size: 11px; font-weight: bold; background: #dbeafe; color: #1e40af; padding: 3px 6px; border-radius: 4px; display: inline-block; margin-bottom: 6px; }
         .card-title { font-size: 14px; font-weight: bold; color: #1e293b; margin-bottom: 4px; line-height: 1.3; }
         .card-sub { font-size: 12px; color: #64748b; margin-bottom: 10px; }
@@ -58,7 +60,6 @@
         .card-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 8px; font-size: 12px; color: #94a3b8; }
         .avatar-mini { width: 24px; height: 24px; background: #3b82f6; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; }
 
-        /* Estilo para cuando arrastramos la tarjeta */
         .dragging { opacity: 0.5; border: 2px dashed #3b82f6; }
         .drag-over { background: #e0e7ff; border-radius: 6px; }
 
@@ -130,9 +131,8 @@
                 </div>
             </div>
 
-            <!-- CONTENEDOR DONDE SE DIBUJAN LAS COLUMNAS DINÁMICAS -->
             <div class="kanban-container" id="kanban_board">
-                <p style="padding: 20px; color: #64748b;">⏳ Iniciando sistema...</p>
+                <p style="padding: 20px; color: #64748b;">⏳ Iniciando sistema inteligente...</p>
             </div>
         </div>
     </div>
@@ -150,8 +150,6 @@
             
             <div class="modal-body">
                 <div class="modal-col-principal">
-                    
-                    <!-- SECCIÓN PIEZAS DEL LOTE -->
                     <div class="modal-section">
                         <h3>📦 Contenido del Lote <span id="modal_contador_piezas" style="font-size:12px; background:#e2e8f0; padding:2px 6px; border-radius:10px; font-weight:normal; margin-left:10px;">0 piezas</span></h3>
                         <div class="detalle-piezas-lista" id="modal_lista_piezas">
@@ -159,21 +157,16 @@
                         </div>
                     </div>
 
-                    <!-- SECCIÓN ARCHIVOS ADJUNTOS -->
                     <div class="modal-section">
                         <h3>📎 Archivos Adjuntos (Nesting / Materiales)</h3>
                         <div class="adjuntos-lista" id="modal_lista_adjuntos">
                             <p style="color:#94a3b8; font-size:13px; font-style:italic;">No hay archivos subidos.</p>
                         </div>
-                        
-                        <!-- Input oculto para seleccionar archivo -->
                         <input type="file" id="input_archivo" style="display:none;" onchange="subirArchivo(this)">
-                        
                         <button class="btn-crear" style="width:100%; margin-top:10px; background:#f1f5f9; color:#475569; border:1px dashed #cbd5e1;" onclick="document.getElementById('input_archivo').click()">
                             + Subir Archivo PDF o Imagen
                         </button>
                     </div>
-
                 </div>
 
                 <div class="modal-col-lateral">
@@ -188,7 +181,6 @@
     </div>
 
     <script>
-        // Configuración de Supabase
         const supabaseUrl = 'https://pnrntmkcisgymyvmzson.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBucm50bWtjaXNneW15dm16c29uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNzAwODQsImV4cCI6MjEwNDc0NjA4NH0.fdW9mj9rkO0rxHXB8rBeJc6a32QSQxtvsNtu9_rL6yc';
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
@@ -196,8 +188,9 @@
         let currentUser = "Usuario";
         let tarjetasGlobales = [];
         let piezasCompletasGlobales = []; 
-        let empleadosGlobales = []; // Para los roles
+        let empleadosGlobales = []; 
         let estadosGlobales = [];
+        let gruposGlobales = []; // El nuevo cerebro de la fábrica
 
         let idTarjetaActualModal = null;
         let codigoProyectoActualModal = null;
@@ -214,18 +207,31 @@
         async function inicializarTablero() {
             const board = document.getElementById('kanban_board');
             try {
-                board.innerHTML = '<p style="padding: 20px; color: #64748b;">⏳ Obteniendo empleados y roles...</p>';
+                board.innerHTML = '<p style="padding: 20px; color: #64748b;">⏳ Leyendo empleados...</p>';
                 const { data: empleados } = await supabaseClient.from('empleados_autorizados').select('*');
                 empleadosGlobales = empleados || [];
 
-                board.innerHTML = '<p style="padding: 20px; color: #64748b;">⏳ Obteniendo columnas...</p>';
+                board.innerHTML = '<p style="padding: 20px; color: #64748b;">⏳ Estructurando Kanban...</p>';
                 const { data: estados, error: err1 } = await supabaseClient.from('catalogo_estados').select('*').eq('ver_en_tablero', true).order('orden');
                 if (err1) throw new Error("Error leyendo estados: " + err1.message);
                 estadosGlobales = estados || [];
 
+                // 🧠 LÓGICA DE AGRUPACIÓN MAESTRA
+                gruposGlobales = [];
+                estadosGlobales.forEach(est => {
+                    let nombreGrupo = est.grupo_carril ? est.grupo_carril : est.nombre;
+                    let grupoExistente = gruposGlobales.find(g => g.nombreGrupo === nombreGrupo);
+                    
+                    if (!grupoExistente) {
+                        gruposGlobales.push({ nombreGrupo: nombreGrupo, estados: [est] });
+                    } else {
+                        grupoExistente.estados.push(est);
+                    }
+                });
+
                 board.innerHTML = '<p style="padding: 20px; color: #64748b;">⏳ Descargando tarjetas...</p>';
                 const { data: tarjetas, error: err2 } = await supabaseClient.from('kanban_tarjetas').select('*');
-                if (err2) throw new Error("Error leyendo tarjetas: Verifica que la tabla exista. " + err2.message);
+                if (err2) throw new Error("Error leyendo tarjetas: " + err2.message);
                 tarjetasGlobales = tarjetas || [];
 
                 board.innerHTML = '<p style="padding: 20px; color: #64748b;">⏳ Analizando muebles...</p>';
@@ -233,67 +239,74 @@
                 if (err3) throw new Error("Error leyendo registros: " + err3.message);
                 piezasCompletasGlobales = piezas || [];
 
-                board.innerHTML = '<p style="padding: 20px; color: #64748b;">⏳ Dibujando tablero...</p>';
-                
                 tarjetasGlobales.forEach(t => {
                     if (t.es_sistema) {
                         let piezasDeEsteLote = piezasCompletasGlobales.filter(p => String(p.codigo_proyecto) === String(t.codigo_proyecto));
-                        
                         if (piezasDeEsteLote.length > 0) {
                             let suitesUnicas = [...new Set(piezasDeEsteLote.map(p => p.suite))].filter(s => s).join(', ');
                             let pisosUnicos = [...new Set(piezasDeEsteLote.map(p => p.piso))].filter(s => s).join(', ');
                             t.subtitulo_dinamico = "Pisos: " + (pisosUnicos || '-') + " | Suites: " + (suitesUnicas || '-');
                             t.cantidad_piezas = piezasDeEsteLote.length;
                         } else {
-                            t.subtitulo_dinamico = t.subtitulo;
-                            t.cantidad_piezas = 0;
+                            t.subtitulo_dinamico = t.subtitulo; t.cantidad_piezas = 0;
                         }
                     } else {
-                        t.subtitulo_dinamico = t.subtitulo;
-                        t.cantidad_piezas = '?';
+                        t.subtitulo_dinamico = t.subtitulo; t.cantidad_piezas = '?';
                     }
                 });
 
-                dibujarTablero(estadosGlobales);
+                dibujarTablero();
 
             } catch (error) {
                 let errorHtml = '<div style="background:#fee2e2; border:1px solid #ef4444; color:#b91c1c; padding:20px; border-radius:8px; max-width:600px; margin: 20px;">';
-                errorHtml += '<h3 style="margin-top:0;">🛑 Error detectado</h3>';
-                errorHtml += '<p>' + error.message + '</p></div>';
+                errorHtml += '<h3 style="margin-top:0;">🛑 Error detectado</h3><p>' + error.message + '</p></div>';
                 board.innerHTML = errorHtml;
-                console.error(error);
             }
         }
 
-        function dibujarTablero(estados) {
+        function dibujarTablero() {
             const board = document.getElementById('kanban_board');
             board.innerHTML = '';
-
             const coloresTop = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#64748b', '#14b8a6', '#f43f5e'];
 
-            estados.forEach((est, index) => {
+            gruposGlobales.forEach((grupo, index) => {
                 let color = coloresTop[index % coloresTop.length];
-                let tarjetasEstado = tarjetasGlobales.filter(t => t.estado_macro === est.nombre);
+                let estId = grupo.nombreGrupo.replace(/\s+/g, '');
                 
-                // Buscar si hay operadores asignados a esta Área/Estado
-                let operadoresEnArea = empleadosGlobales.filter(emp => emp.rol_taller === est.nombre);
+                // Todas las tarjetas que pertenecen a CUALQUIER estado dentro de este grupo
+                let nombresEstados = grupo.estados.map(e => e.nombre);
+                let tarjetasGrupo = tarjetasGlobales.filter(t => nombresEstados.includes(t.estado_macro));
                 
-                let estId = est.nombre.replace(/\s+/g, '');
-                let countTarjetas = tarjetasEstado.length;
+                // Empleados asignados al Grupo (Ej: "Corte") o a algún estado específico
+                let operadoresEnArea = empleadosGlobales.filter(emp => emp.rol_taller === grupo.nombreGrupo || nombresEstados.includes(emp.rol_taller));
+                
+                // Identificamos los estados lógicos de este grupo
+                let estadoActivo = grupo.estados.find(e => e.es_estado_activo) || grupo.estados[0];
+                let estadoInactivo = grupo.estados.find(e => !e.es_estado_activo) || grupo.estados[0];
 
-                // 🌟 LÓGICA DE CARRILES (SWIMLANES)
-                if (operadoresEnArea.length === 0) {
-                    // COLUMNA NORMAL (Nadie asignado específicamente a esta área)
+                // Función mágica: Manda las tarjetas "Activas" (Digitalizando, Cortando) hacia arriba
+                let ordenarTarjetas = (lista) => {
+                    return lista.sort((a, b) => {
+                        let aActivo = grupo.estados.find(e => e.nombre === a.estado_macro)?.es_estado_activo ? 1 : 0;
+                        let bActivo = grupo.estados.find(e => e.nombre === b.estado_macro)?.es_estado_activo ? 1 : 0;
+                        return bActivo - aActivo; 
+                    });
+                };
+
+                if (operadoresEnArea.length === 0 || grupo.estados.length === 1) {
+                    // COLUMNA SIMPLE (Nadie asignado o es un estado huérfano)
+                    let tarjetasOrdenadas = ordenarTarjetas(tarjetasGrupo);
                     let htmlTarjetas = '';
-                    tarjetasEstado.forEach(t => { htmlTarjetas += generarHTMLTarjeta(t); });
+                    tarjetasOrdenadas.forEach(t => { htmlTarjetas += generarHTMLTarjeta(t); });
 
                     let colHTML = `
                         <div class="kanban-column" style="border-top-color: ${color};">
                             <div class="kanban-column-header">
-                                <span>${est.nombre}</span>
-                                <span class="col-count" id="count_${estId}">${countTarjetas}</span>
+                                <span>${grupo.nombreGrupo}</span>
+                                <span class="col-count" id="count_${estId}">${tarjetasGrupo.length}</span>
                             </div>
-                            <div class="kanban-cards-area" id="col_${est.nombre}_null" ondrop="drop(event, '${est.nombre}', 'null')" ondragover="allowDrop(event)">
+                            <!-- Si es columna simple, todo cae al estado por defecto (inactivo) -->
+                            <div class="kanban-cards-area" id="col_${estId}_null" ondrop="drop(event, '${estadoInactivo.nombre}', 'null')" ondragover="allowDrop(event)">
                                 ${htmlTarjetas}
                             </div>
                         </div>
@@ -301,11 +314,11 @@
                     board.innerHTML += colHTML;
 
                 } else {
-                    // COLUMNA DIVIDIDA (Hay operarios en esta área, ej: Mario y Axel en Corte)
+                    // COLUMNA AGRUPADA (Modo Swimlanes Activo)
                     let subcolsHTML = '';
                     
-                    // 1. Bandeja General (Por Definir)
-                    let tarjetasPorDefinir = tarjetasEstado.filter(t => !t.operador_asignado);
+                    // Carril 1: Por Definir (No asignadas a nadie)
+                    let tarjetasPorDefinir = ordenarTarjetas(tarjetasGrupo.filter(t => !t.operador_asignado));
                     let htmlPorDefinir = '';
                     tarjetasPorDefinir.forEach(t => { htmlPorDefinir += generarHTMLTarjeta(t); });
                     
@@ -314,25 +327,29 @@
                             <div class="kanban-subcolumn-header" style="background:#f1f5f9; color:#475569;">
                                 📥 Por Definir <span class="col-count">${tarjetasPorDefinir.length}</span>
                             </div>
-                            <div class="kanban-cards-area" id="col_${est.nombre}_null" ondrop="drop(event, '${est.nombre}', 'null')" ondragover="allowDrop(event)">
+                            <!-- Al soltar aquí, se pausa (Inactivo) y se desasigna -->
+                            <div class="kanban-cards-area" id="col_${estId}_null" ondrop="drop(event, '${estadoInactivo.nombre}', 'null')" ondragover="allowDrop(event)">
                                 ${htmlPorDefinir}
                             </div>
                         </div>
                     `;
 
-                    // 2. Un carril por cada Operador Asignado a esta área
+                    // Carriles 2, 3, etc: Uno por cada Operador
                     operadoresEnArea.forEach(op => {
                         let nombreCorto = op.nombre ? op.nombre.split(' ')[0] : op.email.split('@')[0];
-                        let tarjetasOp = tarjetasEstado.filter(t => t.operador_asignado === op.email);
+                        let tarjetasOp = ordenarTarjetas(tarjetasGrupo.filter(t => t.operador_asignado === op.email));
                         let htmlOp = '';
                         tarjetasOp.forEach(t => { htmlOp += generarHTMLTarjeta(t); });
+
+                        let opId = op.email.replace(/[@.]/g, ''); // Limpiar email para el ID del DOM
 
                         subcolsHTML += `
                             <div class="kanban-subcolumn">
                                 <div class="kanban-subcolumn-header" style="background:#e0e7ff; color:#3730a3;">
                                     👨‍🔧 ${nombreCorto} <span class="col-count" style="background:#c7d2fe;">${tarjetasOp.length}</span>
                                 </div>
-                                <div class="kanban-cards-area" id="col_${est.nombre}_${op.email}" ondrop="drop(event, '${est.nombre}', '${op.email}')" ondragover="allowDrop(event)">
+                                <!-- Al soltar aquí, se Activa (Cortando, Digitalizando) y se asigna -->
+                                <div class="kanban-cards-area" id="col_${estId}_${opId}" ondrop="drop(event, '${estadoActivo.nombre}', '${op.email}')" ondragover="allowDrop(event)">
                                     ${htmlOp}
                                 </div>
                             </div>
@@ -342,8 +359,8 @@
                     let colHTML = `
                         <div class="kanban-column-group" style="border-top-color: ${color};">
                             <div class="kanban-column-header">
-                                <span>${est.nombre}</span>
-                                <span class="col-count" id="count_${estId}">${countTarjetas}</span>
+                                <span>${grupo.nombreGrupo}</span>
+                                <span class="col-count" id="count_${estId}">${tarjetasGrupo.length}</span>
                             </div>
                             <div class="kanban-subcolumns-container">
                                 ${subcolsHTML}
@@ -360,7 +377,6 @@
             let bgAvatar = '#cbd5e1';
             let toolTipOp = 'Sin asignar';
 
-            // Si la tarjeta tiene a alguien asignado, buscamos su nombre para el Avatar
             if (t.operador_asignado) {
                 let emp = empleadosGlobales.find(e => e.email === t.operador_asignado);
                 let nombreCompleto = emp ? (emp.nombre || emp.email.split('@')[0]) : t.operador_asignado.split('@')[0];
@@ -369,16 +385,25 @@
                 toolTipOp = 'Asignado a: ' + nombreCompleto;
             }
             
-            let candadoHTML = (t.es_sistema === true) 
-                ? '<span style="font-size:12px; color:#f59e0b;" title="Tarjeta Automática">🔒</span>'
-                : '';
+            let candadoHTML = (t.es_sistema === true) ? '<span style="font-size:12px; color:#f59e0b;" title="Tarjeta Automática">🔒</span>' : '';
+
+            // Lógica visual si el estado de la tarjeta es "Activo" (Leyendo desde la DB)
+            let estActual = estadosGlobales.find(e => e.nombre === t.estado_macro);
+            let extraClass = '';
+            let badgeProcesoHTML = '';
+            
+            if (estActual && estActual.es_estado_activo) {
+                extraClass = 'card-proceso';
+                badgeProcesoHTML = `<div class="badge-proceso">▶ ${t.estado_macro.toUpperCase()}</div>`;
+            }
 
             return `
-                <div class="kanban-card" draggable="true" id="card_${t.id}" ondragstart="drag(event, ${t.id})" onclick="abrirModalTarjeta(${t.id})">
+                <div class="kanban-card ${extraClass}" draggable="true" id="card_${t.id}" ondragstart="drag(event, ${t.id})" onclick="abrirModalTarjeta(${t.id})">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 6px;">
                         <div class="card-code">#${t.codigo_proyecto}</div>
                         ${candadoHTML}
                     </div>
+                    ${badgeProcesoHTML}
                     <div class="card-title">${t.titulo}</div>
                     <div class="card-sub">${t.subtitulo_dinamico}</div>
                     <div class="card-footer">
@@ -390,7 +415,7 @@
         }
 
         // ==========================================
-        // GESTIÓN DE ROLES DE EQUIPO (NUEVO MODAL)
+        // GESTIÓN DE ROLES DE EQUIPO (LIMPIO Y BASADO EN GRUPOS)
         // ==========================================
         async function abrirModalRoles() {
             if (empleadosGlobales.length === 0) {
@@ -399,17 +424,18 @@
             }
 
             let html = '<div style="max-height:400px; overflow-y:auto; text-align:left;">';
-            html += '<p style="font-size:13px; color:#64748b; margin-top:0;">Asigna a cada persona a un área de la fábrica para crearle su propia columna de trabajo (Ej: Cortador, Digitalizador, Ensamblador).</p>';
+            html += '<p style="font-size:13px; color:#64748b; margin-top:0;">Asigna a cada persona a un Área de Trabajo (Ej: Corte, Digitalización).</p>';
             html += '<table style="width:100%; border-collapse:collapse; font-size:13px;">';
-            html += '<tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;"><th style="padding:10px;">Operador / Email</th><th style="padding:10px;">Área Asignada (Sub-Columna)</th></tr>';
+            html += '<tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;"><th style="padding:10px;">Operador / Email</th><th style="padding:10px;">Área Asignada</th></tr>';
             
             empleadosGlobales.forEach(emp => {
                 let nombreMostrar = emp.nombre || emp.email.split('@')[0];
                 let opcionesAreas = `<option value="">-- Sin Área Específica --</option>`;
                 
-                estadosGlobales.forEach(e => {
-                    let isSelected = emp.rol_taller === e.nombre ? 'selected' : '';
-                    opcionesAreas += `<option value="${e.nombre}" ${isSelected}>${e.nombre}</option>`;
+                // Mostrar solo los nombres de los Grupos Principales
+                gruposGlobales.forEach(g => {
+                    let isSelected = emp.rol_taller === g.nombreGrupo ? 'selected' : '';
+                    opcionesAreas += `<option value="${g.nombreGrupo}" ${isSelected}>${g.nombreGrupo}</option>`;
                 });
 
                 html += `
@@ -432,8 +458,7 @@
                 showCancelButton: true,
                 confirmButtonColor: '#8b5cf6',
                 cancelButtonColor: '#94a3b8',
-                confirmButtonText: '💾 Guardar Asignaciones',
-                cancelButtonText: 'Cancelar'
+                confirmButtonText: '💾 Guardar Asignaciones'
             }).then(async (result) => {
                 if (result.isConfirmed) {
                     Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
@@ -448,259 +473,22 @@
                             await supabaseClient.from('empleados_autorizados').update({ rol_taller: nuevoRol }).eq('email', email);
                         }
                     }
-                    Swal.fire({toast:true, position:'top-end', icon:'success', title:'Roles y Columnas actualizados', showConfirmButton:false, timer:2000});
-                    inicializarTablero(); // Redibujar el tablero con las nuevas columnas
+                    Swal.fire({toast:true, position:'top-end', icon:'success', title:'Roles actualizados', showConfirmButton:false, timer:2000});
+                    inicializarTablero(); 
                 }
             });
         }
 
         // ==========================================
-        // MODAL DE DETALLES DE TARJETA
-        // ==========================================
-        function abrirModalTarjeta(idTarjeta) {
-            let t = tarjetasGlobales.find(x => x.id === idTarjeta);
-            if (!t) return;
-
-            idTarjetaActualModal = t.id;
-            codigoProyectoActualModal = t.codigo_proyecto;
-            esSistemaActualModal = t.es_sistema;
-
-            document.getElementById('modal_codigo').innerText = "#" + t.codigo_proyecto;
-            document.getElementById('modal_titulo').innerText = t.titulo;
-            document.getElementById('modal_subtitulo').innerText = "En columna: " + t.estado_macro + " | Creado por: " + t.creado_por;
-            
-            document.getElementById('btn_borrar_tarjeta').style.display = t.es_sistema ? 'none' : 'flex';
-
-            cargarPiezasEnModal();
-            cargarAdjuntosEnModal();
-
-            document.getElementById('modal_tarjeta').style.display = 'flex';
-        }
-
-        function cerrarModalTarjeta() {
-            document.getElementById('modal_tarjeta').style.display = 'none';
-            idTarjetaActualModal = null;
-            codigoProyectoActualModal = null;
-        }
-
-        document.getElementById('modal_tarjeta').addEventListener('click', function(e) {
-            if (e.target === this) cerrarModalTarjeta();
-        });
-
-        function cargarPiezasEnModal() {
-            let contenedor = document.getElementById('modal_lista_piezas');
-            let contador = document.getElementById('modal_contador_piezas');
-            
-            if (!esSistemaActualModal) {
-                contenedor.innerHTML = '<p style="color:#64748b; font-size:13px; font-style:italic;">Esta es una tarjeta manual. No tiene piezas asociadas en el sistema principal.</p>';
-                contador.innerText = 'Lote Manual';
-                return;
-            }
-
-            let piezasDelLote = piezasCompletasGlobales.filter(p => String(p.codigo_proyecto) === String(codigoProyectoActualModal));
-            
-            contador.innerText = piezasDelLote.length + " piezas";
-            
-            if (piezasDelLote.length === 0) {
-                contenedor.innerHTML = '<p style="color:#ef4444; font-size:13px;">No se encontraron piezas en el sistema para este código.</p>';
-                return;
-            }
-
-            piezasDelLote.sort((a,b) => {
-                let sA = parseInt(a.suite) || 0; let sB = parseInt(b.suite) || 0;
-                return sA - sB;
-            });
-
-            contenedor.innerHTML = '';
-            piezasDelLote.forEach(p => {
-                let blq = p.bloque ? " - Blq " + p.bloque : "";
-                let ubicacion = "Piso " + p.piso + blq + " | Suite " + p.suite;
-                let obsText = p.observaciones ? " | 📌 " + p.observaciones : "";
-                
-                let piezaHtml = `
-                    <div class="pieza-detalle-item">
-                        <div class="pieza-info-texto">
-                            <strong>${ubicacion} — ${p.producto} (${p.espacio})</strong>
-                            <span>Estado actual: <b style="color:#3b82f6;">${p.estado}</b>${obsText}</span>
-                        </div>
-                        <button class="btn-historial-mini" onclick="verTrazabilidadPieza(${p.id}, '${ubicacion}')">⏱️ Historial</button>
-                    </div>
-                `;
-                contenedor.innerHTML += piezaHtml;
-            });
-        }
-
-        async function verTrazabilidadPieza(idMueble, ubicacion) {
-            Swal.fire({ title: 'Cargando expediente...', didOpen: () => Swal.showLoading() });
-            
-            const { data: historialBruto } = await supabaseClient.from('historial_trazabilidad').select('*').eq('id_mueble', idMueble).order('created_at', { ascending: false });
-            
-            let html = '<div style="text-align: left; max-height: 350px; overflow-y: auto; font-size: 13px; padding: 10px;">';
-            html += '<h4 style="margin-top:0; border-bottom: 1px solid #ccc; padding-bottom: 8px;">Historial de: ' + ubicacion + '</h4>';
-            
-            if (!historialBruto || historialBruto.length === 0) {
-                html += '<p style="color:#94a3b8; font-style:italic;">No hay movimientos registrados.</p>';
-            } else {
-                historialBruto.forEach(h => {
-                    let d = new Date(h.created_at || h.fecha);
-                    let fechaFmt = d.getDate().toString().padStart(2,'0') + '/' + (d.getMonth()+1).toString().padStart(2,'0') + '/' + d.getFullYear() + ' ' + d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
-                    
-                    let hOperador = h.operador || 'Sistema';
-                    let hComentarios = h.comentarios || '';
-
-                    html += `
-                        <div style="margin-bottom:12px; border-left:3px solid #3b82f6; padding-left:10px;">
-                            <strong style="color:#1e293b;">${hOperador}</strong> <span style="color:#64748b; font-size:11px;">• ${fechaFmt}</span><br>
-                            <span style="color:#3b82f6; font-weight:bold;">${h.tipo_registro}</span> (${h.etapa})<br>
-                            <div style="color:#475569; margin-top:2px;">${hComentarios}</div>
-                        </div>
-                    `;
-                });
-            }
-            html += '</div>';
-            Swal.fire({ title: '⏱️ Trazabilidad', html: html, confirmButtonText: 'Volver', confirmButtonColor: '#475569' });
-        }
-
-        // ==========================================
-        // ARCHIVOS ADJUNTOS (SUPABASE STORAGE)
-        // ==========================================
-        async function cargarAdjuntosEnModal() {
-            let contenedor = document.getElementById('modal_lista_adjuntos');
-            contenedor.innerHTML = '<p style="color:#94a3b8; font-size:13px;">Cargando archivos...</p>';
-
-            const { data: adjuntos, error } = await supabaseClient
-                .from('kanban_detalles')
-                .select('*')
-                .eq('tarjeta_id', idTarjetaActualModal)
-                .eq('tipo', 'adjunto')
-                .order('created_at', { ascending: false });
-
-            if (error || !adjuntos || adjuntos.length === 0) {
-                contenedor.innerHTML = '<p style="color:#94a3b8; font-size:13px; font-style:italic;">No hay archivos subidos para este lote.</p>';
-                return;
-            }
-
-            contenedor.innerHTML = '';
-            adjuntos.forEach(adj => {
-                let d = new Date(adj.created_at);
-                let fechaFmt = d.getDate().toString().padStart(2,'0') + '/' + (d.getMonth()+1).toString().padStart(2,'0') + '/' + d.getFullYear();
-                
-                let icono = '📄';
-                let nombreB = adj.contenido.toLowerCase();
-                if (nombreB.endsWith('.pdf')) icono = '📑';
-                if (nombreB.endsWith('.jpg') || nombreB.endsWith('.png') || nombreB.endsWith('.jpeg')) icono = '🖼️';
-
-                let adjHtml = `
-                    <div class="adjunto-item">
-                        <div class="adjunto-icono">${icono}</div>
-                        <div class="adjunto-info">
-                            <a href="${adj.url_archivo}" target="_blank" class="adjunto-nombre" title="Ver Archivo">${adj.contenido}</a>
-                            <span class="adjunto-meta">Subido por ${adj.autor_nombre} el ${fechaFmt}</span>
-                        </div>
-                        <button class="btn-borrar-adj" onclick="borrarAdjunto(${adj.id}, '${adj.contenido}')" title="Borrar Archivo">🗑️</button>
-                    </div>
-                `;
-                contenedor.innerHTML += adjHtml;
-            });
-        }
-
-        async function subirArchivo(inputElement) {
-            let archivo = inputElement.files[0];
-            if (!archivo) return;
-            
-            if (archivo.size > 5 * 1024 * 1024) { 
-                Swal.fire('Archivo muy grande', 'Por favor sube un archivo que pese menos de 5MB.', 'warning');
-                inputElement.value = "";
-                return;
-            }
-
-            Swal.fire({ title: 'Subiendo archivo...', html: 'Por favor espera', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
-
-            const fileName = Date.now() + "_" + archivo.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
-            const filePath = "lote_" + codigoProyectoActualModal + "/" + fileName;
-
-            const { data: uploadData, error: uploadError } = await supabaseClient
-                .storage
-                .from('kanban_adjuntos')
-                .upload(filePath, archivo);
-
-            if (uploadError) {
-                console.error("Error al subir archivo:", uploadError);
-                Swal.fire('Error', 'No se pudo subir el archivo. Verifica que el Bucket "kanban_adjuntos" esté creado y sea público.', 'error');
-                inputElement.value = "";
-                return;
-            }
-
-            const { data: publicUrlData } = supabaseClient
-                .storage
-                .from('kanban_adjuntos')
-                .getPublicUrl(filePath);
-            
-            let urlPublica = publicUrlData.publicUrl;
-
-            const { error: dbError } = await supabaseClient.from('kanban_detalles').insert([{
-                tarjeta_id: idTarjetaActualModal,
-                autor_nombre: currentUser,
-                tipo: 'adjunto',
-                contenido: archivo.name, 
-                url_archivo: urlPublica
-            }]);
-
-            inputElement.value = ""; 
-            
-            if (dbError) {
-                Swal.fire('Error', 'El archivo se subió pero no se guardó el registro.', 'error');
-            } else {
-                Swal.fire({toast:true, position:'top-end', icon:'success', title:'Archivo guardado', showConfirmButton:false, timer:2000});
-                cargarAdjuntosEnModal(); 
-            }
-        }
-
-        async function borrarAdjunto(idDetalle, nombreArchivo) {
-            const conf = await Swal.fire({
-                title: '¿Borrar archivo?',
-                text: 'Se eliminará "' + nombreArchivo + '".',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#ef4444',
-                cancelButtonColor: '#94a3b8',
-                confirmButtonText: 'Sí, borrar'
-            });
-
-            if (conf.isConfirmed) {
-                const { data: detalle } = await supabaseClient.from('kanban_detalles').select('url_archivo').eq('id', idDetalle).single();
-                
-                if (detalle && detalle.url_archivo) {
-                    let partesUrl = detalle.url_archivo.split('/kanban_adjuntos/');
-                    if (partesUrl.length > 1) {
-                        let rutaRelativa = partesUrl[1];
-                        await supabaseClient.storage.from('kanban_adjuntos').remove([rutaRelativa]);
-                    }
-                }
-
-                await supabaseClient.from('kanban_detalles').delete().eq('id', idDetalle);
-                cargarAdjuntosEnModal();
-            }
-        }
-
-        // ==========================================
-        // LÓGICA DRAG & DROP (Mover Tarjetas)
+        // LÓGICA DRAG & DROP (LA MAGIA AUTOMÁTICA)
         // ==========================================
         let idTarjetaArrastrada = null;
 
-        function allowDrop(ev) {
-            ev.preventDefault();
-            ev.currentTarget.classList.add('drag-over');
-        }
+        function allowDrop(ev) { ev.preventDefault(); ev.currentTarget.classList.add('drag-over'); }
+        function drag(ev, id) { idTarjetaArrastrada = id; ev.currentTarget.classList.add('dragging'); }
 
-        function drag(ev, id) {
-            idTarjetaArrastrada = id;
-            ev.currentTarget.classList.add('dragging');
-        }
-
-        async function drop(ev, nuevoEstado, operadorEmail) {
+        async function drop(ev, estadoDestino, operadorEmail) {
             ev.preventDefault();
-            
             document.querySelectorAll('.kanban-cards-area').forEach(el => el.classList.remove('drag-over'));
             document.querySelectorAll('.kanban-card').forEach(el => el.classList.remove('dragging'));
 
@@ -708,79 +496,153 @@
 
             let operadorFinal = (operadorEmail === 'null') ? null : operadorEmail;
             
+            // Reflejo visual inmediato 
             let tarjetaDOM = document.getElementById(`card_${idTarjetaArrastrada}`);
-            let idDestino = `col_${nuevoEstado}_${operadorEmail}`;
-            let zonaDestino = document.getElementById(idDestino);
-            
-            if(zonaDestino) zonaDestino.appendChild(tarjetaDOM);
+            if (ev.currentTarget && ev.currentTarget.classList.contains('kanban-cards-area')) {
+                ev.currentTarget.appendChild(tarjetaDOM);
+            }
 
             const { error } = await supabaseClient
                 .from('kanban_tarjetas')
-                .update({ estado_macro: nuevoEstado, operador_asignado: operadorFinal })
+                .update({ estado_macro: estadoDestino, operador_asignado: operadorFinal })
                 .eq('id', idTarjetaArrastrada);
 
             if (error) {
                 Swal.fire('Error', 'No se pudo guardar la nueva posición', 'error');
             }
+            
+            // Recargar para aplicar colores, ordenamiento de las tarjetas y actualizar DB
             await inicializarTablero(); 
         }
 
         // ==========================================
-        // OTRAS FUNCIONES (Tarjetas manuales)
+        // MODAL DE TARJETA, HISTORIAL Y ARCHIVOS
         // ==========================================
+        function abrirModalTarjeta(idTarjeta) {
+            let t = tarjetasGlobales.find(x => x.id === idTarjeta);
+            if (!t) return;
+            idTarjetaActualModal = t.id; codigoProyectoActualModal = t.codigo_proyecto; esSistemaActualModal = t.es_sistema;
+            document.getElementById('modal_codigo').innerText = "#" + t.codigo_proyecto;
+            document.getElementById('modal_titulo').innerText = t.titulo;
+            document.getElementById('modal_subtitulo').innerText = "En columna: " + t.estado_macro + " | Creado por: " + t.creado_por;
+            document.getElementById('btn_borrar_tarjeta').style.display = t.es_sistema ? 'none' : 'flex';
+            cargarPiezasEnModal(); cargarAdjuntosEnModal();
+            document.getElementById('modal_tarjeta').style.display = 'flex';
+        }
+
+        function cerrarModalTarjeta() { document.getElementById('modal_tarjeta').style.display = 'none'; idTarjetaActualModal = null; }
+        document.getElementById('modal_tarjeta').addEventListener('click', function(e) { if (e.target === this) cerrarModalTarjeta(); });
+
+        function cargarPiezasEnModal() {
+            let contenedor = document.getElementById('modal_lista_piezas');
+            let contador = document.getElementById('modal_contador_piezas');
+            if (!esSistemaActualModal) {
+                contenedor.innerHTML = '<p style="color:#64748b; font-size:13px; font-style:italic;">Tarjeta manual. Sin piezas en sistema.</p>';
+                contador.innerText = 'Lote Manual'; return;
+            }
+            let piezasDelLote = piezasCompletasGlobales.filter(p => String(p.codigo_proyecto) === String(codigoProyectoActualModal));
+            contador.innerText = piezasDelLote.length + " piezas";
+            if (piezasDelLote.length === 0) { contenedor.innerHTML = '<p style="color:#ef4444; font-size:13px;">No hay piezas encontradas.</p>'; return; }
+            piezasDelLote.sort((a,b) => { return (parseInt(a.suite) || 0) - (parseInt(b.suite) || 0); });
+            contenedor.innerHTML = '';
+            piezasDelLote.forEach(p => {
+                let blq = p.bloque ? " - Blq " + p.bloque : "";
+                let ubicacion = "Piso " + p.piso + blq + " | Suite " + p.suite;
+                contenedor.innerHTML += `
+                    <div class="pieza-detalle-item">
+                        <div class="pieza-info-texto">
+                            <strong>${ubicacion} — ${p.producto} (${p.espacio})</strong>
+                            <span>Estado actual: <b style="color:#3b82f6;">${p.estado}</b>${p.observaciones ? ' | 📌 ' + p.observaciones : ''}</span>
+                        </div>
+                        <button class="btn-historial-mini" onclick="verTrazabilidadPieza(${p.id}, '${ubicacion}')">⏱️ Historial</button>
+                    </div>`;
+            });
+        }
+
+        async function verTrazabilidadPieza(idMueble, ubicacion) {
+            Swal.fire({ title: 'Cargando expediente...', didOpen: () => Swal.showLoading() });
+            const { data: historialBruto } = await supabaseClient.from('historial_trazabilidad').select('*').eq('id_mueble', idMueble).order('created_at', { ascending: false });
+            let html = '<div style="text-align: left; max-height: 350px; overflow-y: auto; font-size: 13px; padding: 10px;">';
+            html += '<h4 style="margin-top:0; border-bottom: 1px solid #ccc; padding-bottom: 8px;">Historial de: ' + ubicacion + '</h4>';
+            if (!historialBruto || historialBruto.length === 0) { html += '<p style="color:#94a3b8; font-style:italic;">Sin movimientos.</p>'; } 
+            else {
+                historialBruto.forEach(h => {
+                    let d = new Date(h.created_at || h.fecha);
+                    let fechaFmt = d.getDate().toString().padStart(2,'0') + '/' + (d.getMonth()+1).toString().padStart(2,'0') + '/' + d.getFullYear() + ' ' + d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+                    html += `
+                        <div style="margin-bottom:12px; border-left:3px solid #3b82f6; padding-left:10px;">
+                            <strong style="color:#1e293b;">${h.operador || 'Sistema'}</strong> <span style="color:#64748b; font-size:11px;">• ${fechaFmt}</span><br>
+                            <span style="color:#3b82f6; font-weight:bold;">${h.tipo_registro}</span> (${h.etapa})<br>
+                            <div style="color:#475569; margin-top:2px;">${h.comentarios || ''}</div>
+                        </div>`;
+                });
+            }
+            html += '</div>'; Swal.fire({ title: '⏱️ Trazabilidad', html: html, confirmButtonText: 'Volver', confirmButtonColor: '#475569' });
+        }
+
+        async function cargarAdjuntosEnModal() {
+            let contenedor = document.getElementById('modal_lista_adjuntos');
+            contenedor.innerHTML = '<p style="color:#94a3b8; font-size:13px;">Cargando archivos...</p>';
+            const { data: adjuntos, error } = await supabaseClient.from('kanban_detalles').select('*').eq('tarjeta_id', idTarjetaActualModal).eq('tipo', 'adjunto').order('created_at', { ascending: false });
+            if (error || !adjuntos || adjuntos.length === 0) { contenedor.innerHTML = '<p style="color:#94a3b8; font-size:13px; font-style:italic;">No hay archivos subidos.</p>'; return; }
+            contenedor.innerHTML = '';
+            adjuntos.forEach(adj => {
+                let d = new Date(adj.created_at); let fechaFmt = d.getDate().toString().padStart(2,'0') + '/' + (d.getMonth()+1).toString().padStart(2,'0') + '/' + d.getFullYear();
+                let icono = '📄'; let nombreB = adj.contenido.toLowerCase();
+                if (nombreB.endsWith('.pdf')) icono = '📑'; if (nombreB.endsWith('.jpg') || nombreB.endsWith('.png') || nombreB.endsWith('.jpeg')) icono = '🖼️';
+                contenedor.innerHTML += `
+                    <div class="adjunto-item">
+                        <div class="adjunto-icono">${icono}</div>
+                        <div class="adjunto-info">
+                            <a href="${adj.url_archivo}" target="_blank" class="adjunto-nombre" title="Ver Archivo">${adj.contenido}</a>
+                            <span class="adjunto-meta">Subido por ${adj.autor_nombre} el ${fechaFmt}</span>
+                        </div>
+                        <button class="btn-borrar-adj" onclick="borrarAdjunto(${adj.id}, '${adj.contenido}')" title="Borrar Archivo">🗑️</button>
+                    </div>`;
+            });
+        }
+
+        async function subirArchivo(inputElement) {
+            let archivo = inputElement.files[0]; if (!archivo) return;
+            if (archivo.size > 5 * 1024 * 1024) { Swal.fire('Archivo muy grande', 'Sube un archivo que pese menos de 5MB.', 'warning'); inputElement.value = ""; return; }
+            Swal.fire({ title: 'Subiendo...', html: 'Por favor espera', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+            const fileName = Date.now() + "_" + archivo.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
+            const filePath = "lote_" + codigoProyectoActualModal + "/" + fileName;
+            const { data: uploadData, error: uploadError } = await supabaseClient.storage.from('kanban_adjuntos').upload(filePath, archivo);
+            if (uploadError) { Swal.fire('Error', 'No se pudo subir el archivo.', 'error'); inputElement.value = ""; return; }
+            const { data: publicUrlData } = supabaseClient.storage.from('kanban_adjuntos').getPublicUrl(filePath);
+            const { error: dbError } = await supabaseClient.from('kanban_detalles').insert([{ tarjeta_id: idTarjetaActualModal, autor_nombre: currentUser, tipo: 'adjunto', contenido: archivo.name, url_archivo: publicUrlData.publicUrl }]);
+            inputElement.value = ""; 
+            if (dbError) { Swal.fire('Error', 'Error al guardar el registro.', 'error'); } else { Swal.fire({toast:true, position:'top-end', icon:'success', title:'Guardado', showConfirmButton:false, timer:2000}); cargarAdjuntosEnModal(); }
+        }
+
+        async function borrarAdjunto(idDetalle, nombreArchivo) {
+            const conf = await Swal.fire({ title: '¿Borrar archivo?', text: 'Se eliminará "' + nombreArchivo + '".', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Sí, borrar' });
+            if (conf.isConfirmed) {
+                const { data: detalle } = await supabaseClient.from('kanban_detalles').select('url_archivo').eq('id', idDetalle).single();
+                if (detalle && detalle.url_archivo) {
+                    let partesUrl = detalle.url_archivo.split('/kanban_adjuntos/');
+                    if (partesUrl.length > 1) { await supabaseClient.storage.from('kanban_adjuntos').remove([partesUrl[1]]); }
+                }
+                await supabaseClient.from('kanban_detalles').delete().eq('id', idDetalle); cargarAdjuntosEnModal();
+            }
+        }
+
         async function intentarBorrarDesdeModal() {
             if (esSistemaActualModal) return; 
-            
-            const conf = await Swal.fire({
-                title: '¿Borrar tarjeta manual?',
-                text: 'Esto no afecta las piezas en el taller.',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#ef4444',
-                cancelButtonColor: '#94a3b8',
-                confirmButtonText: 'Sí, borrar'
-            });
-
-            if (conf.isConfirmed) {
-                await supabaseClient.from('kanban_tarjetas').delete().eq('id', idTarjetaActualModal);
-                cerrarModalTarjeta();
-                inicializarTablero(); 
-            }
+            const conf = await Swal.fire({ title: '¿Borrar tarjeta?', text: 'Esto no afecta las piezas en el taller.', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Sí, borrar' });
+            if (conf.isConfirmed) { await supabaseClient.from('kanban_tarjetas').delete().eq('id', idTarjetaActualModal); cerrarModalTarjeta(); inicializarTablero(); }
         }
 
         async function crearLotePrueba() {
             const { value: formValues } = await Swal.fire({
                 title: 'Nuevo Lote (Manual)',
-                html:
-                    '<input id="swal-cod" class="swal2-input" placeholder="Código (Ej: 520)">' +
-                    '<input id="swal-tit" class="swal2-input" placeholder="Proyecto y Producto">' +
-                    '<input id="swal-sub" class="swal2-input" placeholder="Ubicación (Ej: P5-S1)">',
-                focusConfirm: false,
-                showCancelButton: true,
-                confirmButtonText: 'Crear Tarjeta',
-                preConfirm: () => {
-                    return [
-                        document.getElementById('swal-cod').value,
-                        document.getElementById('swal-tit').value,
-                        document.getElementById('swal-sub').value
-                    ]
-                }
+                html: '<input id="swal-cod" class="swal2-input" placeholder="Código (Ej: 520)"><input id="swal-tit" class="swal2-input" placeholder="Proyecto y Producto"><input id="swal-sub" class="swal2-input" placeholder="Ubicación (Ej: P5-S1)">',
+                focusConfirm: false, showCancelButton: true, confirmButtonText: 'Crear Tarjeta', preConfirm: () => { return [ document.getElementById('swal-cod').value, document.getElementById('swal-tit').value, document.getElementById('swal-sub').value ] }
             });
-
             if (formValues && formValues[0]) {
-                const { error } = await supabaseClient.from('kanban_tarjetas').insert([{
-                    codigo_proyecto: formValues[0],
-                    titulo: formValues[1] || 'Proyecto S/N',
-                    subtitulo: formValues[2],
-                    estado_macro: 'Por Digitalizar', 
-                    creado_por: currentUser,
-                    es_sistema: false 
-                }]);
-
-                if (!error) {
-                    Swal.fire({toast:true, position:'top-end', icon:'success', title:'Tarjeta Creada', showConfirmButton:false, timer:2000});
-                    inicializarTablero();
-                }
+                const { error } = await supabaseClient.from('kanban_tarjetas').insert([{ codigo_proyecto: formValues[0], titulo: formValues[1] || 'Proyecto S/N', subtitulo: formValues[2], estado_macro: 'Por Digitalizar', creado_por: currentUser, es_sistema: false }]);
+                if (!error) { Swal.fire({toast:true, position:'top-end', icon:'success', title:'Tarjeta Creada', showConfirmButton:false, timer:2000}); inicializarTablero(); }
             }
         }
     </script>
