@@ -57,7 +57,7 @@
         label { display: block; margin-bottom: 4px; font-weight: bold; color: #333; font-size: 13px;}
         select, input, textarea { width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; font-size: 14px; font-family: Arial, sans-serif;}
         textarea { resize: vertical; } 
-        input:disabled { background-color: #f1f5f9; color: #94a3b8; cursor: not-allowed; border-color: #e2e8f0; }
+        input:disabled, select:disabled { background-color: #f1f5f9; color: #94a3b8; cursor: not-allowed; border-color: #e2e8f0; }
 
         button.btn-principal { background-color: var(--tema-primario); color: white; padding: 10px; width: 100%; border: none; border-radius: 4px; font-size: 15px; cursor: pointer; margin-top: 10px; font-weight: bold; transition: 0.2s; }
         button.btn-principal:hover { filter: brightness(0.85); }
@@ -185,9 +185,7 @@
                     <div class="form-group" style="flex: 1.2; position: relative;">
                         <label>Suite:</label>
                         <div style="position: relative;">
-                            <!-- El input fantasma por debajo (color gris clarito) -->
                             <input type="text" id="suite_ghost" disabled style="position: absolute; top: 0; left: 0; width: 100%; padding: 8px 10px; border: 1px solid transparent; box-sizing: border-box; font-size: 14px; font-family: Arial, sans-serif; color: #94a3b8; background-color: transparent; z-index: 1; pointer-events: none;">
-                            <!-- El input real donde escribe el usuario (transparente por encima) -->
                             <input type="text" id="suite" placeholder="N° o Nombre" style="position: relative; z-index: 2; background-color: transparent; text-transform: uppercase;" autocomplete="off" oninput="sugerirSuite()" onkeydown="autocompletarSuite(event)">
                         </div>
                     </div>
@@ -225,9 +223,10 @@
         window.proyectosCargados = []; 
         window.estadosCargados = []; 
         window.operadorActual = "Operador"; 
+        window.rolGlobal = "Operador"; // Vatiable para guardar el rol
         
         window.idMuebleEnEdicion = null;
-        window.suitesDisponiblesActuales = []; // Array que guardará las suites válidas del proyecto
+        window.suitesDisponiblesActuales = []; 
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -235,11 +234,14 @@
 
             const correoUsuario = session.user.email;
             const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol').eq('email', correoUsuario).single();
-            const rolUsuario = empleado ? empleado.rol : 'Operador'; 
+            window.rolGlobal = empleado ? empleado.rol.trim() : 'Operador'; 
 
-            if (rolUsuario !== 'Administrador') {
+            if (window.rolGlobal !== 'Administrador') {
                 const linkAdmin = document.querySelector('a[href="admin.html"]');
                 if (linkAdmin) linkAdmin.parentElement.style.display = 'none';
+
+                // BLOQUEO DE SEGURIDAD PARA OPERADORES
+                bloquearFormularioNuevo();
             }
 
             const nombreCompleto = session.user.user_metadata.full_name || session.user.email.split('@')[0];
@@ -266,6 +268,23 @@
         });
 
         async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; }
+
+        // ==========================================
+        // FUNCIONES DE RESTRICCIÓN (ROL OPERADOR)
+        // ==========================================
+        function bloquearFormularioNuevo() {
+            document.getElementById('tituloFormulario').innerText = "🔒 Modo Operador: Solo Edición de Observaciones";
+            
+            // Deshabilitar todos los campos estructurales
+            const camposBloqueados = ['fecha', 'codigo_proyecto', 'estado', 'proyecto', 'piso', 'bloque', 'suite', 'espacio', 'producto'];
+            camposBloqueados.forEach(id => {
+                let el = document.getElementById(id);
+                if (el) el.disabled = true;
+            });
+
+            // Ocultar botón de guardar (hasta que no haga click en "Editar" abajo)
+            document.getElementById('btnGuardar').style.display = 'none';
+        }
 
         function hexToRgb(hex) {
             let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -315,20 +334,20 @@
             document.getElementById('suite').value = '';
 
             if (proyectoReal) {
-                // Configurar bloques
                 if (proyectoReal.bloques && proyectoReal.bloques.trim() !== "") {
-                    inputBloque.disabled = false; inputBloque.placeholder = "Requerido (Ej: A)";
+                    // Solo habilitamos el bloque si el usuario es Administrador
+                    if (window.rolGlobal === 'Administrador') {
+                        inputBloque.disabled = false; inputBloque.placeholder = "Requerido (Ej: A)";
+                    }
                     let arrayBloques = proyectoReal.bloques.split(',').map(b => b.trim().toUpperCase());
                     arrayBloques.forEach(b => { datalist.innerHTML += `<option value="${b}"></option>`; });
                 } else {
                     inputBloque.value = ""; inputBloque.disabled = true; inputBloque.placeholder = "No aplica";
                 }
 
-                // Configurar lista interna de Suites
                 if (proyectoReal.suites && proyectoReal.suites.trim() !== "") {
                     let s = proyectoReal.suites.trim();
                     if (s.includes('-') && !s.includes(',')) {
-                        // Es un rango numérico, ej: 1-15
                         let partes = s.split('-');
                         let inicio = parseInt(partes[0]); let fin = parseInt(partes[1]);
                         if (!isNaN(inicio) && !isNaN(fin)) {
@@ -337,7 +356,6 @@
                             }
                         }
                     } else {
-                        // Es una lista separada por comas, ej: MIAMI A1, LONDRES A2
                         window.suitesDisponiblesActuales = s.split(',').map(x => x.trim().toUpperCase()).filter(x => x);
                     }
                 }
@@ -356,9 +374,6 @@
             if (window.registrosDescargados.length > 0) renderizarTabla(window.registrosDescargados);
         }
 
-        // ==========================================
-        // LÓGICA DE AUTOCOMPLETADO (GHOST TEXT)
-        // ==========================================
         function sugerirSuite() {
             let input = document.getElementById('suite');
             let ghost = document.getElementById('suite_ghost');
@@ -369,10 +384,8 @@
                 return;
             }
 
-            // Busca la primera suite que comience con lo que el usuario está escribiendo
             let match = window.suitesDisponiblesActuales.find(s => s.startsWith(val));
             if (match) {
-                // Pone la coincidencia exacta debajo, creando el efecto fantasma
                 ghost.value = val + match.substring(val.length);
             } else {
                 ghost.value = "";
@@ -383,11 +396,10 @@
             let input = document.getElementById('suite');
             let ghost = document.getElementById('suite_ghost');
             
-            // Si presiona Tabulador o Flecha Derecha y hay un fantasma activo
             if ((e.key === 'Tab' || e.key === 'ArrowRight') && ghost.value !== "") {
-                e.preventDefault(); // Evita saltar de campo
-                input.value = ghost.value; // Completa la palabra
-                ghost.value = ""; // Limpia el fantasma
+                e.preventDefault(); 
+                input.value = ghost.value; 
+                ghost.value = ""; 
             }
         }
 
@@ -396,7 +408,14 @@
             if (!registro) return;
             
             window.idMuebleEnEdicion = id; 
-            document.getElementById('tituloFormulario').innerText = "✏️ Editando Mueble";
+            
+            if (window.rolGlobal === 'Administrador') {
+                document.getElementById('tituloFormulario').innerText = "✏️ Editando Mueble";
+            } else {
+                document.getElementById('tituloFormulario').innerText = "✏️ Escribiendo Observaciones";
+                // Mostramos el botón de guardar que estaba oculto para el operador
+                document.getElementById('btnGuardar').style.display = 'block';
+            }
             
             if (registro.fecha) document.getElementById('fecha').value = registro.fecha.split('T')[0];
             document.getElementById('codigo_proyecto').value = registro.codigo_proyecto === '000' ? '0' : registro.codigo_proyecto;
@@ -412,14 +431,21 @@
             document.getElementById('observaciones').focus();
             
             let btn = document.getElementById('btnGuardar'); 
-            btn.innerHTML = "💾 Actualizar Mueble"; 
+            btn.innerHTML = "💾 Guardar Observaciones"; 
             btn.classList.add('btn-editando');
             document.getElementById('btnCancelarEdit').style.display = 'block';
         }
 
         function cancelarEdicion() {
             window.idMuebleEnEdicion = null;
-            document.getElementById('tituloFormulario').innerText = "Registrar Nuevo Mueble";
+            
+            if (window.rolGlobal === 'Administrador') {
+                document.getElementById('tituloFormulario').innerText = "Registrar Nuevo Mueble";
+            } else {
+                // Volvemos a modo bloqueo para el operador
+                bloquearFormularioNuevo();
+            }
+
             document.getElementById('codigo_proyecto').value = ''; 
             document.getElementById('observaciones').value = ''; 
             document.getElementById('modificaciones').value = '';
@@ -434,40 +460,55 @@
         }
 
         async function guardarRegistro() {
-            let fecha = document.getElementById('fecha').value; let codigo_proyecto_raw = document.getElementById('codigo_proyecto').value.trim();
-            let estado = document.getElementById('estado').value; let proyecto = document.getElementById('proyecto').value;
-            let piso = document.getElementById('piso').value.trim(); let bloque = document.getElementById('bloque').value.trim().toUpperCase(); let suite = document.getElementById('suite').value.trim().toUpperCase();
-            let espacio = document.getElementById('espacio').value; let producto = document.getElementById('producto').value;
-            let observaciones = document.getElementById('observaciones').value.trim(); let modificaciones = document.getElementById('modificaciones').value.trim();
+            // Validar que el operador no intente crear un registro nuevo
+            let idParaActualizar = window.idMuebleEnEdicion;
+
+            if (window.rolGlobal !== 'Administrador' && !idParaActualizar) {
+                Swal.fire('Acceso Denegado', 'No tienes permisos para registrar piezas nuevas, solo para editarlas desde la tabla.', 'error');
+                return;
+            }
+
+            let fecha = document.getElementById('fecha').value; 
+            let codigo_proyecto_raw = document.getElementById('codigo_proyecto').value.trim();
+            let estado = document.getElementById('estado').value; 
+            let proyecto = document.getElementById('proyecto').value;
+            let piso = document.getElementById('piso').value.trim(); 
+            let bloque = document.getElementById('bloque').value.trim().toUpperCase(); 
+            let suite = document.getElementById('suite').value.trim().toUpperCase();
+            let espacio = document.getElementById('espacio').value; 
+            let producto = document.getElementById('producto').value;
+            let observaciones = document.getElementById('observaciones').value.trim(); 
+            let modificaciones = document.getElementById('modificaciones').value.trim();
             
             let codigo_proyecto = "000"; if (codigo_proyecto_raw !== "" && !/^0+$/.test(codigo_proyecto_raw)) codigo_proyecto = codigo_proyecto_raw;
             
-            if (!proyecto || !estado || !espacio || !producto) { Swal.fire({ icon: 'warning', title: 'Faltan datos', text: 'Por favor selecciona Proyecto, Estado, Espacio y Producto.', confirmButtonColor: '#475569' }); return; }
-            if (!piso || !suite) { Swal.fire({ icon: 'warning', title: 'Faltan datos', text: 'Por favor completa el piso y la suite.', confirmButtonColor: '#475569' }); return; }
+            if (window.rolGlobal === 'Administrador') {
+                if (!proyecto || !estado || !espacio || !producto) { Swal.fire({ icon: 'warning', title: 'Faltan datos', text: 'Por favor selecciona Proyecto, Estado, Espacio y Producto.', confirmButtonColor: '#475569' }); return; }
+                if (!piso || !suite) { Swal.fire({ icon: 'warning', title: 'Faltan datos', text: 'Por favor completa el piso y la suite.', confirmButtonColor: '#475569' }); return; }
 
-            // VALIDACIÓN ESTRICTA DE SUITE (Si el proyecto tiene una lista definida)
-            if (window.suitesDisponiblesActuales.length > 0 && !window.suitesDisponiblesActuales.includes(suite)) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Suite Inválida',
-                    text: `La suite "${suite}" no existe en el catálogo de este proyecto. Verifica que esté bien escrita o agrégala en Administrador.`,
-                    confirmButtonColor: '#ef4444'
-                });
-                return;
+                if (window.suitesDisponiblesActuales.length > 0 && !window.suitesDisponiblesActuales.includes(suite)) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Suite Inválida',
+                        text: `La suite "${suite}" no existe en el catálogo de este proyecto.`,
+                        confirmButtonColor: '#ef4444'
+                    });
+                    return;
+                }
             }
 
             let id_generado = "P" + piso + bloque + "-S" + suite + "-" + producto + "-" + espacio;
             let btn = document.getElementById('btnGuardar'); btn.innerHTML = "Procesando..."; btn.disabled = true;
             
-            let idParaActualizar = window.idMuebleEnEdicion;
             let muebleAntiguo = null;
 
             if (!idParaActualizar) {
+                // Lógica de Creación (Solo Administrador)
                 const { data: existente } = await supabaseClient.from('registros_produccion').select('*').eq('id_generado', id_generado);
                 if (existente && existente.length > 0) {
                     const result = await Swal.fire({
                         title: 'Ubicación Ocupada',
-                        text: `Ya hay un mueble registrado en esta suite (${producto}). ¿Deseas sobreescribir sus datos con lo que acabas de escribir?`,
+                        text: `Ya hay un mueble registrado en esta suite (${producto}). ¿Deseas sobreescribir sus datos?`,
                         icon: 'warning',
                         showCancelButton: true,
                         confirmButtonColor: '#f59e0b',
@@ -489,6 +530,7 @@
             }
 
             if (idParaActualizar && muebleAntiguo) {
+                // Lógica de Actualización
                 let cambiosContador = 0;
                 let detallesHTML = "";
                 let obsAntigua = (muebleAntiguo.observaciones || "").trim(); let modAntigua = (muebleAntiguo.modificaciones || "").trim();
@@ -496,18 +538,31 @@
 
                 if (obsAntigua !== observaciones) { cambiosContador++; detallesHTML += `<li style="margin-bottom:4px;"><b>Observaciones:</b> <span style="color:#0f172a;">${observaciones || '(Se dejó en blanco)'}</span></li>`; }
                 if (modAntigua !== modificaciones) { cambiosContador++; detallesHTML += `<li style="margin-bottom:4px;"><b>Modificaciones:</b> <span style="color:#0f172a;">${modificaciones || '(Se dejó en blanco)'}</span></li>`; }
-                if (estadoAntiguo !== estado) { cambiosContador++; detallesHTML += `<li style="margin-bottom:4px;"><b>Estado:</b> cambió a <span style="color:#0f172a;">${estado}</span></li>`; }
-                if (codigoAntiguo !== codigo_proyecto && codigo_proyecto !== "000") { cambiosContador++; detallesHTML += `<li style="margin-bottom:4px;"><b>Cód Interno:</b> cambió a <span style="color:#0f172a;">${codigo_proyecto}</span></li>`; }
+                
+                let updatePayload = {};
+
+                if (window.rolGlobal === 'Administrador') {
+                    // El Admin puede actualizar todo
+                    if (estadoAntiguo !== estado) { cambiosContador++; detallesHTML += `<li style="margin-bottom:4px;"><b>Estado:</b> cambió a <span style="color:#0f172a;">${estado}</span></li>`; }
+                    if (codigoAntiguo !== codigo_proyecto && codigo_proyecto !== "000") { cambiosContador++; detallesHTML += `<li style="margin-bottom:4px;"><b>Cód Interno:</b> cambió a <span style="color:#0f172a;">${codigo_proyecto}</span></li>`; }
+                    
+                    updatePayload = { fecha, codigo_proyecto, observaciones, modificaciones, estado, proyecto, piso, bloque, suite, espacio, producto, id_generado };
+                } else {
+                    // El Operador SOLO actualiza estas dos columnas, sin importar qué manipuló en pantalla
+                    updatePayload = { observaciones, modificaciones };
+                }
 
                 const { error: errUpd } = await supabaseClient.from('registros_produccion')
-                    .update({ fecha, codigo_proyecto, observaciones, modificaciones, estado, proyecto, piso, bloque, suite, espacio, producto, id_generado })
+                    .update(updatePayload)
                     .eq('id', idParaActualizar);
 
                 if (!errUpd && cambiosContador > 0) {
                     let comentarioFinal = `Actualizó ${cambiosContador} campo(s). <details style="margin-top:6px; cursor:pointer; background:#f8fafc; padding:6px; border-radius:4px; border:1px solid #e2e8f0;"><summary style="color:#3b82f6; font-weight:bold; font-size:11px; outline:none;">Ver detalles</summary><ul style="margin:6px 0 0 0; padding-left:18px; font-size:11px; color:#475569;">${detallesHTML}</ul></details>`;
 
                     await supabaseClient.from('historial_trazabilidad').insert([{
-                        id_mueble: idParaActualizar, etapa: estado, operador: window.operadorActual,
+                        id_mueble: idParaActualizar, 
+                        etapa: window.rolGlobal === 'Administrador' ? estado : estadoAntiguo, 
+                        operador: window.operadorActual,
                         tipo_registro: window.idMuebleEnEdicion ? 'Edición en Sistema' : 'Sobreescritura Directa', 
                         comentarios: comentarioFinal
                     }]);
@@ -519,6 +574,7 @@
                 cancelarEdicion();
 
             } else {
+                // Solo llega aquí si es Administrador y es un mueble 100% nuevo
                 const { data: nuevoReg } = await supabaseClient.from('registros_produccion').insert([{ fecha, codigo_proyecto, proyecto, piso, bloque, suite, espacio, producto, observaciones, modificaciones, estado, id_generado }]).select();
                 if (nuevoReg && nuevoReg.length > 0) {
                     await supabaseClient.from('historial_trazabilidad').insert([{
@@ -580,6 +636,9 @@
                 let obsHTML = fila.observaciones ? `<div class="texto-truncado">${fila.observaciones}</div><span class="tooltip-custom">${fila.observaciones}</span>` : '';
                 let modHTML = fila.modificaciones ? `<div class="texto-truncado">${fila.modificaciones}</div><span class="tooltip-custom">${fila.modificaciones}</span>` : '';
 
+                // Ocultar botón borrar si no es administrador
+                let btnBorrarHTML = window.rolGlobal === 'Administrador' ? `<button class="btn-accion" title="Borrar" onclick="eliminarRegistro('${fila.id}', '${fila.codigo_proyecto || '-'}', '${ubicacionVisual}')">🗑️</button>` : '';
+
                 tbody.innerHTML += `<tr>
                     <td class="col-fecha">${fechaCorta}</td><td><strong>${fila.codigo_proyecto || '-'}</strong></td><td>${ubicacionVisual}</td><td>${fila.producto} (${fila.espacio})</td>
                     <td style="text-align: center;"><span class="badge-estado" style="${estiloBadge}">${nombreEstado}</span></td>
@@ -587,7 +646,7 @@
                     <td class="acciones-col">
                         <button class="btn-accion" title="Ver Historial" onclick="verHistorial('${fila.id}', '${fila.codigo_proyecto || 'S/N'}', '${ubicacionVisual}')">⏱️</button>
                         <button class="btn-accion" title="Editar" onclick="cargarParaEditar('${fila.id}')">✏️</button>
-                        <button class="btn-accion" title="Borrar" onclick="eliminarRegistro('${fila.id}', '${fila.codigo_proyecto || '-'}', '${ubicacionVisual}')">🗑️</button>
+                        ${btnBorrarHTML}
                     </td></tr>`;
             });
         }
