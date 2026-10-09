@@ -201,42 +201,54 @@
         });
 
         async function inicializarTablero() {
-            // 1. Traer los estados visibles
-            const { data: estados } = await supabaseClient.from('catalogo_estados').select('*').eq('ver_en_tablero', true).order('orden');
-            
-            // 2. Traer todas las tarjetas de Kanban
-            const { data: tarjetas } = await supabaseClient.from('kanban_tarjetas').select('*');
-            tarjetasGlobales = tarjetas || [];
+            try {
+                // 1. Traer los estados visibles
+                const { data: estados, error: err1 } = await supabaseClient.from('catalogo_estados').select('*').eq('ver_en_tablero', true).order('orden');
+                if (err1) throw new Error("Falla leyendo los estados: " + err1.message);
 
-            // 3. Traer TODAS las piezas de producción para extraer la información detallada
-            const { data: piezas } = await supabaseClient.from('registros_produccion').select('id, codigo_proyecto, producto, espacio, piso, bloque, suite, estado, observaciones');
-            piezasCompletasGlobales = piezas || [];
+                // 2. Traer todas las tarjetas de Kanban
+                const { data: tarjetas, error: err2 } = await supabaseClient.from('kanban_tarjetas').select('*');
+                if (err2) throw new Error("Falla leyendo las tarjetas: Verifica que la tabla kanban_tarjetas exista. " + err2.message);
+                tarjetasGlobales = tarjetas || [];
 
-            // Actualizamos la información de las tarjetas automáticas con la info real de las piezas
-            tarjetasGlobales.forEach(t => {
-                if (t.es_sistema) {
-                    let piezasDeEsteLote = piezasCompletasGlobales.filter(p => String(p.codigo_proyecto) === String(t.codigo_proyecto));
-                    
-                    if (piezasDeEsteLote.length > 0) {
-                        // Recopilar todas las suites únicas
-                        let suitesUnicas = [...new Set(piezasDeEsteLote.map(p => p.suite))].filter(s => s).join(', ');
-                        // Recopilar todos los pisos únicos
-                        let pisosUnicos = [...new Set(piezasDeEsteLote.map(p => p.piso))].filter(s => s).join(', ');
+                // 3. Traer TODAS las piezas de producción para extraer la información detallada
+                const { data: piezas, error: err3 } = await supabaseClient.from('registros_produccion').select('id, codigo_proyecto, producto, espacio, piso, bloque, suite, estado, observaciones');
+                if (err3) throw new Error("Falla leyendo registros de producción: " + err3.message);
+                piezasCompletasGlobales = piezas || [];
+
+                // Actualizamos la información de las tarjetas automáticas con la info real de las piezas
+                tarjetasGlobales.forEach(t => {
+                    if (t.es_sistema) {
+                        let piezasDeEsteLote = piezasCompletasGlobales.filter(p => String(p.codigo_proyecto) === String(t.codigo_proyecto));
                         
-                        // Construir un subtítulo más completo
-                        t.subtitulo_dinamico = `Pisos: ${pisosUnicos \vert{}\vert{} '-'} \vert{} Suites:${suitesUnicas || '-'}`;
-                        t.cantidad_piezas = piezasDeEsteLote.length;
+                        if (piezasDeEsteLote.length > 0) {
+                            let suitesUnicas = [...new Set(piezasDeEsteLote.map(p => p.suite))].filter(s => s).join(', ');
+                            let pisosUnicos = [...new Set(piezasDeEsteLote.map(p => p.piso))].filter(s => s).join(', ');
+                            
+                            t.subtitulo_dinamico = `Pisos: ${pisosUnicos \vert{}\vert{} '-'} \vert{} Suites:${suitesUnicas || '-'}`;
+                            t.cantidad_piezas = piezasDeEsteLote.length;
+                        } else {
+                            t.subtitulo_dinamico = t.subtitulo;
+                            t.cantidad_piezas = 0;
+                        }
                     } else {
                         t.subtitulo_dinamico = t.subtitulo;
-                        t.cantidad_piezas = 0;
+                        t.cantidad_piezas = '?'; // Para las manuales
                     }
-                } else {
-                    t.subtitulo_dinamico = t.subtitulo;
-                    t.cantidad_piezas = '?'; // Para las manuales
-                }
-            });
+                });
 
-            dibujarTablero(estados || []);
+                dibujarTablero(estados || []);
+
+            } catch (error) {
+                // SISTEMA ANTI-FALLOS: Si algo se rompe, lo muestra en pantalla en rojo
+                document.getElementById('kanban_board').innerHTML = `
+                    <div style="background:#fee2e2; border:1px solid #ef4444; color:#b91c1c; padding:20px; border-radius:8px; max-width:600px; margin: 20px;">
+                        <h3 style="margin-top:0;">🛑 Error detectado</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+                console.error(error);
+            }
         }
 
         function dibujarTablero(estados) {
