@@ -3,122 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VetaCucine - Ingreso de Producción</title>
+    <title>Tablero Kanban - VetaCucine</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#3b82f6">
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').then(reg => {
-                reg.update();
-            });
-        }
-    </script>
-    
     <style>
-        :root {
-            --tema-primario: #475569; 
-            --tema-rgb: 71, 85, 105; 
-            --tema-fondo: #f1f5f9;
-        }
-
-        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: var(--tema-fondo); overflow: hidden; }
+        /* --- ESTRUCTURA BASE --- */
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f1f5f9; overflow: hidden; }
         .app-container { display: flex; height: 100vh; width: 100vw; }
         
-        .sidebar { width: 250px; background-color: #1e293b; color: white; display: flex; flex-direction: column; transition: 0.3s; box-shadow: 2px 0 10px rgba(0,0,0,0.1); z-index: 10; }
-        .sidebar-header { padding: 25px 20px; font-size: 22px; font-weight: bold; border-bottom: 1px solid #334155; text-align: center; letter-spacing: 1px; color: white; }
+        .sidebar { width: 250px; background-color: #1e293b; color: white; display: flex; flex-direction: column; z-index: 10; box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
+        .sidebar-header { padding: 25px 20px; font-size: 22px; font-weight: bold; border-bottom: 1px solid #334155; text-align: center; }
         .sidebar-header span { color: #3b82f6; }
         
         .nav-links { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; flex-grow: 1; margin-top: 15px; }
-        .nav-links li { margin: 0; }
-        .nav-links a { display: block; padding: 16px 25px; color: #cbd5e1; text-decoration: none; font-size: 15px; border-left: 4px solid transparent; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
+        .nav-links a { display: block; padding: 16px 25px; color: #cbd5e1; text-decoration: none; font-size: 15px; border-left: 4px solid transparent; display: flex; align-items: center; gap: 10px; }
         .nav-links a:hover { background-color: #334155; color: white; }
         .nav-links a.active { background-color: #0f172a; border-left-color: #3b82f6; color: white; font-weight: bold; }
+
+        .main-content { flex: 1; display: flex; flex-direction: column; background-color: #e2e8f0; height: 100vh; overflow: hidden; }
         
-        .main-content { flex: 1; padding: 25px; overflow-y: auto; background-color: var(--tema-fondo); transition: background-color 0.5s ease; scroll-behavior: smooth; }
-
-        .header-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
-        .header-title { margin: 0; color: #1e293b; font-size: 24px; }
-        .perfil-usuario { display: flex; align-items: center; gap: 15px; }
-        .mensaje-bienvenida { font-size: 14px; color: #475569; }
-        .mensaje-bienvenida span { font-weight: bold; color: #1e293b; }
-        .foto-perfil { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid var(--tema-primario); }
-        .btn-salir { background-color: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-left: 5px; }
-        .btn-salir:hover { background-color: #fef2f2; }
-
-        .card { max-width: 950px; margin: 0 auto; background: white; padding: 15px 30px 25px 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 6px solid var(--tema-primario); transition: border-top 0.5s ease; }
-        .table-card { max-width: 950px; margin-top: 20px; margin-left: auto; margin-right: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 40px; }
+        .board-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 25px; background: white; border-bottom: 1px solid #cbd5e1; }
+        .board-title { font-size: 20px; font-weight: bold; color: #1e293b; margin: 0; display: flex; align-items: center; gap: 10px; }
         
-        h2 { color: #333; text-align: center; margin-top: 0; margin-bottom: 15px; font-size: 22px; }
-        h3 { color: #555; border-bottom: 2px solid #eee; padding-bottom: 8px; margin-top: 0; margin-bottom: 12px; font-size: 18px; }
+        .btn-crear { background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-crear:hover { background: #2563eb; }
+
+        /* --- KANBAN BOARD (SCROLL HORIZONTAL) --- */
+        .kanban-container { flex: 1; display: flex; gap: 20px; padding: 20px; overflow-x: auto; align-items: flex-start; }
         
-        .form-group { margin-bottom: 12px; }
-        label { display: block; margin-bottom: 4px; font-weight: bold; color: #333; font-size: 13px;}
-        select, input, textarea { width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; font-size: 14px; font-family: Arial, sans-serif;}
-        textarea { resize: vertical; } 
-        input:disabled, select:disabled { background-color: #f1f5f9; color: #94a3b8; cursor: not-allowed; border-color: #e2e8f0; }
+        .kanban-column { background: #f8fafc; min-width: 320px; max-width: 320px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; max-height: 100%; border-top: 4px solid #94a3b8; }
+        .kanban-column-header { padding: 12px 15px; font-weight: bold; color: #334155; font-size: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; }
+        .col-count { background: #e2e8f0; color: #475569; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
 
-        button.btn-principal { background-color: var(--tema-primario); color: white; padding: 10px; width: 100%; border: none; border-radius: 4px; font-size: 15px; cursor: pointer; margin-top: 10px; font-weight: bold; transition: 0.2s; }
-        button.btn-principal:hover { filter: brightness(0.85); }
-        button.btn-principal:active { transform: scale(0.98); }
-        button.btn-editando { background-color: #f59e0b !important; color: white !important; }
+        .kanban-cards-area { flex: 1; padding: 10px; overflow-y: auto; min-height: 150px; }
+
+        /* --- TARJETAS TIPO TRELLO --- */
+        .kanban-card { background: white; border-radius: 6px; padding: 12px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; cursor: grab; transition: transform 0.1s, box-shadow 0.1s; position: relative; }
+        .kanban-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.12); }
+        .kanban-card:active { cursor: grabbing; }
+
+        .card-code { font-size: 11px; font-weight: bold; background: #dbeafe; color: #1e40af; padding: 3px 6px; border-radius: 4px; display: inline-block; margin-bottom: 6px; }
+        .card-title { font-size: 14px; font-weight: bold; color: #1e293b; margin-bottom: 4px; line-height: 1.3; }
+        .card-sub { font-size: 12px; color: #64748b; margin-bottom: 10px; }
         
-        .row { display: flex; gap: 15px; }
-        .row .form-group { flex: 1; }
+        .card-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 8px; font-size: 12px; color: #94a3b8; }
+        .avatar-mini { width: 24px; height: 24px; background: #3b82f6; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; title: "Asignado"; }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; table-layout: fixed; }
-        th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; vertical-align: middle; height: 32px; background-color: white; }
-        th { background-color: #f8fafc; color: #333; }
-        tr:hover td { background-color: #f1f5f9; }
-        
-        th:nth-child(1) { width: 9%; } 
-        th:nth-child(2) { width: 9%; } 
-        th:nth-child(3) { width: 17%; } 
-        th:nth-child(4) { width: 11%; } 
-        th:nth-child(5) { width: 12%; text-align: center; } 
-        th:nth-child(6) { width: 18%; } 
-        th:nth-child(7) { width: 18%; } 
-        th:nth-child(8) { width: 6%; text-align: center; }  
+        /* Estilo para cuando arrastramos la tarjeta */
+        .dragging { opacity: 0.5; border: 2px dashed #3b82f6; }
+        .drag-over { background: #e0e7ff; border-radius: 6px; }
 
-        .col-texto { position: relative; font-size: 12px; color: #555; cursor: pointer; }
-        .texto-truncado { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; display: block; }
-        .tooltip-custom {
-            visibility: hidden; background-color: #2c3e50; color: #fff; text-align: left; padding: 8px 12px; border-radius: 6px; position: absolute; z-index: 100;
-            bottom: 100%; left: 50%; transform: translateX(-50%); width: max-content; max-width: 250px; white-space: normal; word-wrap: break-word; word-break: break-all; 
-            opacity: 0; transition: 0.3s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.3); margin-bottom: 5px; font-size: 12px; line-height: 1.4;
-        }
-        .tooltip-custom::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #2c3e50 transparent transparent transparent; }
-        .col-texto:hover .tooltip-custom { visibility: visible; opacity: 1; }
-        .col-fecha { white-space: nowrap; font-weight: bold; }
-
-        .btn-accion { background-color: transparent; border: none; font-size: 15px; cursor: pointer; padding: 2px 4px; margin: 0; line-height: 1; opacity: 0; transition: 0.2s; }
-        tr:hover .btn-accion { opacity: 1; } .btn-accion:hover { transform: scale(1.3); }
-        .badge-estado { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; white-space: nowrap; transition: 0.3s; }
-        .estado-vacio { text-align: center; padding: 30px; color: #94a3b8; font-style: italic; }
-
-        @media (max-width: 768px) { 
-            body { overflow: auto; }
-            .app-container { flex-direction: column; height: auto; }
-            .sidebar { width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 100; }
-            .sidebar-header { padding: 15px; font-size: 20px; }
-            
-            .nav-links { flex-direction: row; margin-top: 0; justify-content: flex-start; background-color: #0f172a; overflow-x: auto; overflow-y: hidden; white-space: nowrap; -webkit-overflow-scrolling: touch; padding: 0 5px; }
-            .nav-links::-webkit-scrollbar { display: none; } 
-            .nav-links a { padding: 12px 15px; font-size: 13px; border-left: none; border-bottom: 3px solid transparent; flex-direction: row; flex: 0 0 auto; gap: 6px; }
-            .nav-links a.active { border-bottom-color: #3b82f6; }
-            
-            .main-content { padding: 10px; height: auto; overflow-y: visible; }
-            .row { flex-direction: column; gap: 12px; } 
-            .row .form-group { width: 100%; }
-            
-            .header-top { flex-direction: column; align-items: center; text-align: center; gap: 15px; margin-bottom: 20px; padding-bottom: 15px; }
-            .header-title { font-size: 22px; }
-            .perfil-usuario { flex-wrap: wrap; justify-content: center; gap: 10px; }
-            
-            .table-card { padding: 10px; border-radius: 5px; }
-            table { min-width: 900px; }
-        }
     </style>
 </head>
 <body>
@@ -127,629 +61,213 @@
         <!-- SIDEBAR -->
         <nav class="sidebar">
             <div class="sidebar-header">Veta<span>Cucine</span></div>
-           <ul class="nav-links">
+            <ul class="nav-links">
                 <li><a href="dashboard.html">📊 Dashboard</a></li>
                 <li><a href="taller.html">🏭 Panel Operador</a></li>
-                <li><a href="index.html" class="active">📝 Ingreso Muebles</a></li>
-                <li><a href="tablero.html">📋 Tablero Kanban</a></li>
+                <li><a href="index.html">📝 Ingreso Muebles</a></li>
+                <li><a href="tablero.html" class="active">📋 Tablero Kanban</a></li>
                 <li><a href="reportes.html">🔍 Buscar y Reportes</a></li>
-                <li><a href="admin.html" id="link-admin">⚙️ Administrador</a></li>
+                <li><a href="admin.html">⚙️ Administrador</a></li>
             </ul>
         </nav>
 
         <div class="main-content">
-            
-            <div class="header-top">
-                <h2 class="header-title">Ingreso de Producción</h2>
-                <div class="perfil-usuario">
-                    <div class="mensaje-bienvenida">Hola, <span id="nombreUsuario">Cargando...</span></div>
-                    <img id="fotoUsuario" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Foto" class="foto-perfil">
-                    <button class="btn-salir" onclick="cerrarSesion()">Salir</button>
+            <div class="board-header">
+                <h2 class="board-title">📋 Oficina Técnica y Taller</h2>
+                <div style="display:flex; gap: 10px;">
+                    <button class="btn-crear" style="background:#8b5cf6;" onclick="abrirModalRoles()">👥 Equipo / Roles</button>
+                    <button class="btn-crear" onclick="crearLotePrueba()">+ Nuevo Lote</button>
                 </div>
             </div>
 
-            <div class="card">
-                <h2 id="tituloFormulario">Registrar Nuevo Mueble</h2>
-                
-                <div class="row">
-                    <div class="form-group">
-                        <label>Fecha:</label>
-                        <input type="date" id="fecha">
-                    </div>
-                    <div class="form-group">
-                        <label>Cód. de Proyecto Int.:</label>
-                        <input type="text" id="codigo_proyecto" placeholder="Dejar vacío o '0'">
-                    </div>
-                    <div class="form-group">
-                        <label>Estado Inicial:</label>
-                        <select id="estado"><option value="" disabled selected>Seleccione...</option></select>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Proyecto:</label>
-                    <select id="proyecto" onchange="cambiarTema()"><option value="" disabled selected>Seleccione...</option></select>
-                </div>
-
-                <div class="row">
-                    <div class="form-group" style="flex: 0.8;">
-                        <label>Piso:</label>
-                        <input type="text" id="piso" placeholder="Ej: 9">
-                    </div>
-                    <div class="form-group" style="flex: 0.8;">
-                        <label>Bloque:</label>
-                        <input type="text" id="bloque" list="bloques_disponibles" placeholder="Ej: A" style="text-transform: uppercase;">
-                        <datalist id="bloques_disponibles"></datalist>
-                    </div>
-                    
-                    <!-- CAMPO INTELIGENTE: Autocompletado de Suite -->
-                    <div class="form-group" style="flex: 1.2; position: relative;">
-                        <label>Suite:</label>
-                        <div style="position: relative;">
-                            <input type="text" id="suite_ghost" disabled style="position: absolute; top: 0; left: 0; width: 100%; padding: 8px 10px; border: 1px solid transparent; box-sizing: border-box; font-size: 14px; font-family: Arial, sans-serif; color: #94a3b8; background-color: transparent; z-index: 1; pointer-events: none;">
-                            <input type="text" id="suite" placeholder="N° o Nombre" style="position: relative; z-index: 2; background-color: transparent; text-transform: uppercase;" autocomplete="off" oninput="sugerirSuite()" onkeydown="autocompletarSuite(event)">
-                        </div>
-                    </div>
-                    
-                    <div class="form-group"><label>Espacio:</label><select id="espacio"><option value="" disabled selected>Seleccione...</option></select></div>
-                    <div class="form-group"><label>Producto:</label><select id="producto"><option value="" disabled selected>Seleccione...</option></select></div>
-                </div>
-
-                <div class="form-group"><label>Observaciones:</label><textarea id="observaciones" rows="2" placeholder="Detalles de diseño..."></textarea></div>
-                <div class="form-group"><label>Modificaciones:</label><textarea id="modificaciones" rows="2" placeholder="Ajustes o cambios..."></textarea></div>
-                
-                <button id="btnGuardar" class="btn-principal" onclick="guardarRegistro()">Guardar Mueble</button>
-                <button id="btnCancelarEdit" class="btn-principal" style="background-color:#94a3b8; display:none;" onclick="cancelarEdicion()">Cancelar Edición</button>
+            <!-- CONTENEDOR DONDE SE DIBUJAN LAS COLUMNAS DINÁMICAS -->
+            <div class="kanban-container" id="kanban_board">
+                <!-- Se llenará con JS leyendo los estados visibles -->
+                <p style="padding: 20px; color: #64748b;">Cargando flujo de trabajo...</p>
             </div>
-
-            <div class="card table-card">
-                <h3>Últimos Registros Ingresados</h3>
-                <table id="tablaRegistros">
-                    <thead>
-                        <tr><th>Fecha</th><th>Cód. Int.</th><th>Ubicación</th><th>Mueble</th><th style="text-align: center;">Estado</th><th>Observaciones</th><th>Modificaciones</th><th>Acción</th></tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-
-        </div> 
-    </div> 
+        </div>
+    </div>
 
     <script>
+        // Configuración de Supabase
         const supabaseUrl = 'https://pnrntmkcisgymyvmzson.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBucm50bWtjaXNneW15dm16c29uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNzAwODQsImV4cCI6MjEwNDc0NjA4NH0.fdW9mj9rkO0rxHXB8rBeJc6a32QSQxtvsNtu9_rL6yc';
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
-        
-        window.registrosDescargados = []; 
-        window.proyectosCargados = []; 
-        window.estadosCargados = []; 
-        window.operadorActual = "Operador"; 
-        window.rolGlobal = "Operador"; 
-        
-        window.idMuebleEnEdicion = null;
-        window.suitesDisponiblesActuales = []; 
+
+        let currentUser = "Usuario";
+        let tarjetasGlobales = [];
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
-            if (!session) { window.location.href = 'login.html'; return; }
-
-            const correoUsuario = session.user.email;
-            const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol').eq('email', correoUsuario).single();
-            window.rolGlobal = empleado ? empleado.rol.trim() : 'Operador'; 
-
-            if (window.rolGlobal !== 'Administrador') {
-                const linkAdmin = document.querySelector('a[href="admin.html"]');
-                if (linkAdmin) linkAdmin.parentElement.style.display = 'none';
-
-                // BLOQUEO DE SEGURIDAD PARA OPERADORES
-                bloquearFormularioNuevo();
+            if (session) {
+                currentUser = session.user.user_metadata.full_name || session.user.email.split('@')[0];
             }
-
-            const nombreCompleto = session.user.user_metadata.full_name || session.user.email.split('@')[0];
-            window.operadorActual = nombreCompleto; 
-            const urlFoto = session.user.user_metadata.avatar_url || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
-            document.getElementById('nombreUsuario').innerText = nombreCompleto.split(' ')[0];
-            document.getElementById('fotoUsuario').src = urlFoto;
-
-            const offsetZonaHoraria = (new Date()).getTimezoneOffset() * 60000;
-            document.getElementById('fecha').value = (new Date(Date.now() - offsetZonaHoraria)).toISOString().split('T')[0];
-            
-            await cargarCatalogos(); 
-            await cargarTabla();
-
-            const urlParams = new URLSearchParams(window.location.search);
-            const editId = urlParams.get('edit');
-            if (editId) {
-                const { data: regEdit } = await supabaseClient.from('registros_produccion').select('*').eq('id', editId).single();
-                if (regEdit) {
-                    if (!window.registrosDescargados.find(r => r.id === regEdit.id)) window.registrosDescargados.push(regEdit);
-                    cargarParaEditar(regEdit.id);
-                }
-            }
+            await inicializarTablero();
         });
 
-        async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; }
-
-        // ==========================================
-        // FUNCIONES DE RESTRICCIÓN (ROL OPERADOR)
-        // ==========================================
-        function bloquearFormularioNuevo() {
-            document.getElementById('tituloFormulario').innerText = "🔒 Modo Operador: Solo Edición de Observaciones";
+        async function inicializarTablero() {
+            // 1. Traer los estados que tienen "ver_en_tablero = true"
+            const { data: estados } = await supabaseClient.from('catalogo_estados').select('*').eq('ver_en_tablero', true).order('orden');
             
-            const camposBloqueados = ['fecha', 'codigo_proyecto', 'estado', 'proyecto', 'piso', 'bloque', 'suite', 'espacio', 'producto'];
-            camposBloqueados.forEach(id => {
-                let el = document.getElementById(id);
-                if (el) el.disabled = true;
-            });
+            // 2. Traer todas las tarjetas de Kanban
+            const { data: tarjetas } = await supabaseClient.from('kanban_tarjetas').select('*');
+            tarjetasGlobales = tarjetas || [];
 
-            document.getElementById('btnGuardar').style.display = 'none';
+            dibujarTablero(estados || []);
         }
 
-        function hexToRgb(hex) {
-            let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-            return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : null;
-        }
+        function dibujarTablero(estados) {
+            const board = document.getElementById('kanban_board');
+            board.innerHTML = '';
 
-        async function cargarCatalogos() {
-            const { data: estados } = await supabaseClient.from('catalogo_estados').select('*').order('orden', { ascending: true });
-            if (estados) {
-                window.estadosCargados = estados; 
-                const sel = document.getElementById('estado'); sel.innerHTML = '<option value="" disabled selected>Seleccione...</option>';
-                estados.forEach(e => { sel.innerHTML += `<option value="${e.nombre}">${e.nombre}</option>`; });
-            }
+            const coloresTop = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#64748b'];
 
-            const { data: proyectos } = await supabaseClient.from('catalogo_proyectos').select('*').order('nombre');
-            if (proyectos) {
-                window.proyectosCargados = proyectos; 
-                const sel = document.getElementById('proyecto'); sel.innerHTML = '<option value="" disabled selected>Seleccione...</option>';
-                proyectos.forEach(p => { sel.innerHTML += `<option value="${p.nombre}">${p.nombre}</option>`; });
-                cambiarTema(); 
-            }
-
-            const { data: espacios } = await supabaseClient.from('catalogo_espacios').select('*').order('sigla');
-            if (espacios) {
-                const sel = document.getElementById('espacio'); sel.innerHTML = '<option value="" disabled selected>Seleccione...</option>'; 
-                espacios.forEach(e => { sel.innerHTML += `<option value="${e.sigla}">${e.sigla} - ${e.nombre}</option>`; });
-            }
-
-            const { data: productos } = await supabaseClient.from('catalogo_productos').select('*').order('sigla');
-            if (productos) {
-                const sel = document.getElementById('producto'); sel.innerHTML = '<option value="" disabled selected>Seleccione...</option>';
-                productos.forEach(p => { sel.innerHTML += `<option value="${p.sigla}">${p.sigla} - ${p.nombre}</option>`; });
-            }
-        }
-
-        function cambiarTema() {
-            let nombreProyecto = document.getElementById('proyecto').value;
-            let proyectoReal = window.proyectosCargados.find(p => p.nombre === nombreProyecto);
-            
-            let inputBloque = document.getElementById('bloque');
-            let datalist = document.getElementById('bloques_disponibles');
-            datalist.innerHTML = "";
-            
-            window.suitesDisponiblesActuales = [];
-            document.getElementById('suite_ghost').value = '';
-            document.getElementById('suite').value = '';
-
-            if (proyectoReal) {
-                if (proyectoReal.bloques && proyectoReal.bloques.trim() !== "") {
-                    if (window.rolGlobal === 'Administrador') {
-                        inputBloque.disabled = false; inputBloque.placeholder = "Requerido (Ej: A)";
-                    }
-                    let arrayBloques = proyectoReal.bloques.split(',').map(b => b.trim().toUpperCase());
-                    arrayBloques.forEach(b => { datalist.innerHTML += `<option value="${b}"></option>`; });
-                } else {
-                    inputBloque.value = ""; inputBloque.disabled = true; inputBloque.placeholder = "No aplica";
-                }
-
-                if (proyectoReal.suites && proyectoReal.suites.trim() !== "") {
-                    let s = proyectoReal.suites.trim();
-                    if (s.includes('-') && !s.includes(',')) {
-                        let partes = s.split('-');
-                        let inicio = parseInt(partes[0]); let fin = parseInt(partes[1]);
-                        if (!isNaN(inicio) && !isNaN(fin)) {
-                            for (let i = inicio; i <= fin; i++) {
-                                window.suitesDisponiblesActuales.push(i.toString());
-                            }
-                        }
-                    } else {
-                        window.suitesDisponiblesActuales = s.split(',').map(x => x.trim().toUpperCase()).filter(x => x);
-                    }
-                }
-
-                if (proyectoReal.color) {
-                    let colorHex = proyectoReal.color; let colorRgb = hexToRgb(colorHex);
-                    document.documentElement.style.setProperty('--tema-primario', colorHex);
-                    document.documentElement.style.setProperty('--tema-fondo', colorHex + '20'); 
-                    if(colorRgb) document.documentElement.style.setProperty('--tema-rgb', colorRgb);
-                }
-            } else {
-                inputBloque.value = ""; inputBloque.disabled = true; inputBloque.placeholder = "Selecciona Proyecto primero";
-                document.documentElement.style.setProperty('--tema-primario', '#475569');
-                document.documentElement.style.setProperty('--tema-fondo', '#f1f5f9');
-            }
-            if (window.registrosDescargados.length > 0) renderizarTabla(window.registrosDescargados);
-        }
-
-        function sugerirSuite() {
-            let input = document.getElementById('suite');
-            let ghost = document.getElementById('suite_ghost');
-            let val = input.value.toUpperCase();
-
-            if (val === "" || window.suitesDisponiblesActuales.length === 0) {
-                ghost.value = "";
-                return;
-            }
-
-            let match = window.suitesDisponiblesActuales.find(s => s.startsWith(val));
-            if (match) {
-                ghost.value = val + match.substring(val.length);
-            } else {
-                ghost.value = "";
-            }
-        }
-
-        function autocompletarSuite(e) {
-            let input = document.getElementById('suite');
-            let ghost = document.getElementById('suite_ghost');
-            
-            if ((e.key === 'Tab' || e.key === 'ArrowRight') && ghost.value !== "") {
-                e.preventDefault(); 
-                input.value = ghost.value; 
-                ghost.value = ""; 
-            }
-        }
-
-        function cargarParaEditar(id) {
-            let registro = window.registrosDescargados.find(r => r.id === id);
-            if (!registro) return;
-            
-            window.idMuebleEnEdicion = id; 
-            
-            if (window.rolGlobal === 'Administrador') {
-                document.getElementById('tituloFormulario').innerText = "✏️ Editando Mueble";
-            } else {
-                document.getElementById('tituloFormulario').innerText = "✏️ Escribiendo Observaciones";
-                document.getElementById('btnGuardar').style.display = 'block';
-            }
-            
-            if (registro.fecha) document.getElementById('fecha').value = registro.fecha.split('T')[0];
-            document.getElementById('codigo_proyecto').value = registro.codigo_proyecto === '000' ? '0' : registro.codigo_proyecto;
-            document.getElementById('estado').value = registro.estado; document.getElementById('proyecto').value = registro.proyecto; 
-            cambiarTema(); 
-            document.getElementById('piso').value = registro.piso; document.getElementById('bloque').value = registro.bloque || ''; 
-            document.getElementById('suite').value = registro.suite; document.getElementById('suite_ghost').value = '';
-            document.getElementById('espacio').value = registro.espacio; document.getElementById('producto').value = registro.producto; 
-            document.getElementById('observaciones').value = registro.observaciones || ''; 
-            document.getElementById('modificaciones').value = registro.modificaciones || '';
-            
-            document.querySelector('.main-content').scrollTo({ top: 0, behavior: 'smooth' }); 
-            document.getElementById('observaciones').focus();
-            
-            let btn = document.getElementById('btnGuardar'); 
-            btn.innerHTML = "💾 Guardar Observaciones"; 
-            btn.classList.add('btn-editando');
-            document.getElementById('btnCancelarEdit').style.display = 'block';
-        }
-
-        function cancelarEdicion() {
-            window.idMuebleEnEdicion = null;
-            
-            if (window.rolGlobal === 'Administrador') {
-                document.getElementById('tituloFormulario').innerText = "Registrar Nuevo Mueble";
-            } else {
-                bloquearFormularioNuevo();
-            }
-
-            document.getElementById('codigo_proyecto').value = ''; 
-            document.getElementById('observaciones').value = ''; 
-            document.getElementById('modificaciones').value = '';
-            document.getElementById('suite_ghost').value = '';
-            
-            let btn = document.getElementById('btnGuardar'); 
-            btn.innerHTML = "Guardar Mueble"; 
-            btn.classList.remove('btn-editando');
-            btn.disabled = false; 
-            document.getElementById('btnCancelarEdit').style.display = 'none';
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
-
-        async function guardarRegistro() {
-            let idParaActualizar = window.idMuebleEnEdicion;
-
-            if (window.rolGlobal !== 'Administrador' && !idParaActualizar) {
-                Swal.fire('Acceso Denegado', 'No tienes permisos para registrar piezas nuevas, solo para editarlas desde la tabla.', 'error');
-                return;
-            }
-
-            let fecha = document.getElementById('fecha').value; 
-            let codigo_proyecto_raw = document.getElementById('codigo_proyecto').value.trim();
-            let estado = document.getElementById('estado').value; 
-            let proyecto = document.getElementById('proyecto').value;
-            let piso = document.getElementById('piso').value.trim(); 
-            let bloque = document.getElementById('bloque').value.trim().toUpperCase(); 
-            let suite = document.getElementById('suite').value.trim().toUpperCase();
-            let espacio = document.getElementById('espacio').value; 
-            let producto = document.getElementById('producto').value;
-            let observaciones = document.getElementById('observaciones').value.trim(); 
-            let modificaciones = document.getElementById('modificaciones').value.trim();
-            
-            let codigo_proyecto = "000"; if (codigo_proyecto_raw !== "" && !/^0+$/.test(codigo_proyecto_raw)) codigo_proyecto = codigo_proyecto_raw;
-            
-            if (window.rolGlobal === 'Administrador') {
-                if (!proyecto || !estado || !espacio || !producto) { Swal.fire({ icon: 'warning', title: 'Faltan datos', text: 'Por favor selecciona Proyecto, Estado, Espacio y Producto.', confirmButtonColor: '#475569' }); return; }
-                if (!piso || !suite) { Swal.fire({ icon: 'warning', title: 'Faltan datos', text: 'Por favor completa el piso y la suite.', confirmButtonColor: '#475569' }); return; }
-
-                if (window.suitesDisponiblesActuales.length > 0 && !window.suitesDisponiblesActuales.includes(suite)) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Suite Inválida',
-                        text: `La suite "${suite}" no existe en el catálogo de este proyecto.`,
-                        confirmButtonColor: '#ef4444'
-                    });
-                    return;
-                }
-            }
-
-            let id_generado = "P" + piso + bloque + "-S" + suite + "-" + producto + "-" + espacio;
-            let btn = document.getElementById('btnGuardar'); btn.innerHTML = "Procesando..."; btn.disabled = true;
-            
-            let muebleAntiguo = null;
-
-            if (!idParaActualizar) {
-                const { data: existente } = await supabaseClient.from('registros_produccion').select('*').eq('id_generado', id_generado);
-                if (existente && existente.length > 0) {
-                    const result = await Swal.fire({
-                        title: 'Ubicación Ocupada',
-                        text: `Ya hay un mueble registrado en esta suite (${producto}). ¿Deseas sobreescribir sus datos?`,
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonColor: '#f59e0b',
-                        cancelButtonColor: '#94a3b8',
-                        confirmButtonText: 'Sí, sobreescribir',
-                        cancelButtonText: 'Cancelar'
-                    });
-                    
-                    if (!result.isConfirmed) {
-                        btn.innerHTML = "Guardar Mueble"; btn.disabled = false; return;
-                    }
-                    
-                    idParaActualizar = existente[0].id;
-                    muebleAntiguo = existente[0];
-                }
-            } else {
-                const { data: fetchAntiguo } = await supabaseClient.from('registros_produccion').select('*').eq('id', idParaActualizar).single();
-                muebleAntiguo = fetchAntiguo;
-            }
-
-            if (idParaActualizar && muebleAntiguo) {
-                // Actualización
-                let cambiosContador = 0;
-                let detallesHTML = "";
-                let obsAntigua = (muebleAntiguo.observaciones || "").trim(); let modAntigua = (muebleAntiguo.modificaciones || "").trim();
-                let estadoAntiguo = (muebleAntiguo.estado || "").trim(); let codigoAntiguo = (muebleAntiguo.codigo_proyecto || "").trim();
-
-                if (obsAntigua !== observaciones) { cambiosContador++; detallesHTML += `<li style="margin-bottom:4px;"><b>Observaciones:</b> <span style="color:#0f172a;">${observaciones || '(Se dejó en blanco)'}</span></li>`; }
-                if (modAntigua !== modificaciones) { cambiosContador++; detallesHTML += `<li style="margin-bottom:4px;"><b>Modificaciones:</b> <span style="color:#0f172a;">${modificaciones || '(Se dejó en blanco)'}</span></li>`; }
+            estados.forEach((est, index) => {
+                let color = coloresTop[index % coloresTop.length];
                 
-                let updatePayload = {};
+                // Filtrar las tarjetas que pertenecen a esta columna
+                let tarjetasColumna = tarjetasGlobales.filter(t => t.estado_macro === est.nombre);
 
-                if (window.rolGlobal === 'Administrador') {
-                    if (estadoAntiguo !== estado) { cambiosContador++; detallesHTML += `<li style="margin-bottom:4px;"><b>Estado:</b> cambió a <span style="color:#0f172a;">${estado}</span></li>`; }
-                    if (codigoAntiguo !== codigo_proyecto && codigo_proyecto !== "000") { cambiosContador++; detallesHTML += `<li style="margin-bottom:4px;"><b>Cód Interno:</b> cambió a <span style="color:#0f172a;">${codigo_proyecto}</span></li>`; }
-                    
-                    updatePayload = { fecha, codigo_proyecto, observaciones, modificaciones, estado, proyecto, piso, bloque, suite, espacio, producto, id_generado };
-                } else {
-                    updatePayload = { observaciones, modificaciones };
-                }
-
-                const { error: errUpd } = await supabaseClient.from('registros_produccion')
-                    .update(updatePayload)
-                    .eq('id', idParaActualizar);
-
-                if (!errUpd && cambiosContador > 0) {
-                    let comentarioFinal = `Actualizó ${cambiosContador} campo(s). <details style="margin-top:6px; cursor:pointer; background:#f8fafc; padding:6px; border-radius:4px; border:1px solid #e2e8f0;"><summary style="color:#3b82f6; font-weight:bold; font-size:11px; outline:none;">Ver detalles</summary><ul style="margin:6px 0 0 0; padding-left:18px; font-size:11px; color:#475569;">${detallesHTML}</ul></details>`;
-
-                    await supabaseClient.from('historial_trazabilidad').insert([{
-                        id_mueble: idParaActualizar, 
-                        etapa: window.rolGlobal === 'Administrador' ? estado : estadoAntiguo, 
-                        operador: window.operadorActual,
-                        tipo_registro: window.idMuebleEnEdicion ? 'Edición en Sistema' : 'Sobreescritura Directa', 
-                        comentarios: comentarioFinal
-                    }]);
-                    
-                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '¡Actualizado y registrado!', showConfirmButton: false, timer: 3000 });
-                } else if (cambiosContador === 0) {
-                    Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Sobrescrito (Sin cambios)', showConfirmButton: false, timer: 2000 });
-                }
-                cancelarEdicion();
-
-            } else {
-                // Creación 100% Nueva
-                const { data: nuevoReg } = await supabaseClient.from('registros_produccion').insert([{ fecha, codigo_proyecto, proyecto, piso, bloque, suite, espacio, producto, observaciones, modificaciones, estado, id_generado }]).select();
-                if (nuevoReg && nuevoReg.length > 0) {
-                    await supabaseClient.from('historial_trazabilidad').insert([{
-                        id_mueble: nuevoReg[0].id, etapa: estado, operador: window.operadorActual,
-                        tipo_registro: 'Creación', comentarios: `Registro inicial de la pieza.`
-                    }]);
-                    
-                    // --- NUEVA LÓGICA: CREAR TARJETA AUTOMÁTICA EN EL TABLERO KANBAN ---
-                    if (codigo_proyecto !== "000") {
-                        const { data: tarjetasExistentes } = await supabaseClient
-                            .from('kanban_tarjetas')
-                            .select('id')
-                            .eq('codigo_proyecto', codigo_proyecto);
-
-                        if (!tarjetasExistentes || tarjetasExistentes.length === 0) {
-                            let tituloTarjeta = `${proyecto} - ${producto}`;
-                            let subtituloTarjeta = `Piso ${piso} ${bloque ? '- Blq ' + bloque : ''} - Suite ${suite}`;
-                            
-                            await supabaseClient.from('kanban_tarjetas').insert([{
-                                codigo_proyecto: codigo_proyecto,
-                                titulo: tituloTarjeta,
-                                subtitulo: subtituloTarjeta,
-                                estado_macro: estado, 
-                                creado_por: 'Sistema Automático',
-                                es_sistema: true
-                            }]);
-                        }
-                    }
-                    // -------------------------------------------------------------------
-                    
-                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '¡Mueble Creado!', showConfirmButton: false, timer: 2000 });
-                }
-                
-                document.getElementById('codigo_proyecto').value = ''; document.getElementById('observaciones').value = ''; document.getElementById('modificaciones').value = '';
-                document.getElementById('suite_ghost').value = '';
-                document.getElementById('codigo_proyecto').focus(); 
-                btn.innerHTML = "Guardar Mueble"; btn.disabled = false; 
-            }
-            
-            await cargarTabla();
-        }
-
-        async function eliminarRegistro(id, codigo, mueble) {
-            const result = await Swal.fire({ title: '¿Estás seguro?', html: `Estás a punto de borrar:<br><b>Cód:</b> ${codigo}<br><b>Mueble:</b> ${mueble}`, icon: 'error', showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar' });
-            if (result.isConfirmed) {
-                await supabaseClient.from('registros_produccion').delete().eq('id', id); 
-                cargarTabla(); Swal.fire({ icon: 'success', title: '¡Eliminado!', text: 'El registro fue borrado.', timer: 1500, showConfirmButton: false });
-            }
-        }
-
-        async function cargarTabla() {
-            const { data, error } = await supabaseClient.from('registros_produccion')
-                .select('*')
-                .order('created_at', { ascending: false }) 
-                .limit(20);
-                
-            if (error) { document.querySelector("#tablaRegistros tbody").innerHTML = `<tr><td colspan="8" class="estado-vacio" style="color:#ef4444;">Falla: ${error.message}</td></tr>`; return; }
-            if (data) { window.registrosDescargados = data; renderizarTabla(data); }
-        }
-
-        function renderizarTabla(data) {
-            const tbody = document.querySelector("#tablaRegistros tbody"); tbody.innerHTML = ""; 
-            if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="8" class="estado-vacio">No hay registros aún.</td></tr>'; return; }
-            let maxOrdenEstado = (window.estadosCargados && window.estadosCargados.length > 0) ? Math.max(...window.estadosCargados.map(e => e.orden)) : 1;
-
-            data.forEach(fila => {
-                let partes = fila.fecha ? fila.fecha.split('T')[0].split('-') : [];
-                let fechaCorta = partes.length ? `${partes[2]}-${partes[1]}-${partes[0].substring(2)}` : "";
-                let inicialProyecto = fila.proyecto ? (fila.proyecto.substring(0, 4).charAt(0).toUpperCase() + fila.proyecto.substring(1, 4).toLowerCase()) : "Pry";
-                let bloqueDisplay = fila.bloque || "";
-                let ubicacionVisual = (!isNaN(fila.suite) && fila.suite.trim() !== "") ? `${inicialProyecto} / P${fila.piso}${bloqueDisplay}-S${fila.suite}` : `${inicialProyecto} / P${fila.piso}${bloqueDisplay}-${fila.suite}`;
-                
-                let nombreEstado = fila.estado || 'Nuevo'; let objEstado = window.estadosCargados.find(e => e.nombre === nombreEstado); let ordenActual = objEstado ? objEstado.orden : 1;
-                let esBloqueo = nombreEstado.toLowerCase().includes('bloque'); let estiloBadge = "";
-
-                if (esBloqueo) { estiloBadge = "background-color: #fee2e2; color: #ef4444; border: 1px solid #ef4444;"; } 
-                else {
-                    let opacidad = Math.max(0.15, (ordenActual / maxOrdenEstado)); 
-                    let textColor = opacidad > 0.6 ? "white" : "var(--tema-primario)";
-                    estiloBadge = `background-color: rgba(var(--tema-rgb), ${opacidad}); color: ${textColor}; border: 1px solid var(--tema-primario);`;
-                }
-
-                let obsHTML = fila.observaciones ? `<div class="texto-truncado">${fila.observaciones}</div><span class="tooltip-custom">${fila.observaciones}</span>` : '';
-                let modHTML = fila.modificaciones ? `<div class="texto-truncado">${fila.modificaciones}</div><span class="tooltip-custom">${fila.modificaciones}</span>` : '';
-
-                let btnBorrarHTML = window.rolGlobal === 'Administrador' ? `<button class="btn-accion" title="Borrar" onclick="eliminarRegistro('${fila.id}', '${fila.codigo_proyecto || '-'}', '${ubicacionVisual}')">🗑️</button>` : '';
-
-                tbody.innerHTML += `<tr>
-                    <td class="col-fecha">${fechaCorta}</td><td><strong>${fila.codigo_proyecto || '-'}</strong></td><td>${ubicacionVisual}</td><td>${fila.producto} (${fila.espacio})</td>
-                    <td style="text-align: center;"><span class="badge-estado" style="${estiloBadge}">${nombreEstado}</span></td>
-                    <td class="col-texto">${obsHTML}</td><td class="col-texto">${modHTML}</td>
-                    <td class="acciones-col">
-                        <button class="btn-accion" title="Ver Historial" onclick="verHistorial('${fila.id}', '${fila.codigo_proyecto || 'S/N'}', '${ubicacionVisual}')">⏱️</button>
-                        <button class="btn-accion" title="Editar" onclick="cargarParaEditar('${fila.id}')">✏️</button>
-                        ${btnBorrarHTML}
-                    </td></tr>`;
-            });
-        }
-        
-        function formatearFechaEspanol(cadenaFecha) {
-            if (!cadenaFecha) return 'Fecha desconocida';
-            if (cadenaFecha.length === 10) { let partes = cadenaFecha.split('-'); return `${partes[2]}/${partes[1]}/${partes[0]} - (Ingreso manual)`; }
-            
-            let d = new Date(cadenaFecha);
-            if (isNaN(d)) return cadenaFecha;
-            
-            let dia = String(d.getDate()).padStart(2, '0'); let mes = String(d.getMonth() + 1).padStart(2, '0'); let anio = d.getFullYear();
-            let horas = d.getHours(); let minutos = String(d.getMinutes()).padStart(2, '0');
-            let ampm = horas >= 12 ? 'PM' : 'AM';
-            horas = horas % 12; horas = horas ? horas : 12; 
-            let horasStr = String(horas).padStart(2, '0');
-            
-            return `${dia}/${mes}/${anio} a las ${horasStr}:${minutos} ${ampm}`;
-        }
-        
-        function obtenerIniciales(nombreCompleto) {
-            if (!nombreCompleto) return '👤';
-            let partes = nombreCompleto.trim().split(' ').filter(p => p.length > 0);
-            if (partes.length === 0) return '👤';
-            if (partes.length === 1) return partes[0].charAt(0).toUpperCase();
-            return (partes[0].charAt(0) + partes[1].charAt(0)).toUpperCase();
-        }
-
-        function obtenerColorAvatar(nombre) {
-            const colores = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#0284c7'];
-            if (!nombre) return colores[0];
-            let num = 0; for (let i = 0; i < nombre.length; i++) num += nombre.charCodeAt(i);
-            return colores[num % colores.length];
-        }
-
-        async function verHistorial(id_mueble, codigo, ubicacion) {
-            Swal.fire({ title: 'Cargando expediente...', didOpen: () => Swal.showLoading() });
-            
-            const { data: mueble } = await supabaseClient.from('registros_produccion').select('fecha').eq('id', id_mueble).single();
-            const { data: historialBruto } = await supabaseClient.from('historial_trazabilidad').select('*').eq('id_mueble', id_mueble);
-            
-            let historial = [];
-            if (historialBruto) {
-                historial = historialBruto.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
-            }
-            
-            let tieneCreacion = historial.some(h => h.tipo_registro === 'Creación');
-            let html = `<div style="text-align: left; max-height: 400px; overflow-y: auto; overflow-x: hidden; font-size: 13px; padding: 5px 10px 5px 25px;">`;
-            html += `<h4 style="margin-top:0; border-bottom: 1px solid #ccc; padding-bottom: 8px; margin-bottom: 15px;">Cód: ${codigo} | ${ubicacion}</h4>`;
-            
-            if (!tieneCreacion && mueble && mueble.fecha) {
-                html += `<div style="display: flex; gap: 12px; margin-bottom: 15px; border-left: 2px solid #cbd5e1; padding-left: 15px; position: relative;">
-                    <div style="position: absolute; left: -17px; top: 0; width: 32px; height: 32px; border-radius: 50%; background: #94a3b8; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2px solid white;">🤖</div>
-                    <div>
-                        <strong style="color:#1e293b;">Sistema Central</strong> <span style="color:#64748b; font-size:11px;">• ${formatearFechaEspanol(mueble.fecha)}</span><br>
-                        ✨ <b style="color:#64748b;">Ingreso Básico</b><br>
-                        <span style="color: #94a3b8; font-style: italic;">Pieza registrada antes de la actualización de trazabilidad.</span>
-                    </div>
-                </div>`;
-            }
-
-            if (historial.length > 0) {
-                historial.forEach(h => {
-                    let fechaMostrada = h.created_at ? formatearFechaEspanol(h.created_at) : formatearFechaEspanol(h.fecha);
-                    let icono = h.tipo_registro.includes('Falla') ? '🛑' : (h.tipo_registro.includes('Creación') ? '✨' : (h.tipo_registro.includes('Edición') ? '✏️' : '▶️'));
-                    
-                    let nombreOp = h.operador || 'Operador';
-                    let iniciales = obtenerIniciales(nombreOp);
-                    let colorAvatar = obtenerColorAvatar(nombreOp);
-
-                    html += `<div style="display: flex; gap: 12px; margin-bottom: 15px; border-left: 2px solid ${colorAvatar}; padding-left: 15px; position: relative;">
-                        <div style="position: absolute; left: -17px; top: 0; width: 32px; height: 32px; border-radius: 50%; background: ${colorAvatar}; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">${iniciales}</div>
-                        <div>
-                            <strong style="color:#1e293b;">${nombreOp}</strong> <span style="color:#64748b; font-size:11px;">• ${fechaMostrada}</span><br>
-                            ${icono} <b style="color:${colorAvatar};">${h.tipo_registro}</b> <span style="color:#64748b;">(${h.etapa})</span><br>
-                            <div style="color: #475569;">${h.comentarios || ''}</div>
+                // Crear la estructura de la columna HTML
+                let colHTML = `
+                    <div class="kanban-column" style="border-top-color: ${color};">
+                        <div class="kanban-column-header">
+                            <span>${est.nombre}</span>
+                            <span class="col-count" id="count_${est.nombre.replace(/\s+/g, '')}">${tarjetasColumna.length}</span>
                         </div>
-                    </div>`;
-                });
-            } else if (!tieneCreacion) {
-                html += `<div style="color: #94a3b8; text-align: center; margin-top: 20px; font-style: italic;">Aún no hay movimientos registrados por operadores para esta pieza.</div>`;
-            }
-            
-            html += `</div>`;
-            Swal.fire({ title: '⏱️ Expediente de Trazabilidad', html: html, width: '600px', confirmButtonText: 'Cerrar', confirmButtonColor: '#475569' });
+                        <div class="kanban-cards-area" id="col_${est.nombre}" ondrop="drop(event, '${est.nombre}')" ondragover="allowDrop(event)">
+                            ${tarjetasColumna.map(t => generarHTMLTarjeta(t)).join('')}
+                        </div>
+                    </div>
+                `;
+                board.innerHTML += colHTML;
+            });
         }
 
-        window.addEventListener('offline', () => { Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Sin conexión a Internet', showConfirmButton: false, background: '#fee2e2' }); });
-        window.addEventListener('online', () => { Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Conexión restaurada', showConfirmButton: false, timer: 4000 }); });
+        function generarHTMLTarjeta(t) {
+            let inicialesOp = t.operador_asignado ? t.operador_asignado.substring(0,2).toUpperCase() : '👤';
+            let bgAvatar = t.operador_asignado ? '#10b981' : '#cbd5e1';
+            
+            // Lógica del candado/basurero
+            let botonBorrar = (t.es_sistema === true) 
+                ? `<span style="font-size:12px; cursor:not-allowed;" title="Tarjeta Automática (Solo se borra desde el Index si borras todas sus piezas)">🔒</span>`
+                : `<span style="font-size:12px; cursor:pointer; color:#ef4444;" title="Borrar Tarjeta Manual" onclick="borrarTarjetaKanban(${t.id})">🗑️</span>`;
+
+            return `
+                <div class="kanban-card" draggable="true" id="card_${t.id}" ondragstart="drag(event, ${t.id})">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 6px;">
+                        <div class="card-code">#${t.codigo_proyecto}</div>
+                        ${botonBorrar}
+                    </div>
+                    <div class="card-title">${t.titulo}</div>
+                    <div class="card-sub">${t.subtitulo || 'Sin ubicación específica'}</div>
+                    <div class="card-footer">
+                        <span>📎 0 Adjuntos</span>
+                        <div class="avatar-mini" style="background: ${bgAvatar};">${inicialesOp}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function borrarTarjetaKanban(idTarjeta) {
+            const conf = await Swal.fire({
+                title: '¿Borrar tarjeta manual?',
+                text: 'Esto no afecta las piezas en el taller.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#94a3b8',
+                confirmButtonText: 'Sí, borrar'
+            });
+
+            if (conf.isConfirmed) {
+                await supabaseClient.from('kanban_tarjetas').delete().eq('id', idTarjeta);
+                inicializarTablero(); 
+            }
+        }
+
+        // ==========================================
+        // LÓGICA DRAG & DROP (Mover Tarjetas)
+        // ==========================================
+        let idTarjetaArrastrada = null;
+
+        function allowDrop(ev) {
+            ev.preventDefault();
+            ev.currentTarget.classList.add('drag-over');
+        }
+
+        function drag(ev, id) {
+            idTarjetaArrastrada = id;
+            ev.currentTarget.classList.add('dragging');
+        }
+
+        async function drop(ev, nuevoEstado) {
+            ev.preventDefault();
+            
+            // Quitar estilos de arrastre
+            document.querySelectorAll('.kanban-cards-area').forEach(el => el.classList.remove('drag-over'));
+            document.querySelectorAll('.kanban-card').forEach(el => el.classList.remove('dragging'));
+
+            if (!idTarjetaArrastrada) return;
+
+            let tarjetaDOM = document.getElementById(`card_${idTarjetaArrastrada}`);
+            let zonaDestino = document.getElementById(`col_${nuevoEstado}`);
+            
+            zonaDestino.appendChild(tarjetaDOM);
+
+            const { error } = await supabaseClient
+                .from('kanban_tarjetas')
+                .update({ estado_macro: nuevoEstado })
+                .eq('id', idTarjetaArrastrada);
+
+            if (error) {
+                Swal.fire('Error', 'No se pudo guardar la nueva posición', 'error');
+            }
+            await inicializarTablero(); 
+        }
+
+        // ==========================================
+        // CREAR LOTE MANUAL (SIN CANDADO)
+        // ==========================================
+        async function crearLotePrueba() {
+            const { value: formValues } = await Swal.fire({
+                title: 'Nuevo Lote (Manual)',
+                html:
+                    '<input id="swal-cod" class="swal2-input" placeholder="Código (Ej: 520)">' +
+                    '<input id="swal-tit" class="swal2-input" placeholder="Proyecto y Producto">' +
+                    '<input id="swal-sub" class="swal2-input" placeholder="Ubicación (Ej: P5-S1)">',
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Crear Tarjeta',
+                preConfirm: () => {
+                    return [
+                        document.getElementById('swal-cod').value,
+                        document.getElementById('swal-tit').value,
+                        document.getElementById('swal-sub').value
+                    ]
+                }
+            });
+
+            if (formValues && formValues[0]) {
+                const { error } = await supabaseClient.from('kanban_tarjetas').insert([{
+                    codigo_proyecto: formValues[0],
+                    titulo: formValues[1] || 'Proyecto S/N',
+                    subtitulo: formValues[2],
+                    estado_macro: 'Por Digitalizar', // Ajusta según el primer estado de tu tabla
+                    creado_por: currentUser,
+                    es_sistema: false // ¡Este no tiene candado!
+                }]);
+
+                if (!error) {
+                    Swal.fire({toast:true, position:'top-end', icon:'success', title:'Tarjeta Creada', showConfirmButton:false, timer:2000});
+                    inicializarTablero();
+                }
+            }
+        }
+
+        function abrirModalRoles() {
+            Swal.fire('Próximamente', 'Aquí crearemos la lista de personal para asignarles sus columnas (Mario, Axel, etc.) y cargarles los Checklists de PDF del Nesting.', 'info');
+        }
     </script>
 </body>
 </html>
