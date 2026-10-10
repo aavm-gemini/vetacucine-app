@@ -70,31 +70,29 @@
         .btn-accion-verde:hover { background-color: #059669; }
         .btn-cancelar { width: 100%; font-size: 15px; padding: 10px; margin-top: 8px; border: none; background: transparent; color: #64748b; font-weight: bold; cursor: pointer; text-decoration: underline; }
 
-        /* --- PESTAÑA 2: MI LISTA DE TRABAJO (ESTILO CHECKLIST CORTADOR) --- */
+        /* --- PESTAÑA 2: MI LISTA DE TRABAJO (MEJORADA) --- */
         .checklist-card { background: white; width: 100%; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 6px solid #8b5cf6; box-sizing: border-box; }
         .add-lote-bar { display: flex; gap: 10px; margin-bottom: 20px; }
         .add-lote-bar input { flex: 1; padding: 12px; font-size: 15px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; }
         .add-lote-bar button { background: #8b5cf6; color: white; border: none; padding: 0 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
         
-        .mi-lote-item { display: flex; align-items: flex-start; gap: 12px; padding: 14px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; background: white; transition: 0.2s; }
+        .mi-lote-item { display: flex; align-items: flex-start; gap: 12px; padding: 16px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 12px; background: white; transition: 0.2s; }
         .mi-lote-item.completado { background: #f8fafc; opacity: 0.75; border-left: 4px solid #10b981; }
         .mi-lote-item.completado .lote-titulo { text-decoration: line-through; color: #64748b; }
-        .check-grande { width: 22px; height: 22px; margin-top: 2px; cursor: pointer; accent-color: #10b981; }
-        .lote-contenido { flex: 1; }
-        .lote-titulo { font-weight: bold; font-size: 15px; color: #0f172a; margin-bottom: 4px; }
-        .lote-sub { font-size: 12px; color: #475569; margin-bottom: 6px; }
-        .lote-nota-input { width: 100%; border: none; border-bottom: 1px dashed #cbd5e1; background: transparent; font-size: 12px; color: #0f172a; padding: 4px 0; outline: none; font-style: italic; }
-        .lote-nota-input:focus { border-bottom-color: #8b5cf6; }
+        .check-grande { width: 22px; height: 22px; margin-top: 2px; cursor: pointer; accent-color: #10b981; flex-shrink: 0; }
+        .lote-contenido { flex: 1; min-width: 0; /* Previene el desbordamiento flex */ }
+        .lote-titulo { font-size: 15px; color: #0f172a; margin-bottom: 4px; }
+        .lote-sub { font-size: 12px; color: #475569; margin-bottom: 8px; }
+        .lote-nota-input { width: 100%; border: none; border-bottom: 1px dashed #cbd5e1; background: transparent; font-size: 13px; color: #0f172a; padding: 4px 0; outline: none; font-style: italic; transition: 0.2s; }
+        .lote-nota-input:focus { border-bottom-color: #8b5cf6; background: #f8fafc; }
 
         /* --- PESTAÑA 3: BITÁCORA DE RELEVO DE TURNOS --- */
         .relevo-grid { display: grid; grid-template-columns: 1fr; gap: 20px; width: 100%; }
         .card-relevo { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 6px solid #f59e0b; box-sizing: border-box; transition: all 0.35s ease; }
         
-        /* TEMA TURNO MAÑANA */
         .card-relevo.tema-manana { border-top-color: #f59e0b; background: linear-gradient(180deg, #fffdf5 0%, #ffffff 100%); box-shadow: 0 6px 20px rgba(245, 158, 11, 0.08); }
         .card-relevo.tema-manana #rel_turno { background-color: #fef3c7; border-color: #f59e0b; color: #92400e; font-weight: bold; }
 
-        /* TEMA TURNO TARDE */
         .card-relevo.tema-tarde { border-top-color: #4f46e5; background: linear-gradient(180deg, #f5f7ff 0%, #ffffff 100%); box-shadow: 0 6px 20px rgba(79, 70, 229, 0.1); }
         .card-relevo.tema-tarde #rel_turno { background-color: #e0e7ff; border-color: #4f46e5; color: #1e1b4b; font-weight: bold; }
 
@@ -246,7 +244,7 @@
                 </div>
 
                 <!-- =========================================================
-                     SECCIÓN 2: MI LISTA DE TRABAJO
+                     SECCIÓN 2: MI LISTA DE TRABAJO (MEJORADA)
                      ========================================================= -->
                 <div id="seccion_lista" style="width: 100%; display: none;">
                     <div class="checklist-card">
@@ -592,16 +590,60 @@
         function cancelarOperacion() { piezasLoteActual = []; estadoSiguienteLote = null; document.getElementById('codigo_ingresado').value = ''; document.getElementById('panel_resultado').style.display = 'none'; document.getElementById('panel_busqueda').style.display = 'block'; document.getElementById('codigo_ingresado').focus(); }
 
         // ==========================================
-        // PESTAÑA 2: MI LISTA
+        // PESTAÑA 2: MI LISTA (MEJORADA CON LÓGICA DASHBOARD)
         // ==========================================
         function obtenerMiLista() { try { return JSON.parse(localStorage.getItem(STORAGE_LISTA_KEY) || '[]'); } catch { return []; } }
         function guardarMiLista(lista) { localStorage.setItem(STORAGE_LISTA_KEY, JSON.stringify(lista)); }
 
         async function agregarAMiLista() {
             const input = document.getElementById('input_nuevo_lote_lista'); let texto = input.value.trim(); if (!texto) return;
-            let lista = obtenerMiLista(); let resumenProyecto = "Proyecto manual / Externo"; let estadoActual = "Pendiente";
-            const { data: encontrados } = await supabaseClient.from('registros_produccion').select('proyecto, producto, estado').eq('codigo_proyecto', texto);
-            if (encontrados && encontrados.length > 0) { resumenProyecto = `${encontrados[0].proyecto} (${encontrados.length} ${encontrados[0].producto})`; estadoActual = encontrados[0].estado; }
+            let lista = obtenerMiLista(); 
+            let resumenProyecto = "Proyecto manual / Externo"; 
+            let estadoActual = "Pendiente";
+            
+            const { data: pzas } = await supabaseClient.from('registros_produccion').select('*').eq('codigo_proyecto', texto);
+            
+            if (pzas && pzas.length > 0) { 
+                let isCommon = pzas.some(p => p.producto === 'PP' || p.espacio === 'AC');
+                let mapPisos = {};
+                pzas.forEach(p => {
+                    let pisoNro = p.piso ? p.piso : 'S/P';
+                    if(!mapPisos[pisoNro]) mapPisos[pisoNro] = [];
+                    mapPisos[pisoNro].push(p);
+                });
+
+                let arrSubItems = [];
+                for(let pisoNro in mapPisos) {
+                    let pzasPiso = mapPisos[pisoNro];
+                    let etiquetaPiso = pisoNro !== 'S/P' ? `P${pisoNro}` : '';
+
+                    if (isCommon) {
+                        let suitesUnicas = [...new Set(pzasPiso.map(p => p.suite))].filter(Boolean);
+                        suitesUnicas.sort((a,b) => parseInt(a) - parseInt(b));
+                        if (suitesUnicas.length > 0) arrSubItems.push(`${etiquetaPiso}(${suitesUnicas.join(', ')})`);
+                        else if(etiquetaPiso) arrSubItems.push(etiquetaPiso);
+                    } else {
+                        let mapSuites = {};
+                        pzasPiso.forEach(p => {
+                            let s = p.suite || 'S/N'; let e = p.espacio || '';
+                            if (!mapSuites[s]) mapSuites[s] = new Set();
+                            if (e) mapSuites[s].add(e);
+                        });
+                        let arrSuites = [];
+                        for (let suite in mapSuites) {
+                            let espacios = [...mapSuites[suite]];
+                            if (espacios.length > 0) arrSuites.push(`(${suite}: ${espacios.join(' - ')})`);
+                            else arrSuites.push(`(${suite})`);
+                        }
+                        arrSubItems.push(`${etiquetaPiso} ${arrSuites.join(' ')}`.trim());
+                    }
+                }
+                
+                let txtSub = arrSubItems.join(' | ');
+                resumenProyecto = `${pzas[0].proyecto} - ${pzas[0].producto} ${txtSub ? '- ' + txtSub : ''}`;
+                estadoActual = pzas[0].estado; 
+            }
+            
             lista.unshift({ id: Date.now(), codigo: texto, resumen: resumenProyecto, estado: estadoActual, nota: "PDF elaborado, captura enviada", completado: false });
             guardarMiLista(lista); input.value = ''; renderizarMiLista();
         }
@@ -615,13 +657,16 @@
                     <div class="mi-lote-item ${item.completado ? 'completado' : ''}">
                         <input type="checkbox" class="check-grande" ${item.completado ? 'checked' : ''} onchange="marcarItemLista(${item.id}, this.checked)">
                         <div class="lote-contenido">
-                            <div class="lote-titulo">#${item.codigo} — ${item.resumen}</div>
-                            <div class="lote-sub">Estado ref: <b>${item.estado}</b></div>
-                            <input type="text" class="lote-nota-input" value="${item.nota || ''}" placeholder="Escribe nota rápida..." onchange="actualizarNotaLista(${item.id}, this.value)">
-                        </div>
-                        <div style="display:flex; align-items:center; gap:6px;">
-                            <button onclick="abrirEnEscaner('${item.codigo}')" style="background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; padding:6px 10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer; white-space:nowrap;">⚡ Procesar</button>
-                            <button onclick="eliminarItemLista(${item.id})" title="Quitar de mi lista" style="background:#fef2f2; color:#ef4444; border:1px solid #fecaca; padding:6px 9px; border-radius:6px; font-size:13px; cursor:pointer;">🗑️</button>
+                            <div class="lote-titulo" style="line-height:1.4;">
+                                <span style="color:#2563eb; font-size:16px;">#${item.codigo}</span><br>
+                                <span style="font-size:13px; font-weight:normal; color:#334155;">${item.resumen}</span>
+                            </div>
+                            <div class="lote-sub" style="margin-top:6px;">Estado ref: <b style="color:#0f172a;">${item.estado}</b></div>
+                            <input type="text" class="lote-nota-input" value="${item.nota || ''}" placeholder="Escribe nota rápida..." onchange="actualizarNotaLista(${item.id}, this.value)" style="margin-bottom:12px; background:#f8fafc; padding:8px; border-radius:4px; border:1px solid #e2e8f0; width: 100%; box-sizing: border-box;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <button onclick="abrirEnEscaner('${item.codigo}')" style="flex:1; background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; padding:8px 10px; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer;">⚡ Procesar</button>
+                                <button onclick="eliminarItemLista(${item.id})" title="Quitar de mi lista" style="background:#fef2f2; color:#ef4444; border:1px solid #fecaca; padding:8px 14px; border-radius:6px; font-size:14px; cursor:pointer;">🗑️</button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -638,7 +683,6 @@
         // PESTAÑA 3: BITÁCORA, FOTOS Y COMPRESIÓN JS
         // ==========================================
         
-        // Función mágica para comprimir imágenes antes de subir
         async function comprimirImagen(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -648,8 +692,8 @@
                     img.src = event.target.result;
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
-                        const MAX_WIDTH = 1200; // Ancho máximo
-                        const MAX_HEIGHT = 1200; // Alto máximo
+                        const MAX_WIDTH = 1200; 
+                        const MAX_HEIGHT = 1200; 
                         let width = img.width;
                         let height = img.height;
 
@@ -664,7 +708,6 @@
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
                         
-                        // Convertir canvas a JPEG ligero (calidad 70%)
                         canvas.toBlob((blob) => {
                             const nuevoArchivo = new File([blob], file.name, {
                                 type: 'image/jpeg',
@@ -714,9 +757,7 @@
             if (archivosFotosTurno.length > 0) {
                 for (let fotoOriginal of archivosFotosTurno) {
                     
-                    // COMPRESIÓN EN EL CLIENTE ANTES DE SUBIR
                     let fotoComprimida = await comprimirImagen(fotoOriginal);
-                    
                     let nombreUnico = Date.now() + "_" + fotoComprimida.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
                     let filePath = "evidencia/" + nombreUnico;
                     
@@ -755,7 +796,6 @@
                 Swal.fire('Error al guardar', 'Detalle: ' + error.message, 'error'); return;
             }
 
-            // Limpiar formulario completo
             document.getElementById('rel_mensaje').value = '';
             document.getElementById('rel_codigo').value = '';
             document.getElementById('input_fotos_turno').value = '';
