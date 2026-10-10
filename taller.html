@@ -173,6 +173,11 @@
         .btn-enterado:hover { background: #059669; transform: scale(1.03); }
         .leido-tag { color: #059669; font-weight: bold; }
 
+        /* Estilos visualización de fotos en muro */
+        .contenedor-fotos-muro { display: flex; gap: 10px; margin-top: 10px; }
+        .foto-miniatura { width: 60px; height: 60px; border-radius: 6px; object-fit: cover; border: 1px solid #cbd5e1; cursor: pointer; transition: 0.2s; }
+        .foto-miniatura:hover { transform: scale(1.1); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+
         /* --- RESPONSIVO MÓVIL UNIFICADO --- */
         @media (max-width: 768px) { 
             html, body { overflow-x: hidden !important; overflow-y: auto !important; }
@@ -233,7 +238,7 @@
             <div class="secciones-taller">
                 
                 <!-- =========================================================
-                     SECCIÓN 1: ESCÁNER Y PROCESADOR DE LOTES (SOLUCIÓN #516)
+                     SECCIÓN 1: ESCÁNER Y PROCESADOR DE LOTES
                      ========================================================= -->
                 <div id="seccion_escaner" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
                     <div class="scanner-card" id="panel_busqueda">
@@ -255,7 +260,6 @@
                                 <div style="font-size: 18px; font-weight: bold; color: #0f172a;" id="res_proyecto_nombre">Quarzo Mohedano</div>
                             </div>
 
-                            <!-- Controles de selección de piezas del lote -->
                             <div class="lote-controles">
                                 <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
                                     <input type="checkbox" id="chk_seleccionar_todo" onchange="alternarSeleccionLote(this.checked)" style="width:18px; height:18px;">
@@ -264,10 +268,8 @@
                                 <span id="contador_seleccionadas" style="color:#2563eb;">0 seleccionadas</span>
                             </div>
 
-                            <!-- Lista de puertas/muebles asociados a ese código -->
                             <div class="lista-piezas-lote" id="contenedor_piezas_lote"></div>
 
-                            <!-- Observación opcional al procesar -->
                             <div style="margin-bottom: 10px;">
                                 <input type="text" id="nota_avance_lote" placeholder="Nota opcional (Ej: PDF elaborado, cantos listos...)" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; font-size:13px;">
                             </div>
@@ -282,7 +284,7 @@
                 </div>
 
                 <!-- =========================================================
-                     SECCIÓN 2: MI LISTA DE TRABAJO (REEMPLAZO BLOC DE NOTAS)
+                     SECCIÓN 2: MI LISTA DE TRABAJO (ESTILO CHECKLIST CORTADOR)
                      ========================================================= -->
                 <div id="seccion_lista" style="width: 100%; display: none;">
                     <div class="checklist-card">
@@ -309,7 +311,7 @@
                 <div id="seccion_relevo" style="width: 100%; display: none;">
                     <div class="relevo-grid">
                         
-                        <!-- Formulario para dejar reporte al turno siguiente (CON TEMA DINÁMICO) -->
+                        <!-- Formulario para dejar reporte al turno siguiente -->
                         <div class="card-relevo tema-manana" id="card_formulario_relevo">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
                                 <h3 style="margin:0; color:#1e293b;" id="titulo_form_relevo">📝 Dejar Reporte / Novedad de Turno</h3>
@@ -366,6 +368,16 @@
                             <div class="campo-relevo" style="margin-bottom:15px;">
                                 <label>Actividades realizadas o Instrucciones para el compañero</label>
                                 <textarea id="rel_mensaje" rows="3" placeholder="Ej: Quedaron cortadas las 5 puertas del 516, falta cantear los cantos largos..."></textarea>
+                            </div>
+
+                            <!-- NUEVO INPUT PARA FOTOS -->
+                            <div class="campo-relevo" style="margin-bottom:15px;">
+                                <label>📸 Evidencia Visual (Máx. 2 fotos)</label>
+                                <input type="file" id="input_fotos_turno" accept="image/*" multiple style="display:none;" onchange="validarFotos(this)">
+                                <button type="button" class="btn-secundario" onclick="document.getElementById('input_fotos_turno').click()" style="width:100%; border: 1px dashed #3b82f6; background: #eff6ff; color: #3b82f6; padding: 10px; border-radius: 6px; cursor: pointer;">
+                                    + Adjuntar Imágenes
+                                </button>
+                                <div id="preview_fotos" style="font-size:12px; color:#64748b; margin-top:5px;">No hay fotos seleccionadas. (A los 7 días se borrarán)</div>
                             </div>
 
                             <button onclick="publicarReporteTurno()" id="btn_publicar_relevo" style="width:100%; background:#f59e0b; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; font-size:15px; cursor:pointer; transition: 0.3s;">
@@ -431,6 +443,9 @@
         let piezasLoteActual = [];
         let estadoObjetivoLote = null;
         let estadoSiguienteLote = null;
+        
+        // Variable Global para las Fotos del Turno
+        let archivosFotosTurno = [];
 
         const STORAGE_LISTA_KEY = 'veta_mi_lista_taller_v1';
 
@@ -449,12 +464,10 @@
                 if (linkAdmin) linkAdmin.parentElement.style.display = 'none';
             }
 
-            // Detectar turno automático según la hora (Antes de las 14:00 = Mañana, después = Tarde)
             const horaActual = new Date().getHours();
             document.getElementById('rel_turno').value = horaActual < 14 ? 'Mañana' : 'Tarde';
             actualizarTemaTurnoFormulario();
 
-            // Cargar el catálogo de estados en memoria para saber el orden y saltos
             const { data: est } = await supabaseClient.from('catalogo_estados').select('*').order('orden', { ascending: true });
             if (est) catalogoEstadosGlobal = est;
 
@@ -462,9 +475,6 @@
             renderizarMiLista();
         });
 
-        // =========================================================
-        // CAMBIO DE COLORES DINÁMICO: TURNO MAÑANA VS TARDE/NOCHE
-        // =========================================================
         function actualizarTemaTurnoFormulario() {
             const turno = document.getElementById('rel_turno').value;
             const card = document.getElementById('card_formulario_relevo');
@@ -472,45 +482,23 @@
             const badge = document.getElementById('badge_modo_activo');
 
             if (turno === 'Mañana') {
-                card.classList.remove('tema-tarde');
-                card.classList.add('tema-manana');
-                btn.style.background = '#f59e0b';
-                btn.innerHTML = '☀️ Guardar en Bitácora (Turno Mañana)';
-                badge.className = 'badge-modo-turno badge-modo-manana';
-                badge.innerHTML = '☀️ Modo Turno Mañana';
+                card.classList.remove('tema-tarde'); card.classList.add('tema-manana');
+                btn.style.background = '#f59e0b'; btn.innerHTML = '☀️ Guardar en Bitácora (Turno Mañana)';
+                badge.className = 'badge-modo-turno badge-modo-manana'; badge.innerHTML = '☀️ Modo Turno Mañana';
             } else {
-                card.classList.remove('tema-manana');
-                card.classList.add('tema-tarde');
-                btn.style.background = '#4f46e5';
-                btn.innerHTML = '🌙 Guardar en Bitácora (Turno Tarde / Noche)';
-                badge.className = 'badge-modo-turno badge-modo-tarde';
-                badge.innerHTML = '🌙 Modo Turno Tarde / Noche';
+                card.classList.remove('tema-manana'); card.classList.add('tema-tarde');
+                btn.style.background = '#4f46e5'; btn.innerHTML = '🌙 Guardar en Bitácora (Turno Tarde / Noche)';
+                badge.className = 'badge-modo-turno badge-modo-tarde'; badge.innerHTML = '🌙 Modo Turno Tarde / Noche';
             }
         }
 
         function actualizarColorFiltroTurno() {
             const sel = document.getElementById('filtro_rel_turno');
-            if (sel.value === 'Mañana') {
-                sel.style.backgroundColor = '#fef3c7';
-                sel.style.borderColor = '#f59e0b';
-                sel.style.color = '#92400e';
-                sel.style.fontWeight = 'bold';
-            } else if (sel.value === 'Tarde') {
-                sel.style.backgroundColor = '#e0e7ff';
-                sel.style.borderColor = '#4f46e5';
-                sel.style.color = '#1e1b4b';
-                sel.style.fontWeight = 'bold';
-            } else {
-                sel.style.backgroundColor = 'white';
-                sel.style.borderColor = '#cbd5e1';
-                sel.style.color = '#1e293b';
-                sel.style.fontWeight = 'normal';
-            }
+            if (sel.value === 'Mañana') { sel.style.backgroundColor = '#fef3c7'; sel.style.borderColor = '#f59e0b'; sel.style.color = '#92400e'; sel.style.fontWeight = 'bold'; } 
+            else if (sel.value === 'Tarde') { sel.style.backgroundColor = '#e0e7ff'; sel.style.borderColor = '#4f46e5'; sel.style.color = '#1e1b4b'; sel.style.fontWeight = 'bold'; } 
+            else { sel.style.backgroundColor = 'white'; sel.style.borderColor = '#cbd5e1'; sel.style.color = '#1e293b'; sel.style.fontWeight = 'normal'; }
         }
 
-        // =========================================================
-        // NAVEGACIÓN ENTRE LAS 3 PESTAÑAS DEL TALLER
-        // =========================================================
         function cambiarTab(tab) {
             document.getElementById('seccion_escaner').style.display = tab === 'escaner' ? 'flex' : 'none';
             document.getElementById('seccion_lista').style.display = tab === 'lista' ? 'block' : 'none';
@@ -521,55 +509,36 @@
             document.getElementById('tab_btn_relevo').classList.toggle('active', tab === 'relevo');
 
             if (tab === 'lista') renderizarMiLista();
-            if (tab === 'relevo') {
-                actualizarTemaTurnoFormulario();
-                cargarBitacoraTurnos();
-            }
+            if (tab === 'relevo') { actualizarTemaTurnoFormulario(); cargarBitacoraTurnos(); }
         }
 
-        function manejarEnter(e) {
-            if (e.key === 'Enter') buscarMueble();
-        }
+        function manejarEnter(e) { if (e.key === 'Enter') buscarMueble(); }
 
-        // =========================================================
-        // PESTAÑA 1: BUSCADOR Y PROCESADOR INTELIGENTE DE LOTES (#516)
-        // =========================================================
+        // ==========================================
+        // PESTAÑA 1: BUSCADOR
+        // ==========================================
         async function buscarMueble(codigoForzado = null) {
             let codigo = codigoForzado || document.getElementById('codigo_ingresado').value.trim();
-            if (!codigo) {
-                Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Escribe un código', showConfirmButton: false, timer: 1500 });
-                return;
-            }
+            if (!codigo) { Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Escribe un código', showConfirmButton: false, timer: 1500 }); return; }
 
             Swal.fire({ title: 'Buscando lote...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
-            const { data: muebles, error } = await supabaseClient
-                .from('registros_produccion')
-                .select('*')
-                .eq('codigo_proyecto', codigo)
-                .order('piso', { ascending: true })
-                .order('suite', { ascending: true });
+            const { data: muebles, error } = await supabaseClient.from('registros_produccion').select('*').eq('codigo_proyecto', codigo).order('piso', { ascending: true }).order('suite', { ascending: true });
             
             if (error || !muebles || muebles.length === 0) {
-                Swal.fire({ icon: 'error', title: 'Código no encontrado', text: `No existe ningún mueble registrado con el código "${codigo}".`, confirmButtonColor: '#1e293b' });
-                return;
+                Swal.fire({ icon: 'error', title: 'Código no encontrado', text: `No existe ningún mueble registrado con el código "${codigo}".`, confirmButtonColor: '#1e293b' }); return;
             }
 
-            piezasLoteActual = muebles;
-            Swal.close();
-
-            let mapaOrden = {};
-            catalogoEstadosGlobal.forEach(e => { mapaOrden[e.nombre] = e.orden || 999; });
-
+            piezasLoteActual = muebles; Swal.close();
+            let mapaOrden = {}; catalogoEstadosGlobal.forEach(e => { mapaOrden[e.nombre] = e.orden || 999; });
             let piezasOrdenadasPorEtapa = [...muebles].sort((a, b) => (mapaOrden[a.estado] || 1) - (mapaOrden[b.estado] || 1));
             estadoObjetivoLote = piezasOrdenadasPorEtapa[0].estado;
-
+            
             let infoEstado = catalogoEstadosGlobal.find(e => e.nombre === estadoObjetivoLote);
             estadoSiguienteLote = (infoEstado && infoEstado.estado_siguiente) ? infoEstado.estado_siguiente : null;
 
             document.getElementById('panel_busqueda').style.display = 'none';
             document.getElementById('panel_resultado').style.display = 'block';
-
             document.getElementById('res_titulo_header').innerText = muebles.length > 1 ? `Lote Encontrado (${muebles.length} piezas)` : `Mueble Encontrado (1 pieza)`;
             document.getElementById('res_codigo').innerText = `#${codigo}`;
             document.getElementById('res_proyecto_nombre').innerText = muebles[0].proyecto;
@@ -579,29 +548,19 @@
         }
 
         function dibujarListaPiezasLote() {
-            const contenedor = document.getElementById('contenedor_piezas_lote');
-            contenedor.innerHTML = '';
-
+            const contenedor = document.getElementById('contenedor_piezas_lote'); contenedor.innerHTML = '';
             piezasLoteActual.forEach((p, idx) => {
                 let coincideEtapaActiva = (p.estado === estadoObjetivoLote);
-                let blq = p.bloque ? ` - Blq ${p.bloque}` : '';
-                let ubicacion = `Piso ${p.piso}${blq} | Suite ${p.suite}`;
-                let prod = `${p.producto} (${p.espacio || '-'})`;
-
+                let blq = p.bloque ? ` - Blq ${p.bloque}` : ''; let ubicacion = `Piso ${p.piso}${blq} | Suite ${p.suite}`; let prod = `${p.producto} (${p.espacio || '-'})`;
                 contenedor.innerHTML += `
                     <label class="pieza-item">
                         <input type="checkbox" class="chk-pieza-lote" value="${p.id}" data-estado="${p.estado}" ${coincideEtapaActiva ? 'checked' : ''} onchange="actualizarBotonLote()">
-                        <div class="pieza-info">
-                            <strong>${ubicacion} — <span style="color:#2563eb;">${prod}</span></strong>
-                            <span>${p.observaciones ? '📌 ' + p.observaciones : 'Sin observaciones'}</span>
-                        </div>
+                        <div class="pieza-info"><strong>${ubicacion} — <span style="color:#2563eb;">${prod}</span></strong><span>${p.observaciones ? '📌 ' + p.observaciones : 'Sin observaciones'}</span></div>
                         <span class="badge-estado-mini" onclick="event.preventDefault(); cambiarEtapaObjetivo('${p.estado}')" title="Toca para filtrar por este estado">${p.estado}</span>
                     </label>
                 `;
             });
-
-            document.getElementById('chk_seleccionar_todo').checked = true;
-            actualizarBotonLote();
+            document.getElementById('chk_seleccionar_todo').checked = true; actualizarBotonLote();
         }
 
         function cambiarEtapaObjetivo(nuevoEstado) {
@@ -613,41 +572,28 @@
 
         function alternarSeleccionLote(marcar) {
             const checks = document.querySelectorAll('.chk-pieza-lote');
-            checks.forEach(chk => {
-                if (marcar) {
-                    chk.checked = (chk.getAttribute('data-estado') === estadoObjetivoLote);
-                } else {
-                    chk.checked = false;
-                }
-            });
+            checks.forEach(chk => { if (marcar) { chk.checked = (chk.getAttribute('data-estado') === estadoObjetivoLote); } else { chk.checked = false; } });
             actualizarBotonLote();
         }
 
         function actualizarBotonLote() {
             const seleccionados = Array.from(document.querySelectorAll('.chk-pieza-lote:checked'));
             document.getElementById('contador_seleccionadas').innerText = `${seleccionados.length} de ${piezasLoteActual.length} seleccionadas`;
-
             let btnAccion = document.getElementById('btn_procesar');
+            
             if (seleccionados.length === 0) {
-                btnAccion.innerHTML = `⚠️ Selecciona al menos 1 pieza`;
-                btnAccion.disabled = true;
-                btnAccion.style.backgroundColor = "#94a3b8";
-                return;
+                btnAccion.innerHTML = `⚠️ Selecciona al menos 1 pieza`; btnAccion.disabled = true; btnAccion.style.backgroundColor = "#94a3b8"; return;
             }
-
+            
             let primerEstado = seleccionados[0].getAttribute('data-estado');
             let infoEst = catalogoEstadosGlobal.find(e => e.nombre === primerEstado);
             estadoSiguienteLote = (infoEst && infoEst.estado_siguiente) ? infoEst.estado_siguiente : null;
 
             if (estadoSiguienteLote) {
-                btnAccion.disabled = false;
-                btnAccion.className = "btn-gigante btn-accion-verde";
-                btnAccion.style.backgroundColor = "#10b981";
+                btnAccion.disabled = false; btnAccion.className = "btn-gigante btn-accion-verde"; btnAccion.style.backgroundColor = "#10b981";
                 btnAccion.innerHTML = `✅ Terminar (${seleccionados.length}) y enviar a: <b>${estadoSiguienteLote}</b>`;
             } else {
-                btnAccion.disabled = true;
-                btnAccion.style.backgroundColor = "#94a3b8";
-                btnAccion.innerHTML = `🏁 Estas piezas ya finalizaron su proceso`;
+                btnAccion.disabled = true; btnAccion.style.backgroundColor = "#94a3b8"; btnAccion.innerHTML = `🏁 Estas piezas ya finalizaron su proceso`;
             }
         }
 
@@ -655,30 +601,16 @@
             const checks = Array.from(document.querySelectorAll('.chk-pieza-lote:checked'));
             if (checks.length === 0 || !estadoSiguienteLote) return;
 
-            let idsSeleccionados = checks.map(c => c.value);
-            let notaExtra = document.getElementById('nota_avance_lote').value.trim();
-
-            let btnAccion = document.getElementById('btn_procesar');
-            btnAccion.innerHTML = `⏳ Actualizando ${idsSeleccionados.length} pieza(s)...`;
-            btnAccion.disabled = true;
+            let idsSeleccionados = checks.map(c => c.value); let notaExtra = document.getElementById('nota_avance_lote').value.trim();
+            let btnAccion = document.getElementById('btn_procesar'); btnAccion.innerHTML = `⏳ Actualizando ${idsSeleccionados.length} pieza(s)...`; btnAccion.disabled = true;
 
             let filasHistorial = idsSeleccionados.map(idMueble => {
                 let piezaOriginal = piezasLoteActual.find(p => String(p.id) === String(idMueble));
-                return {
-                    id_mueble: idMueble,
-                    etapa: piezaOriginal ? piezaOriginal.estado : estadoObjetivoLote,
-                    operador: operadorNombreCompleto,
-                    tipo_registro: 'Avance de Lote',
-                    comentarios: notaExtra ? `Avanzó a ${estadoSiguienteLote}. Nota: ${notaExtra}` : `Avanzó a ${estadoSiguienteLote}`
-                };
+                return { id_mueble: idMueble, etapa: piezaOriginal ? piezaOriginal.estado : estadoObjetivoLote, operador: operadorNombreCompleto, tipo_registro: 'Avance de Lote', comentarios: notaExtra ? `Avanzó a ${estadoSiguienteLote}. Nota: ${notaExtra}` : `Avanzó a ${estadoSiguienteLote}` };
             });
 
             const { error: errHistorial } = await supabaseClient.from('historial_trazabilidad').insert(filasHistorial);
-            if (errHistorial) {
-                Swal.fire('Error', 'Falla al guardar el historial.', 'error');
-                btnAccion.disabled = false;
-                return;
-            }
+            if (errHistorial) { Swal.fire('Error', 'Falla al guardar el historial.', 'error'); btnAccion.disabled = false; return; }
 
             if (notaExtra) {
                 for (let idM of idsSeleccionados) {
@@ -687,87 +619,34 @@
                     await supabaseClient.from('registros_produccion').update({ estado: estadoSiguienteLote, observaciones: obsNueva }).eq('id', idM);
                 }
             } else {
-                const { error: errMueble } = await supabaseClient
-                    .from('registros_produccion')
-                    .update({ estado: estadoSiguienteLote })
-                    .in('id', idsSeleccionados);
-
-                if (errMueble) {
-                    Swal.fire('Error', 'Falla al actualizar las piezas.', 'error');
-                    btnAccion.disabled = false;
-                    return;
-                }
+                const { error: errMueble } = await supabaseClient.from('registros_produccion').update({ estado: estadoSiguienteLote }).in('id', idsSeleccionados);
+                if (errMueble) { Swal.fire('Error', 'Falla al actualizar las piezas.', 'error'); btnAccion.disabled = false; return; }
             }
 
-            Swal.fire({ 
-                toast: true, position: 'top-end', icon: 'success', 
-                title: `¡${idsSeleccionados.length} pieza(s) actualizadas!`, 
-                text: `Enviadas a ${estadoSiguienteLote}`, 
-                showConfirmButton: false, timer: 3000 
-            });
-            
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `¡${idsSeleccionados.length} pieza(s) actualizadas!`, text: `Enviadas a ${estadoSiguienteLote}`, showConfirmButton: false, timer: 3000 });
             cancelarOperacion();
         }
 
-        function cancelarOperacion() {
-            piezasLoteActual = [];
-            estadoSiguienteLote = null;
-            document.getElementById('codigo_ingresado').value = '';
-            document.getElementById('panel_resultado').style.display = 'none';
-            document.getElementById('panel_busqueda').style.display = 'block';
-            document.getElementById('codigo_ingresado').focus();
-        }
+        function cancelarOperacion() { piezasLoteActual = []; estadoSiguienteLote = null; document.getElementById('codigo_ingresado').value = ''; document.getElementById('panel_resultado').style.display = 'none'; document.getElementById('panel_busqueda').style.display = 'block'; document.getElementById('codigo_ingresado').focus(); }
 
-        // =========================================================
-        // PESTAÑA 2: MI LISTA PERSONAL DEL TURNO (CHECKLIST CORTADOR)
-        // =========================================================
-        function obtenerMiLista() {
-            try { return JSON.parse(localStorage.getItem(STORAGE_LISTA_KEY) || '[]'); } 
-            catch { return []; }
-        }
-
-        function guardarMiLista(lista) {
-            localStorage.setItem(STORAGE_LISTA_KEY, JSON.stringify(lista));
-        }
+        // ==========================================
+        // PESTAÑA 2: MI LISTA
+        // ==========================================
+        function obtenerMiLista() { try { return JSON.parse(localStorage.getItem(STORAGE_LISTA_KEY) || '[]'); } catch { return []; } }
+        function guardarMiLista(lista) { localStorage.setItem(STORAGE_LISTA_KEY, JSON.stringify(lista)); }
 
         async function agregarAMiLista() {
-            const input = document.getElementById('input_nuevo_lote_lista');
-            let texto = input.value.trim();
-            if (!texto) return;
-
-            let lista = obtenerMiLista();
-            let resumenProyecto = "Proyecto manual / Externo";
-            let estadoActual = "Pendiente";
-
+            const input = document.getElementById('input_nuevo_lote_lista'); let texto = input.value.trim(); if (!texto) return;
+            let lista = obtenerMiLista(); let resumenProyecto = "Proyecto manual / Externo"; let estadoActual = "Pendiente";
             const { data: encontrados } = await supabaseClient.from('registros_produccion').select('proyecto, producto, estado').eq('codigo_proyecto', texto);
-            if (encontrados && encontrados.length > 0) {
-                resumenProyecto = `${encontrados[0].proyecto} (${encontrados.length} ${encontrados[0].producto})`;
-                estadoActual = encontrados[0].estado;
-            }
-
-            lista.unshift({
-                id: Date.now(),
-                codigo: texto,
-                resumen: resumenProyecto,
-                estado: estadoActual,
-                nota: "PDF elaborado, captura enviada",
-                completado: false
-            });
-
-            guardarMiLista(lista);
-            input.value = '';
-            renderizarMiLista();
+            if (encontrados && encontrados.length > 0) { resumenProyecto = `${encontrados[0].proyecto} (${encontrados.length} ${encontrados[0].producto})`; estadoActual = encontrados[0].estado; }
+            lista.unshift({ id: Date.now(), codigo: texto, resumen: resumenProyecto, estado: estadoActual, nota: "PDF elaborado, captura enviada", completado: false });
+            guardarMiLista(lista); input.value = ''; renderizarMiLista();
         }
 
         function renderizarMiLista() {
-            const contenedor = document.getElementById('contenedor_mi_lista');
-            let lista = obtenerMiLista();
-
-            if (lista.length === 0) {
-                contenedor.innerHTML = `<p style="text-align:center; color:#94a3b8; padding:25px; font-style:italic;">Tu lista está vacía. Agrega los códigos de hoy (Ej: 474, 516) arriba.</p>`;
-                return;
-            }
-
+            const contenedor = document.getElementById('contenedor_mi_lista'); let lista = obtenerMiLista();
+            if (lista.length === 0) { contenedor.innerHTML = `<p style="text-align:center; color:#94a3b8; padding:25px; font-style:italic;">Tu lista está vacía. Agrega los códigos de hoy.</p>`; return; }
             contenedor.innerHTML = '';
             lista.forEach(item => {
                 contenedor.innerHTML += `
@@ -776,57 +655,43 @@
                         <div class="lote-contenido">
                             <div class="lote-titulo">#${item.codigo} — ${item.resumen}</div>
                             <div class="lote-sub">Estado ref: <b>${item.estado}</b></div>
-                            <input type="text" class="lote-nota-input" value="${item.nota || ''}" placeholder="Escribe nota rápida (Ej: PDF elaborado...)" onchange="actualizarNotaLista(${item.id}, this.value)">
+                            <input type="text" class="lote-nota-input" value="${item.nota || ''}" placeholder="Escribe nota rápida..." onchange="actualizarNotaLista(${item.id}, this.value)">
                         </div>
                         <div style="display:flex; align-items:center; gap:6px;">
-                            <button onclick="abrirEnEscaner('${item.codigo}')" style="background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; padding:6px 10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer; white-space:nowrap;">
-                                ⚡ Procesar
-                            </button>
-                            <button onclick="eliminarItemLista(${item.id})" title="Quitar de mi lista" style="background:#fef2f2; color:#ef4444; border:1px solid #fecaca; padding:6px 9px; border-radius:6px; font-size:13px; cursor:pointer;">
-                                🗑️
-                            </button>
+                            <button onclick="abrirEnEscaner('${item.codigo}')" style="background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; padding:6px 10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer; white-space:nowrap;">⚡ Procesar</button>
+                            <button onclick="eliminarItemLista(${item.id})" title="Quitar de mi lista" style="background:#fef2f2; color:#ef4444; border:1px solid #fecaca; padding:6px 9px; border-radius:6px; font-size:13px; cursor:pointer;">🗑️</button>
                         </div>
                     </div>
                 `;
             });
         }
 
-        function eliminarItemLista(id) {
-            let lista = obtenerMiLista().filter(x => x.id !== id);
-            guardarMiLista(lista);
-            renderizarMiLista();
+        function eliminarItemLista(id) { let lista = obtenerMiLista().filter(x => x.id !== id); guardarMiLista(lista); renderizarMiLista(); }
+        function marcarItemLista(id, estadoCheck) { let lista = obtenerMiLista(); let item = lista.find(x => x.id === id); if (item) item.completado = estadoCheck; guardarMiLista(lista); renderizarMiLista(); }
+        function actualizarNotaLista(id, nuevaNota) { let lista = obtenerMiLista(); let item = lista.find(x => x.id === id); if (item) item.nota = nuevaNota; guardarMiLista(lista); }
+        function limpiarCompletadosLista() { let lista = obtenerMiLista().filter(x => !x.completado); guardarMiLista(lista); renderizarMiLista(); }
+        function abrirEnEscaner(codigo) { cambiarTab('escaner'); document.getElementById('codigo_ingresado').value = codigo; buscarMueble(codigo); }
+
+        // ==========================================
+        // PESTAÑA 3: BITÁCORA Y FOTOS
+        // ==========================================
+        function validarFotos(input) {
+            if (input.files.length > 2) {
+                Swal.fire('Límite excedido', 'Solo puedes adjuntar un máximo de 2 imágenes.', 'warning');
+                input.value = ""; 
+                document.getElementById('preview_fotos').innerText = "No hay fotos seleccionadas. (A los 7 días se borrarán)";
+                archivosFotosTurno = [];
+                return;
+            }
+            archivosFotosTurno = Array.from(input.files);
+            if (archivosFotosTurno.length > 0) {
+                let nombres = archivosFotosTurno.map(f => f.name).join(', ');
+                document.getElementById('preview_fotos').innerText = `✅ ${archivosFotosTurno.length} foto(s) lista(s): ${nombres}`;
+            } else {
+                document.getElementById('preview_fotos').innerText = "No hay fotos seleccionadas. (A los 7 días se borrarán)";
+            }
         }
 
-        function marcarItemLista(id, estadoCheck) {
-            let lista = obtenerMiLista();
-            let item = lista.find(x => x.id === id);
-            if (item) item.completado = estadoCheck;
-            guardarMiLista(lista);
-            renderizarMiLista();
-        }
-
-        function actualizarNotaLista(id, nuevaNota) {
-            let lista = obtenerMiLista();
-            let item = lista.find(x => x.id === id);
-            if (item) item.nota = nuevaNota;
-            guardarMiLista(lista);
-        }
-
-        function limpiarCompletadosLista() {
-            let lista = obtenerMiLista().filter(x => !x.completado);
-            guardarMiLista(lista);
-            renderizarMiLista();
-        }
-
-        function abrirEnEscaner(codigo) {
-            cambiarTab('escaner');
-            document.getElementById('codigo_ingresado').value = codigo;
-            buscarMueble(codigo);
-        }
-
-        // =========================================================
-        // PESTAÑA 3: BITÁCORA DE RELEVO DE TURNOS (POR MÁQUINA/ÁREA)
-        // =========================================================
         async function publicarReporteTurno() {
             const turno = document.getElementById('rel_turno').value;
             const codigo = document.getElementById('rel_codigo').value.trim().toUpperCase() || 'GENERAL';
@@ -835,13 +700,22 @@
             const categoria = document.getElementById('rel_categoria').value;
             const mensaje = document.getElementById('rel_mensaje').value.trim();
 
-            if (!mensaje) {
-                Swal.fire('Falta el reporte', 'Escribe las actividades realizadas o las instrucciones para el siguiente turno.', 'warning');
-                return;
-            }
+            if (!mensaje) { Swal.fire('Falta el reporte', 'Escribe las actividades realizadas o instrucciones.', 'warning'); return; }
 
             const btn = document.getElementById('btn_publicar_relevo');
-            btn.disabled = true; btn.innerText = "Guardando...";
+            btn.disabled = true; btn.innerText = "Subiendo y Guardando...";
+
+            let rutasGuardadas = [];
+
+            // Subir imágenes si existen
+            if (archivosFotosTurno.length > 0) {
+                for (let foto of archivosFotosTurno) {
+                    let nombreUnico = Date.now() + "_" + foto.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
+                    let filePath = "evidencia/" + nombreUnico;
+                    const { error: uploadError } = await supabaseClient.storage.from('fotos_turno').upload(filePath, foto);
+                    if (!uploadError) { rutasGuardadas.push(filePath); }
+                }
+            }
 
             const offset = (new Date()).getTimezoneOffset() * 60000;
             const fechaHoyLocal = (new Date(Date.now() - offset)).toISOString().split('T')[0];
@@ -855,95 +729,83 @@
                 categoria: categoria,
                 mensaje: mensaje,
                 autor_email: operadorEmail,
-                autor_nombre: operadorNombreCompleto
+                autor_nombre: operadorNombreCompleto,
+                rutas_fotos: rutasGuardadas
             }]);
 
-            btn.disabled = false;
-            actualizarTemaTurnoFormulario();
+            btn.disabled = false; actualizarTemaTurnoFormulario();
 
             if (error) {
-                Swal.fire('Error al guardar', 'Verifica haber creado la tabla bitacora_turnos en Supabase. Detalle: ' + error.message, 'error');
-                return;
+                Swal.fire('Error al guardar', 'Detalle: ' + error.message, 'error'); return;
             }
 
+            // Limpiar formulario completo
             document.getElementById('rel_mensaje').value = '';
             document.getElementById('rel_codigo').value = '';
+            document.getElementById('input_fotos_turno').value = '';
+            document.getElementById('preview_fotos').innerText = 'No hay fotos seleccionadas. (A los 7 días se borrarán)';
+            archivosFotosTurno = [];
+
             Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Reporte de turno publicado', showConfirmButton: false, timer: 2000 });
             cargarBitacoraTurnos();
         }
 
         function limpiarFechaRelevo() {
-            document.getElementById('filtro_rel_fecha').value = '';
-            document.getElementById('filtro_rel_turno').value = 'Todos';
-            document.getElementById('filtro_rel_area').value = 'Todas';
-            actualizarColorFiltroTurno();
-            cargarBitacoraTurnos();
+            document.getElementById('filtro_rel_fecha').value = ''; document.getElementById('filtro_rel_turno').value = 'Todos'; document.getElementById('filtro_rel_area').value = 'Todas';
+            actualizarColorFiltroTurno(); cargarBitacoraTurnos();
         }
 
         async function cargarBitacoraTurnos() {
             const contenedor = document.getElementById('contenedor_muro_relevo');
             const subtitulo = document.getElementById('subtitulo_muro_relevo');
-            
             const fechaFiltro = document.getElementById('filtro_rel_fecha').value;
             const turnoFiltro = document.getElementById('filtro_rel_turno').value;
             const areaFiltro = document.getElementById('filtro_rel_area').value;
 
             let query = supabaseClient.from('bitacora_turnos').select('*').order('created_at', { ascending: false }).limit(60);
-
-            if (fechaFiltro) {
-                query = query.eq('fecha', fechaFiltro);
-            }
-            if (turnoFiltro !== 'Todos') {
-                query = query.eq('turno', turnoFiltro);
-            }
+            if (fechaFiltro) query = query.eq('fecha', fechaFiltro);
+            if (turnoFiltro !== 'Todos') query = query.eq('turno', turnoFiltro);
 
             const { data, error } = await query;
-
-            if (error) {
-                contenedor.innerHTML = `<p style="color:#ef4444; text-align:center; padding:15px;">⚠️ Falta crear la tabla <b>bitacora_turnos</b> en Supabase SQL Editor.</p>`;
-                return;
-            }
+            if (error) { contenedor.innerHTML = `<p style="color:#ef4444; text-align:center;">⚠️ Error leyendo bitácora.</p>`; return; }
 
             let registros = data || [];
-
+            
             if (!fechaFiltro && registros.length > 0) {
                 let ultimaFechaRegistrada = registros[0].fecha;
                 registros = registros.filter(r => r.fecha === ultimaFechaRegistrada);
                 subtitulo.innerText = `📅 Mostrando último día activo: ${formatearFechaBonita(ultimaFechaRegistrada)}`;
-            } else if (fechaFiltro) {
-                subtitulo.innerText = `📅 Fecha filtrada: ${formatearFechaBonita(fechaFiltro)}`;
-            } else {
-                subtitulo.innerText = `Sin registros`;
-            }
+            } else if (fechaFiltro) { subtitulo.innerText = `📅 Fecha filtrada: ${formatearFechaBonita(fechaFiltro)}`; } 
+            else { subtitulo.innerText = `Sin registros`; }
 
-            if (areaFiltro !== 'Todas') {
-                registros = registros.filter(r => r.area_origen === areaFiltro || r.area_destino === areaFiltro || r.area_destino === 'Todas');
-            }
+            if (areaFiltro !== 'Todas') { registros = registros.filter(r => r.area_origen === areaFiltro || r.area_destino === areaFiltro || r.area_destino === 'Todas'); }
 
-            if (registros.length === 0) {
-                contenedor.innerHTML = `<p style="text-align:center; color:#94a3b8; padding:25px; font-style:italic;">No hay reportes para estos filtros.</p>`;
-                return;
-            }
+            if (registros.length === 0) { contenedor.innerHTML = `<p style="text-align:center; color:#94a3b8; padding:25px; font-style:italic;">No hay reportes para estos filtros.</p>`; return; }
 
             contenedor.innerHTML = '';
+            
             registros.forEach(r => {
                 let d = new Date(r.created_at);
                 let horaStr = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true });
                 let fechaCorta = formatearFechaBonita(r.fecha);
-                
                 let esManana = r.turno === 'Mañana';
                 let claseBadgeTurno = esManana ? 'turno-manana' : 'turno-tarde';
                 let claseCardTurno = esManana ? 'card-turno-manana' : 'card-turno-tarde';
                 let iconoTurno = esManana ? '☀️ Turno Mañana' : '🌙 Turno Tarde / Noche';
-
                 let esMio = r.autor_email === operadorEmail;
-                let btnBorrarReporte = esMio 
-                    ? `<button onclick="eliminarReporteTurno(${r.id})" title="Borrar mi reporte" style="background:none; border:none; cursor:pointer; font-size:14px; margin-left:8px;">🗑️</button>` 
-                    : '';
+                
+                let btnBorrarReporte = esMio ? `<button onclick="eliminarReporteTurno(${r.id})" title="Borrar mi reporte" style="background:none; border:none; cursor:pointer; font-size:14px; margin-left:8px;">🗑️</button>` : '';
+                let bloqueLectura = r.leido ? `<span class="leido-tag">✔️ Enterado: ${r.leido_por}</span>` : `<button class="btn-enterado" onclick="confirmarLecturaTurno(${r.id})">✋ Marcar Recibido</button>`;
 
-                let bloqueLectura = r.leido 
-                    ? `<span class="leido-tag">✔️ Enterado: ${r.leido_por}</span>`
-                    : `<button class="btn-enterado" onclick="confirmarLecturaTurno(${r.id})">✋ Marcar Recibido</button>`;
+                // Lógica visual para mostrar las fotos
+                let bloqueFotos = '';
+                if (r.rutas_fotos && r.rutas_fotos.length > 0) {
+                    let imagenesHtml = r.rutas_fotos.map(ruta => {
+                        const { data: publicUrlData } = supabaseClient.storage.from('fotos_turno').getPublicUrl(ruta);
+                        return `<a href="${publicUrlData.publicUrl}" target="_blank" title="Clic para ampliar"><img src="${publicUrlData.publicUrl}" class="foto-miniatura" alt="Evidencia"></a>`;
+                    }).join('');
+                    bloqueFotos = `<div class="contenedor-fotos-muro">${imagenesHtml}</div>`;
+                }
 
                 contenedor.innerHTML += `
                     <div class="tarjeta-turno ${claseCardTurno} cat-${r.categoria}">
@@ -953,7 +815,8 @@
                         </div>
                         <div class="turno-proy">📦 Proy/Lote: #${r.codigo_proyecto}</div>
                         <div class="turno-msj">${r.mensaje}</div>
-                        <div class="turno-footer">
+                        ${bloqueFotos}
+                        <div class="turno-footer" style="margin-top:10px;">
                             <span>✍️ Reportó: <b>${r.autor_nombre}</b> ${btnBorrarReporte}</span>
                             ${bloqueLectura}
                         </div>
@@ -963,35 +826,22 @@
         }
 
         async function eliminarReporteTurno(idReporte) {
-            const conf = await Swal.fire({
-                title: '¿Borrar este reporte?',
-                text: 'Se eliminará de la bitácora de turnos.',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#ef4444',
-                cancelButtonColor: '#94a3b8',
-                confirmButtonText: 'Sí, borrar',
-                cancelButtonText: 'Cancelar'
-            });
+            const conf = await Swal.fire({ title: '¿Borrar este reporte?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Sí, borrar' });
             if (conf.isConfirmed) {
+                // Buscamos si el reporte tiene fotos para borrarlas del Storage y no dejar basura
+                const { data: reporte } = await supabaseClient.from('bitacora_turnos').select('rutas_fotos').eq('id', idReporte).single();
+                if (reporte && reporte.rutas_fotos && reporte.rutas_fotos.length > 0) {
+                    await supabaseClient.storage.from('fotos_turno').remove(reporte.rutas_fotos);
+                }
+                
                 await supabaseClient.from('bitacora_turnos').delete().eq('id', idReporte);
                 cargarBitacoraTurnos();
             }
         }
 
         async function confirmarLecturaTurno(idReporte) {
-            const { error } = await supabaseClient
-                .from('bitacora_turnos')
-                .update({ 
-                    leido: true, 
-                    leido_por: operadorNombreCompleto.split(' ')[0],
-                    fecha_lectura: new Date().toISOString()
-                })
-                .eq('id', idReporte);
-
-            if (!error) {
-                cargarBitacoraTurnos();
-            }
+            const { error } = await supabaseClient.from('bitacora_turnos').update({ leido: true, leido_por: operadorNombreCompleto.split(' ')[0], fecha_lectura: new Date().toISOString() }).eq('id', idReporte);
+            if (!error) { cargarBitacoraTurnos(); }
         }
 
         function formatearFechaBonita(fechaISO) {
