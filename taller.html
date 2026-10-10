@@ -86,46 +86,19 @@
         .lote-nota-input { width: 100%; border: none; border-bottom: 1px dashed #cbd5e1; background: transparent; font-size: 12px; color: #0f172a; padding: 4px 0; outline: none; font-style: italic; }
         .lote-nota-input:focus { border-bottom-color: #8b5cf6; }
 
-        /* --- PESTAÑA 3: BITÁCORA DE RELEVO DE TURNOS (CON TEMAS DÍA Y NOCHE) --- */
+        /* --- PESTAÑA 3: BITÁCORA DE RELEVO DE TURNOS --- */
         .relevo-grid { display: grid; grid-template-columns: 1fr; gap: 20px; width: 100%; }
         .card-relevo { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 6px solid #f59e0b; box-sizing: border-box; transition: all 0.35s ease; }
         
-        /* TEMA TURNO MAÑANA (SOLAR / CÁLIDO) */
-        .card-relevo.tema-manana {
-            border-top-color: #f59e0b;
-            background: linear-gradient(180deg, #fffdf5 0%, #ffffff 100%);
-            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.08);
-        }
-        .card-relevo.tema-manana #rel_turno {
-            background-color: #fef3c7;
-            border-color: #f59e0b;
-            color: #92400e;
-            font-weight: bold;
-        }
+        /* TEMA TURNO MAÑANA */
+        .card-relevo.tema-manana { border-top-color: #f59e0b; background: linear-gradient(180deg, #fffdf5 0%, #ffffff 100%); box-shadow: 0 6px 20px rgba(245, 158, 11, 0.08); }
+        .card-relevo.tema-manana #rel_turno { background-color: #fef3c7; border-color: #f59e0b; color: #92400e; font-weight: bold; }
 
-        /* TEMA TURNO TARDE / NOCHE (ÍNDIGO / NOCTURNO) */
-        .card-relevo.tema-tarde {
-            border-top-color: #4f46e5;
-            background: linear-gradient(180deg, #f5f7ff 0%, #ffffff 100%);
-            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.1);
-        }
-        .card-relevo.tema-tarde #rel_turno {
-            background-color: #e0e7ff;
-            border-color: #4f46e5;
-            color: #1e1b4b;
-            font-weight: bold;
-        }
+        /* TEMA TURNO TARDE */
+        .card-relevo.tema-tarde { border-top-color: #4f46e5; background: linear-gradient(180deg, #f5f7ff 0%, #ffffff 100%); box-shadow: 0 6px 20px rgba(79, 70, 229, 0.1); }
+        .card-relevo.tema-tarde #rel_turno { background-color: #e0e7ff; border-color: #4f46e5; color: #1e1b4b; font-weight: bold; }
 
-        .badge-modo-turno {
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            transition: 0.3s;
-        }
+        .badge-modo-turno { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; transition: 0.3s; }
         .badge-modo-manana { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
         .badge-modo-tarde { background: #e0e7ff; color: #3730a3; border: 1px solid #a5b4fc; }
 
@@ -138,21 +111,10 @@
         .filtros-muro label { display: block; font-size: 11px; font-weight: bold; color: #475569; margin-bottom: 3px; }
         .filtros-muro select, .filtros-muro input { width: 100%; padding: 7px; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 12px; box-sizing: border-box; transition: 0.2s; }
 
-        /* TARJETAS DEL HISTORIAL DIFERENCIADAS POR TURNO (MAÑANA VS TARDE/NOCHE) */
+        /* TARJETAS DEL HISTORIAL */
         .tarjeta-turno { border: 1px solid #e2e8f0; border-left: 6px solid #3b82f6; border-radius: 10px; padding: 15px; margin-bottom: 14px; background: white; position: relative; transition: 0.2s; }
-        
-        .tarjeta-turno.card-turno-manana {
-            background-color: #fffdf7;
-            border-color: #fde68a;
-            border-top: 3px solid #f59e0b;
-            box-shadow: 0 3px 10px rgba(245, 158, 11, 0.06);
-        }
-        .tarjeta-turno.card-turno-tarde {
-            background-color: #f8faff;
-            border-color: #c7d2fe;
-            border-top: 3px solid #4f46e5;
-            box-shadow: 0 3px 10px rgba(79, 70, 229, 0.07);
-        }
+        .tarjeta-turno.card-turno-manana { background-color: #fffdf7; border-color: #fde68a; border-top: 3px solid #f59e0b; box-shadow: 0 3px 10px rgba(245, 158, 11, 0.06); }
+        .tarjeta-turno.card-turno-tarde { background-color: #f8faff; border-color: #c7d2fe; border-top: 3px solid #4f46e5; box-shadow: 0 3px 10px rgba(79, 70, 229, 0.07); }
 
         .tarjeta-turno.cat-Continuar { border-left-color: #10b981; }
         .tarjeta-turno.cat-Material { border-left-color: #f59e0b; }
@@ -174,9 +136,9 @@
         .leido-tag { color: #059669; font-weight: bold; }
 
         /* Estilos visualización de fotos en muro */
-        .contenedor-fotos-muro { display: flex; gap: 10px; margin-top: 10px; }
-        .foto-miniatura { width: 60px; height: 60px; border-radius: 6px; object-fit: cover; border: 1px solid #cbd5e1; cursor: pointer; transition: 0.2s; }
-        .foto-miniatura:hover { transform: scale(1.1); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .contenedor-fotos-muro { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+        .foto-miniatura { width: 80px; height: 80px; border-radius: 8px; object-fit: cover; border: 1px solid #cbd5e1; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .foto-miniatura:hover { transform: scale(1.05); box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-color: #3b82f6; }
 
         /* --- RESPONSIVO MÓVIL UNIFICADO --- */
         @media (max-width: 768px) { 
@@ -284,7 +246,7 @@
                 </div>
 
                 <!-- =========================================================
-                     SECCIÓN 2: MI LISTA DE TRABAJO (ESTILO CHECKLIST CORTADOR)
+                     SECCIÓN 2: MI LISTA DE TRABAJO
                      ========================================================= -->
                 <div id="seccion_lista" style="width: 100%; display: none;">
                     <div class="checklist-card">
@@ -370,14 +332,14 @@
                                 <textarea id="rel_mensaje" rows="3" placeholder="Ej: Quedaron cortadas las 5 puertas del 516, falta cantear los cantos largos..."></textarea>
                             </div>
 
-                            <!-- NUEVO INPUT PARA FOTOS -->
+                            <!-- INPUT PARA FOTOS CON COMPRESIÓN SÚPER RÁPIDA -->
                             <div class="campo-relevo" style="margin-bottom:15px;">
                                 <label>📸 Evidencia Visual (Máx. 2 fotos)</label>
                                 <input type="file" id="input_fotos_turno" accept="image/*" multiple style="display:none;" onchange="validarFotos(this)">
-                                <button type="button" class="btn-secundario" onclick="document.getElementById('input_fotos_turno').click()" style="width:100%; border: 1px dashed #3b82f6; background: #eff6ff; color: #3b82f6; padding: 10px; border-radius: 6px; cursor: pointer;">
-                                    + Adjuntar Imágenes
+                                <button type="button" class="btn-secundario" onclick="document.getElementById('input_fotos_turno').click()" style="width:100%; border: 1px dashed #3b82f6; background: #eff6ff; color: #3b82f6; padding: 10px; border-radius: 6px; cursor: pointer; font-weight:bold;">
+                                    + Adjuntar Imágenes Rápidas
                                 </button>
-                                <div id="preview_fotos" style="font-size:12px; color:#64748b; margin-top:5px;">No hay fotos seleccionadas. (A los 7 días se borrarán)</div>
+                                <div id="preview_fotos" style="font-size:12px; color:#64748b; margin-top:5px;">No hay fotos seleccionadas. (A los 7 días se borrarán solas)</div>
                             </div>
 
                             <button onclick="publicarReporteTurno()" id="btn_publicar_relevo" style="width:100%; background:#f59e0b; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; font-size:15px; cursor:pointer; transition: 0.3s;">
@@ -673,13 +635,55 @@
         function abrirEnEscaner(codigo) { cambiarTab('escaner'); document.getElementById('codigo_ingresado').value = codigo; buscarMueble(codigo); }
 
         // ==========================================
-        // PESTAÑA 3: BITÁCORA Y FOTOS
+        // PESTAÑA 3: BITÁCORA, FOTOS Y COMPRESIÓN JS
         // ==========================================
+        
+        // Función mágica para comprimir imágenes antes de subir
+        async function comprimirImagen(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = event => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 1200; // Ancho máximo
+                        const MAX_HEIGHT = 1200; // Alto máximo
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > height) {
+                            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                        } else {
+                            if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        // Convertir canvas a JPEG ligero (calidad 70%)
+                        canvas.toBlob((blob) => {
+                            const nuevoArchivo = new File([blob], file.name, {
+                                type: 'image/jpeg',
+                                lastModified: Date.now()
+                            });
+                            resolve(nuevoArchivo);
+                        }, 'image/jpeg', 0.7);
+                    };
+                    img.onerror = error => reject(error);
+                };
+                reader.onerror = error => reject(error);
+            });
+        }
+
         function validarFotos(input) {
             if (input.files.length > 2) {
                 Swal.fire('Límite excedido', 'Solo puedes adjuntar un máximo de 2 imágenes.', 'warning');
                 input.value = ""; 
-                document.getElementById('preview_fotos').innerText = "No hay fotos seleccionadas. (A los 7 días se borrarán)";
+                document.getElementById('preview_fotos').innerText = "No hay fotos seleccionadas. (A los 7 días se borrarán solas)";
                 archivosFotosTurno = [];
                 return;
             }
@@ -688,7 +692,7 @@
                 let nombres = archivosFotosTurno.map(f => f.name).join(', ');
                 document.getElementById('preview_fotos').innerText = `✅ ${archivosFotosTurno.length} foto(s) lista(s): ${nombres}`;
             } else {
-                document.getElementById('preview_fotos').innerText = "No hay fotos seleccionadas. (A los 7 días se borrarán)";
+                document.getElementById('preview_fotos').innerText = "No hay fotos seleccionadas. (A los 7 días se borrarán solas)";
             }
         }
 
@@ -703,29 +707,32 @@
             if (!mensaje) { Swal.fire('Falta el reporte', 'Escribe las actividades realizadas o instrucciones.', 'warning'); return; }
 
             const btn = document.getElementById('btn_publicar_relevo');
-            btn.disabled = true; btn.innerText = "Subiendo y Guardando...";
+            btn.disabled = true; btn.innerText = "Comprimiendo y Subiendo (Súper Rápido)...";
 
             let rutasGuardadas = [];
 
-            // Subir imágenes si existen con manejo de errores blindado
             if (archivosFotosTurno.length > 0) {
-                for (let foto of archivosFotosTurno) {
-                    let nombreUnico = Date.now() + "_" + foto.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
+                for (let fotoOriginal of archivosFotosTurno) {
+                    
+                    // COMPRESIÓN EN EL CLIENTE ANTES DE SUBIR
+                    let fotoComprimida = await comprimirImagen(fotoOriginal);
+                    
+                    let nombreUnico = Date.now() + "_" + fotoComprimida.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
                     let filePath = "evidencia/" + nombreUnico;
                     
-                    const { error: uploadError } = await supabaseClient.storage.from('fotos_turno').upload(filePath, foto);
+                    const { error: uploadError } = await supabaseClient.storage.from('fotos_turno').upload(filePath, fotoComprimida);
                     
                     if (uploadError) {
-                        btn.disabled = false;
-                        actualizarTemaTurnoFormulario();
-                        Swal.fire('Error al subir foto', 'Detalle: ' + uploadError.message, 'error');
-                        return; // Detiene todo el proceso si falla la subida
+                        btn.disabled = false; actualizarTemaTurnoFormulario();
+                        Swal.fire('Error al subir foto', 'Asegúrate de haber creado la política SQL en Supabase. Detalle: ' + uploadError.message, 'error');
+                        return; 
                     } else {
                         rutasGuardadas.push(filePath);
                     }
                 }
             }
 
+            btn.innerText = "Guardando Reporte...";
             const offset = (new Date()).getTimezoneOffset() * 60000;
             const fechaHoyLocal = (new Date(Date.now() - offset)).toISOString().split('T')[0];
 
@@ -752,7 +759,7 @@
             document.getElementById('rel_mensaje').value = '';
             document.getElementById('rel_codigo').value = '';
             document.getElementById('input_fotos_turno').value = '';
-            document.getElementById('preview_fotos').innerText = 'No hay fotos seleccionadas. (A los 7 días se borrarán)';
+            document.getElementById('preview_fotos').innerText = 'No hay fotos seleccionadas. (A los 7 días se borrarán solas)';
             archivosFotosTurno = [];
 
             Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Reporte de turno publicado', showConfirmButton: false, timer: 2000 });
@@ -806,7 +813,6 @@
                 let btnBorrarReporte = esMio ? `<button onclick="eliminarReporteTurno(${r.id})" title="Borrar mi reporte" style="background:none; border:none; cursor:pointer; font-size:14px; margin-left:8px;">🗑️</button>` : '';
                 let bloqueLectura = r.leido ? `<span class="leido-tag">✔️ Enterado: ${r.leido_por}</span>` : `<button class="btn-enterado" onclick="confirmarLecturaTurno(${r.id})">✋ Marcar Recibido</button>`;
 
-                // Lógica visual para mostrar las fotos
                 let bloqueFotos = '';
                 if (r.rutas_fotos && r.rutas_fotos.length > 0) {
                     let imagenesHtml = r.rutas_fotos.map(ruta => {
@@ -837,7 +843,6 @@
         async function eliminarReporteTurno(idReporte) {
             const conf = await Swal.fire({ title: '¿Borrar este reporte?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Sí, borrar' });
             if (conf.isConfirmed) {
-                // Buscamos si el reporte tiene fotos para borrarlas del Storage y no dejar basura
                 const { data: reporte } = await supabaseClient.from('bitacora_turnos').select('rutas_fotos').eq('id', idReporte).single();
                 if (reporte && reporte.rutas_fotos && reporte.rutas_fotos.length > 0) {
                     await supabaseClient.storage.from('fotos_turno').remove(reporte.rutas_fotos);
