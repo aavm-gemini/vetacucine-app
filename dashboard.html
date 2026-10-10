@@ -113,7 +113,7 @@
         .notif-content { flex: 1; }
         .notif-time { font-size: 11px; color: #94a3b8; margin-top: 5px; font-weight: bold; }
 
-        /* FIRMA DE OPERADOR Y DISEÑOS DE PRIORIDAD (OPTMIZADO PARA ESPACIO) */
+        /* FIRMA DE OPERADOR Y DISEÑOS DE PRIORIDAD */
         .firma-op { background:#8b5cf6; color:white; font-size:10px; font-weight:bold; width: 26px; height: 26px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 0 auto; cursor: help; }
         .prio-1 { color: #eab308; font-size: 20px; text-shadow: 0 0 4px rgba(234,179,8,0.5); }
         .prio-2 { color: #f97316; font-size: 20px; text-shadow: 0 0 4px rgba(249,115,22,0.5); }
@@ -399,11 +399,12 @@
 
             let htmlTabla = `<div style="max-height: 55vh; overflow-y: auto; text-align: left;"><div class="tabla-responsive-wrapper"><table class="tabla-alertas">`;
 
-            // --- LÓGICA DE FUSIÓN (Lotes Consolidados) ---
+            // --- LÓGICA DE FUSIÓN (Lotes Consolidados Ignorando Piso en la Llave Principal) ---
             if (agruparPorLote) {
                 let grupos = {};
                 lista.forEach(m => {
-                    let key = `${m.codigo_proyecto}_${m.proyecto}_${m.producto}_${m.piso}`;
+                    // Ahora la llave NO incluye m.piso para juntar lotes del mismo proyecto
+                    let key = `${m.codigo_proyecto}_${m.proyecto}_${m.producto}`;
                     if (!grupos[key]) {
                         
                         let nombreResponsable = "Sin firma";
@@ -415,7 +416,7 @@
                         if (regCulpable && regCulpable.operador) nombreResponsable = regCulpable.operador;
                         else if (m.movido_por) nombreResponsable = m.movido_por;
 
-                        grupos[key] = { codigo_proyecto: m.codigo_proyecto, proyecto: m.proyecto, producto: m.producto, piso: m.piso, estado: m.estado, movido_por: nombreResponsable, cantidad: 0, piezas: [] };
+                        grupos[key] = { codigo_proyecto: m.codigo_proyecto, proyecto: m.proyecto, producto: m.producto, estado: m.estado, movido_por: nombreResponsable, cantidad: 0, piezas: [] };
                     }
                     grupos[key].piezas.push(m);
                     grupos[key].cantidad++;
@@ -434,28 +435,45 @@
                     }
 
                     let isCommon = g.piezas.some(p => p.producto === 'PP' || p.espacio === 'AC');
-                    let arrSubItems = [];
                     
-                    if (isCommon) {
-                        let suitesUnicas = [...new Set(g.piezas.map(p => p.suite))].filter(Boolean);
-                        if (suitesUnicas.length > 0) arrSubItems.push(`(${suitesUnicas.join(', ')})`);
-                    } else {
-                        let mapSuites = {};
-                        g.piezas.forEach(p => {
-                            let s = p.suite || 'S/N'; let e = p.espacio || '';
-                            if (!mapSuites[s]) mapSuites[s] = new Set();
-                            if (e) mapSuites[s].add(e);
-                        });
-                        for (let suite in mapSuites) {
-                            let espacios = [...mapSuites[suite]];
-                            if (espacios.length > 0) arrSubItems.push(`(${suite}: ${espacios.join(' - ')})`);
-                            else arrSubItems.push(`(${suite})`);
+                    // Agrupar primero por piso para construir el texto limpio
+                    let mapPisos = {};
+                    g.piezas.forEach(p => {
+                        let pisoNro = p.piso ? p.piso : 'S/P';
+                        if(!mapPisos[pisoNro]) mapPisos[pisoNro] = [];
+                        mapPisos[pisoNro].push(p);
+                    });
+
+                    let arrSubItems = [];
+
+                    for(let pisoNro in mapPisos) {
+                        let pzasPiso = mapPisos[pisoNro];
+                        let etiquetaPiso = pisoNro !== 'S/P' ? `P${pisoNro}` : '';
+
+                        if (isCommon) {
+                            let suitesUnicas = [...new Set(pzasPiso.map(p => p.suite))].filter(Boolean);
+                            suitesUnicas.sort((a,b) => parseInt(a) - parseInt(b));
+                            if (suitesUnicas.length > 0) arrSubItems.push(`${etiquetaPiso}(${suitesUnicas.join(', ')})`);
+                            else if(etiquetaPiso) arrSubItems.push(etiquetaPiso);
+                        } else {
+                            let mapSuites = {};
+                            pzasPiso.forEach(p => {
+                                let s = p.suite || 'S/N'; let e = p.espacio || '';
+                                if (!mapSuites[s]) mapSuites[s] = new Set();
+                                if (e) mapSuites[s].add(e);
+                            });
+                            let arrSuites = [];
+                            for (let suite in mapSuites) {
+                                let espacios = [...mapSuites[suite]];
+                                if (espacios.length > 0) arrSuites.push(`(${suite}: ${espacios.join(' - ')})`);
+                                else arrSuites.push(`(${suite})`);
+                            }
+                            arrSubItems.push(`${etiquetaPiso} ${arrSuites.join(' ')}`.trim());
                         }
                     }
                     
-                    let txtSub = arrSubItems.join(' ');
-                    let pisoTxt = g.piso ? ` - Piso ${g.piso}` : '';
-                    let descripcionLote = `<strong>${g.proyecto}</strong> - ${g.producto} ${txtSub ? '- ' + txtSub : ''}${pisoTxt}`;
+                    let txtSub = arrSubItems.join(' | ');
+                    let descripcionLote = `<strong>${g.proyecto}</strong> - ${g.producto} ${txtSub ? '- ' + txtSub : ''}`;
 
                     htmlTabla += `<tr>
                         <td style="text-align:center; vertical-align:middle;">${firmaTexto}</td>
