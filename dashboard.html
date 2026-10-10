@@ -114,7 +114,7 @@
         .notif-time { font-size: 11px; color: #94a3b8; margin-top: 5px; font-weight: bold; }
 
         /* FIRMA DE OPERADOR Y DISEÑOS DE PRIORIDAD */
-        .firma-op { background:#f1f5f9; color:#475569; font-size:10px; font-weight:bold; padding:4px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:6px; border:1px solid #cbd5e1; }
+        .firma-op { background:#f8fafc; color:#475569; font-size:11px; font-weight:bold; padding:4px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:6px; border:1px solid #e2e8f0; }
         .prio-1 { color: #eab308; font-size: 20px; text-shadow: 0 0 4px rgba(234,179,8,0.5); }
         .prio-2 { color: #f97316; font-size: 20px; text-shadow: 0 0 4px rgba(249,115,22,0.5); }
         .prio-0 { color: #cbd5e1; font-size: 18px; }
@@ -353,7 +353,7 @@
                 });
             }
 
-            const { data: historialReciente } = await supabaseClient.from('historial_trazabilidad').select('*').order('id', { ascending: false }).limit(50);
+            const { data: historialReciente } = await supabaseClient.from('historial_trazabilidad').select('*').order('id', { ascending: false }).limit(200);
             if (historialReciente) {
                 window.historialGlobal = historialReciente;
                 let ultimoIdLeido = parseInt(localStorage.getItem('ultimoIdNotifVeta') || '0');
@@ -368,7 +368,7 @@
         }
 
         // ===============================================
-        // FUNCIÓN PRINCIPAL DE LISTAS Y ORDENAMIENTO (3 NIVELES DE PRIORIDAD)
+        // FUNCIÓN PRINCIPAL DE LISTAS Y ORDENAMIENTO (CONSOLIDADOS)
         // ===============================================
         function verListaModal(tipo) {
             let lista = []; let titulo = ""; let colorHex = "";
@@ -384,28 +384,41 @@
                 lista = window.mueblesFiltradosGlobal.filter(m => m.estado && m.estado.toLowerCase().includes('fabric')); 
                 titulo = "🏭 Lotes en Área de Fabricación"; colorHex = "#f59e0b"; 
                 permitirEstrella = false; 
-                agruparPorLote = true; // ACTIVAMOS LA FUSIÓN
+                agruparPorLote = true; 
             } else if (tipo === 'alertas') { 
                 lista = window.mueblesFiltradosGlobal.filter(m => m.estado && m.estado.toLowerCase().includes('bloque')); 
                 titulo = "🛑 Muebles Bloqueados (Alertas)"; colorHex = "#ef4444"; 
             } else if (tipo === 'completados') { 
                 lista = window.mueblesFiltradosGlobal.filter(m => window.estadosFinales.includes(m.estado)); 
-                titulo = "✅ Muebles Completados / Enviados"; colorHex = "#10b981"; 
+                titulo = "✅ Lotes Completados / Enviados"; colorHex = "#10b981"; 
+                permitirEstrella = false;
+                agruparPorLote = true; // Aplicado a completados también
             }
 
             if(lista.length === 0) { Swal.fire({ icon: 'info', title: 'Lista vacía', text: 'No hay muebles en esta categoría.', confirmButtonColor: colorHex }); return; }
 
             let htmlTabla = `<div style="max-height: 55vh; overflow-y: auto; text-align: left;"><div class="tabla-responsive-wrapper"><table class="tabla-alertas">`;
 
-            // --- LÓGICA DE FUSIÓN (MODO FABRICACIÓN) ---
+            // --- LÓGICA DE FUSIÓN (Lotes Consolidados) ---
             if (agruparPorLote) {
                 let grupos = {};
                 lista.forEach(m => {
-                    let key = `${m.codigo_proyecto}_${m.proyecto}_${m.producto}`;
+                    let key = `${m.codigo_proyecto}_${m.proyecto}_${m.producto}_${m.piso}`;
                     if (!grupos[key]) {
-                        grupos[key] = { codigo_proyecto: m.codigo_proyecto, proyecto: m.proyecto, producto: m.producto, espacios: [], estado: m.estado, movido_por: m.movido_por, cantidad: 0 };
+                        
+                        let nombreResponsable = "Sin firma";
+                        let histMueble = window.historialGlobal.filter(h => h.id_mueble === m.id);
+                        
+                        // Busca la firma dependiendo si es Fabricación o Envío/Completado
+                        let palabraClave = tipo === 'fabricar' ? 'Fabricar' : (m.estado || '');
+                        let regCulpable = histMueble.find(h => h.etapa && h.etapa.includes(palabraClave));
+                        
+                        if (regCulpable && regCulpable.operador) nombreResponsable = regCulpable.operador;
+                        else if (m.movido_por) nombreResponsable = m.movido_por;
+
+                        grupos[key] = { codigo_proyecto: m.codigo_proyecto, proyecto: m.proyecto, producto: m.producto, piso: m.piso, estado: m.estado, movido_por: nombreResponsable, cantidad: 0, piezas: [] };
                     }
-                    if (m.espacio) grupos[key].espacios.push(m.espacio);
+                    grupos[key].piezas.push(m);
                     grupos[key].cantidad++;
                 });
                 
@@ -415,23 +428,46 @@
 
                 htmlTabla += `<thead><tr><th>Firma Responsable</th><th>Cód.</th><th>Lote (Proyecto - Producto - Espacios)</th><th>Estado General</th></tr></thead><tbody>`;
 
-                listaAgrupada.forEach(m => {
+                listaAgrupada.forEach(g => {
                     let firmaTexto = `<span style="color:#94a3b8; font-style:italic;">Sin firma</span>`;
-                    if (m.movido_por) {
-                        let iniOp = m.movido_por.substring(0, 2).toUpperCase();
-                        firmaTexto = `<div class="firma-op"><span style="background:#8b5cf6; color:white; width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:9px;">${iniOp}</span> ${m.movido_por}</div>`;
+                    if (g.movido_por && g.movido_por !== "Sin firma") {
+                        let iniOp = g.movido_por.substring(0, 2).toUpperCase();
+                        firmaTexto = `<div class="firma-op" title="Responsable de lote"><span style="background:#8b5cf6; color:white; width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:9px;">${iniOp}</span> ${g.movido_por}</div>`;
                     }
 
-                    // Eliminamos espacios duplicados
-                    let arrEspacios = [...new Set(m.espacios)];
-                    let txtEspacios = arrEspacios.length > 0 ? ` - (${arrEspacios.join(' - ')})` : '';
-                    let descripcionLote = `<strong>${m.proyecto}</strong> - ${m.producto}${txtEspacios}`;
+                    // --- MÁGIA DE FUSIÓN DE NOMBRES ---
+                    // Verifica si el lote tiene productos "PP" (Puerta Principal) o si todas sus piezas son "AC" (Área Común)
+                    let isCommon = g.piezas.some(p => p.producto === 'PP' || p.espacio === 'AC');
+                    let arrSubItems = [];
+                    
+                    if (isCommon) {
+                        // Excepción para Áreas Comunes / Puertas Principales: (S1, S2, S3)
+                        let suitesUnicas = [...new Set(g.piezas.map(p => p.suite))].filter(Boolean);
+                        if (suitesUnicas.length > 0) arrSubItems.push(`(${suitesUnicas.join(', ')})`);
+                    } else {
+                        // Espacios Internos: (MIAMI: BP - BV) (PARIS: HP)
+                        let mapSuites = {};
+                        g.piezas.forEach(p => {
+                            let s = p.suite || 'S/N'; let e = p.espacio || '';
+                            if (!mapSuites[s]) mapSuites[s] = new Set();
+                            if (e) mapSuites[s].add(e);
+                        });
+                        for (let suite in mapSuites) {
+                            let espacios = [...mapSuites[suite]];
+                            if (espacios.length > 0) arrSubItems.push(`(${suite}: ${espacios.join(' - ')})`);
+                            else arrSubItems.push(`(${suite})`);
+                        }
+                    }
+                    
+                    let txtSub = arrSubItems.join(' ');
+                    let pisoTxt = g.piso ? ` - Piso ${g.piso}` : '';
+                    let descripcionLote = `<strong>${g.proyecto}</strong> - ${g.producto} ${txtSub ? '- ' + txtSub : ''}${pisoTxt}`;
 
                     htmlTabla += `<tr>
                         <td style="white-space:nowrap;">${firmaTexto}</td>
-                        <td><strong>${m.codigo_proyecto || 'S/N'}</strong></td>
+                        <td><strong>${g.codigo_proyecto || 'S/N'}</strong></td>
                         <td>${descripcionLote}</td>
-                        <td><span style="font-weight:bold; color:${colorHex}">${m.estado}</span> <br><small>📦 ${m.cantidad} piezas</small></td>
+                        <td><span style="font-weight:bold; color:${colorHex}">${g.estado}</span> <br><small style="color:#64748b;">📦 ${g.cantidad} piezas agrupadas</small></td>
                     </tr>`;
                 });
 
@@ -465,15 +501,15 @@
                         let prio = m.nivel_prioridad || 0;
                         let iconoUrgencia = '<span class="prio-0">☆</span>';
                         
-                        if (prio === 1) { // PRIORIDAD 1: ORO
-                            iconoUrgencia = '<span class="prio-1">★</span>';
+                        if (prio === 1) { 
+                            iconoUrgencia = '<span class="prio-1">★</span>'; // ORO
                             estiloFila = 'background-color: #fef9c3; box-shadow: inset 4px 0 0 #eab308;';
-                        } else if (prio === 2) { // PRIORIDAD 2: NARANJA
-                            iconoUrgencia = '<span class="prio-2">★</span>';
+                        } else if (prio === 2) { 
+                            iconoUrgencia = '<span class="prio-2">★</span>'; // NARANJA
                             estiloFila = 'background-color: #fff7ed; box-shadow: inset 4px 0 0 #f97316;';
                         }
 
-                        colExtraContenido = `<td style="text-align:center; cursor:pointer; user-select:none;" onclick="cambiarPrioridad('${m.id}', ${prio}, '${tipo}')">${iconoUrgencia}</td>`;
+                        colExtraContenido = `<td style="text-align:center; cursor:pointer; user-select:none;" onclick="cambiarPrioridad('${m.id}', ${prio}, '${tipo}')" title="Clic para cambiar prioridad">${iconoUrgencia}</td>`;
                     } else {
                         colExtraContenido = `<td><span style="color:#94a3b8;">-</span></td>`;
                     }
@@ -493,7 +529,7 @@
         }
 
         async function cambiarPrioridad(id_mueble, prioActual, tipoModal) {
-            // Ciclo: 0 (Nada) -> 1 (Oro) -> 2 (Naranja) -> 0
+            // Lógica de 3 clics: 0 -> 1 -> 2 -> 0
             let nuevaPrio = 0;
             if (prioActual === 0 || !prioActual) nuevaPrio = 1;
             else if (prioActual === 1) nuevaPrio = 2;
@@ -584,7 +620,7 @@
         function dibujarGraficaEstados(datos) { const ctx = document.getElementById('chartEstados').getContext('2d'); if (myChartEstados) myChartEstados.destroy(); const etiquetas = Object.keys(datos); const valores = Object.values(datos); const colores = ['#94a3b8', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#14b8a6']; myChartEstados = new Chart(ctx, { type: 'doughnut', data: { labels: etiquetas, datasets: [{ data: valores, backgroundColor: colores.slice(0, etiquetas.length), borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { boxWidth: 15, font: { size: 11 } } } }, cutout: '60%' } }); }        
         function dibujarGraficaProyectos(datos, diccionarioColores) { const ctx = document.getElementById('chartProyectos').getContext('2d'); if (myChartProyectos) myChartProyectos.destroy(); const etiquetas = Object.keys(datos); const valores = Object.values(datos); const coloresBarra = etiquetas.map(lbl => diccionarioColores[lbl] || '#3b82f6'); myChartProyectos = new Chart(ctx, { type: 'bar', data: { labels: etiquetas, datasets: [{ label: 'Cant. de Muebles', data: valores, backgroundColor: coloresBarra, borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } }, x: { grid: { display: false } } } } }); }
         
-        // FUNCIONES DE NOTIFICACIONES GLOBALES (REDUCIDAS PARA ESPACIO)
+        // FUNCIONES DE NOTIFICACIONES GLOBALES
         function verNotificacionesGlobales() {
             if ('Notification' in window && Notification.permission !== 'granted') Notification.requestPermission();
             if (!window.historialGlobal || window.historialGlobal.length === 0) return Swal.fire({ icon: 'info', title: 'Sin actividad', text: 'No hay registros recientes.' });
