@@ -35,7 +35,6 @@
         .campana-notificaciones:hover { transform: scale(1.1); background: #f1f5f9; }
         .badge-campana { position: absolute; top: 0px; right: -2px; background-color: #ef4444; color: white; border-radius: 50%; padding: 2px 5px; font-size: 10px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: none; }
         
-        /* WIDGET DE NOTAS */
         .widget-notas { position: relative; display: inline-block; margin-right: 5px; }
         .widget-notas .btn-icono { background: #fff; border: none; width: 40px; height: 40px; font-size: 20px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .widget-notas .btn-icono:hover { transform: scale(1.1); background: #f1f5f9; }
@@ -45,7 +44,6 @@
         .panel-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
         .panel-header h4 { margin: 0; font-size: 14px; color: #1e293b; }
         .btn-redondo { background: #3b82f6; color: white; border: none; border-radius: 50%; width: 26px; height: 26px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.2s; }
-        .btn-redondo:hover { background: #2563eb; transform: scale(1.05); }
         
         #caja-edicion-nota { padding: 15px; border-bottom: 1px solid #e2e8f0; background: #fff; }
         #texto-nota { width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px; font-family: inherit; resize: vertical; box-sizing: border-box; font-size: 13px; outline: none; }
@@ -69,7 +67,6 @@
         .mensaje-bienvenida span { font-weight: bold; color: #1e293b; }
         .foto-perfil { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid #3b82f6; }
         .btn-salir { background-color: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-left: 5px; }
-        .btn-salir:hover { background-color: #fef2f2; }
 
         /* TARJETAS Y CONTENIDO */
         .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; margin-bottom: 25px; width: 100%; box-sizing: border-box; }
@@ -112,14 +109,15 @@
         .tabla-alertas th { background-color: #f1f5f9; color: #334155; position: sticky; top: 0; z-index: 2; }
 
         .notif-item { padding: 12px; border-bottom: 1px solid #e2e8f0; font-size: 13px; display: flex; gap: 12px; align-items: start; transition: 0.2s; }
-        .notif-item:hover { background-color: #f8fafc; }
-        .notif-item:last-child { border-bottom: none; }
         .notif-icon { font-size: 20px; background: white; border-radius: 50%; min-width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .notif-content { flex: 1; }
         .notif-time { font-size: 11px; color: #94a3b8; margin-top: 5px; font-weight: bold; }
 
-        /* FIRMA DE OPERADOR EN MODAL */
-        .firma-op { background:#f1f5f9; color:#475569; font-size:10px; font-weight:bold; padding:2px 6px; border-radius:4px; display:inline-flex; align-items:center; gap:4px; margin-top:4px; border:1px solid #e2e8f0; }
+        /* FIRMA DE OPERADOR Y DISEÑOS DE PRIORIDAD */
+        .firma-op { background:#f1f5f9; color:#475569; font-size:10px; font-weight:bold; padding:4px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:6px; border:1px solid #cbd5e1; }
+        .prio-1 { color: #eab308; font-size: 20px; text-shadow: 0 0 4px rgba(234,179,8,0.5); }
+        .prio-2 { color: #f97316; font-size: 20px; text-shadow: 0 0 4px rgba(249,115,22,0.5); }
+        .prio-0 { color: #cbd5e1; font-size: 18px; }
 
         @media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } }
         @media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }        
@@ -128,24 +126,17 @@
         @media (max-width: 768px) { 
             html, body { overflow-x: hidden !important; overflow-y: auto !important; position: relative; }
             .app-container { flex-direction: column; height: auto; width: 100%; overflow-x: hidden !important; }
-            
             .sidebar { width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 100; }
             .sidebar-header { padding: 15px; font-size: 20px; }
-            
             .nav-links { flex-direction: row; margin-top: 0; justify-content: flex-start; background-color: #0f172a; overflow-x: auto; overflow-y: hidden; white-space: nowrap; -webkit-overflow-scrolling: touch; padding: 0 5px; }
             .nav-links::-webkit-scrollbar { display: none; } 
             .nav-links a { padding: 12px 15px; font-size: 13px; border-left: none; border-bottom: 3px solid transparent; flex: 0 0 auto; gap: 6px; display: inline-flex; align-items: center; }
             .nav-links a.active { border-left: none; border-bottom-color: #3b82f6; }
-
             .main-content { padding: 15px; height: auto; width: 100%; box-sizing: border-box; overflow-x: hidden !important; }
             .header-top { flex-direction: column; align-items: center; text-align: center; gap: 15px; margin-bottom: 20px; padding-bottom: 15px; width: 100%; box-sizing: border-box; }
-            .header-title { font-size: 22px; margin: 0; }
-            .perfil-usuario { flex-wrap: wrap; justify-content: center; gap: 10px; width: 100%; }
-            
             .stats-grid, .charts-grid { grid-template-columns: 1fr; width: 100%; }
             .filtros-progreso { flex-direction: column; }
             .filtros-progreso select, .filtros-progreso input { width: 100%; margin-bottom: 8px; }
-            
             .panel-desplegable { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 350px; z-index: 2000; box-shadow: 0 0 0 1000px rgba(0,0,0,0.5); }
         }
     </style>
@@ -169,19 +160,15 @@
             <div class="header-top">
                 <h2 class="header-title">Tablero de Producción</h2>
                 <div class="perfil-usuario">
-                    
-                    <!-- WIDGET NOTAS EQUIPO -->
                     <div class="widget-notas">
                         <button id="btn-notas" class="btn-icono" title="Notas del Equipo">
                             📝<span id="badge-notas" class="badge-notas-urgente" style="display: none;">0</span>
                         </button>
-
                         <div id="panel-notas" class="panel-desplegable">
                             <div class="panel-header">
                                 <h4>Notas del Equipo</h4>
                                 <button id="btn-nueva-nota" class="btn-redondo" title="Crear nueva nota">+</button>
                             </div>
-                            
                             <div id="caja-edicion-nota" style="display: none;">
                                 <textarea id="texto-nota" placeholder="Escribe un anuncio o nota para el equipo..." rows="3"></textarea>
                                 <div class="controles-edicion">
@@ -192,13 +179,11 @@
                                     </div>
                                 </div>
                             </div>
-
                             <div id="lista-notas" class="lista-scroll">
                                 <p style="text-align:center; font-size:12px; color:#94a3b8; padding:20px;">Cargando notas...</p>
                             </div>
                         </div>
                     </div>
-                    <!-- FIN WIDGET NOTAS -->
 
                     <div class="campana-notificaciones" onclick="verNotificacionesGlobales()" title="Ver actividad reciente de la planta">
                         🔔<span class="badge-campana" id="badge_notificaciones">0</span>
@@ -220,13 +205,10 @@
                     <h4>Por Digitalizar</h4>
                     <p class="numero" id="total_digitalizar">0</p>
                 </div>
-                
-                <!-- NUEVA TARJETA: POR FABRICAR -->
                 <div class="stat-card border-orange clickable-card" onclick="verListaModal('fabricar')">
                     <h4>Por Fabricar</h4>
                     <p class="numero" id="total_fabricar">0</p>
                 </div>
-
                 <div class="stat-card border-red clickable-card" onclick="verListaModal('alertas')">
                     <h4>Alertas (Bloqueados)</h4>
                     <p class="numero" id="total_alertas">0</p>
@@ -297,11 +279,8 @@
         function actualizarBadgeSistemaOS() {
             if ('setAppBadge' in navigator) {
                 let total = window.alertasNoLeidas + window.notasNoLeidas;
-                if (total > 0) {
-                    navigator.setAppBadge(total).catch(error => console.log("Error en badge:", error));
-                } else {
-                    navigator.clearAppBadge().catch(error => console.log("Error limpiando badge:", error));
-                }
+                if (total > 0) navigator.setAppBadge(total).catch(e => console.log(e));
+                else navigator.clearAppBadge().catch(e => console.log(e));
             }
         }
 
@@ -324,16 +303,13 @@
             document.getElementById('fotoUsuario').src = session.user.user_metadata.avatar_url || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
 
             await cargarDatosDashboard();
-            
             cargarNotasEquipo();
             setInterval(cargarNotasEquipo, 120000);
             
             document.addEventListener('click', (e) => {
                 const widget = document.querySelector('.widget-notas');
                 const panel = document.getElementById('panel-notas');
-                if (widget && panel && !widget.contains(e.target) && panel.style.display === 'block') {
-                    panel.style.display = 'none';
-                }
+                if (widget && panel && !widget.contains(e.target) && panel.style.display === 'block') panel.style.display = 'none';
             });
         });
 
@@ -345,8 +321,6 @@
                 window.estadosFinales = estadosCat.filter(e => !e.estado_siguiente || e.estado_siguiente.trim() === '' || e.nombre.toLowerCase().includes('enviad') || e.nombre.toLowerCase().includes('instalad')).map(e => e.nombre);
             }
 
-            // AHORA TAMBIÉN TRAEMOS EL CAMPO "movido_por" PARA LA FIRMA EN FABRICACIÓN
-            // Asumiendo que la firma del tablero Kanban se guardará eventualmente ahí. Si no, lo leeremos del historial
             const { data: muebles } = await supabaseClient.from('registros_produccion').select('*');
             if (muebles) {
                 window.mueblesCargados = muebles;
@@ -380,338 +354,167 @@
             }
 
             const { data: historialReciente } = await supabaseClient.from('historial_trazabilidad').select('*').order('id', { ascending: false }).limit(50);
-            
             if (historialReciente) {
                 window.historialGlobal = historialReciente;
                 let ultimoIdLeido = parseInt(localStorage.getItem('ultimoIdNotifVeta') || '0');
                 let notifNuevas = historialReciente.filter(h => h.id > ultimoIdLeido).length;
-                
                 let badge = document.getElementById('badge_notificaciones');
-                if (notifNuevas > 0) {
-                    badge.style.display = 'block';
-                    badge.innerText = notifNuevas > 99 ? '99+' : notifNuevas;
-                    window.alertasNoLeidas = notifNuevas; 
-                } else {
-                    badge.style.display = 'none';
-                    window.alertasNoLeidas = 0; 
-                }
+                if (notifNuevas > 0) { badge.style.display = 'block'; badge.innerText = notifNuevas > 99 ? '99+' : notifNuevas; window.alertasNoLeidas = notifNuevas; } 
+                else { badge.style.display = 'none'; window.alertasNoLeidas = 0; }
                 actualizarBadgeSistemaOS();
             }
 
             actualizarGraficasDinamicas();
         }
 
-        function verNotificacionesGlobales() {
-            if ('Notification' in window && Notification.permission !== 'granted') {
-                Notification.requestPermission().then(perm => console.log("Permiso:", perm));
-            }
-
-            if (!window.historialGlobal || window.historialGlobal.length === 0) {
-                Swal.fire({ icon: 'info', title: 'Sin actividad', text: 'No hay registros recientes en la planta.', confirmButtonColor: '#3b82f6' });
-                return;
-            }
-
-            localStorage.setItem('ultimoIdNotifVeta', window.historialGlobal[0].id);
-            document.getElementById('badge_notificaciones').style.display = 'none';
-            window.alertasNoLeidas = 0;
-            actualizarBadgeSistemaOS();
-
-            let html = '<div style="text-align: left; max-height: 450px; overflow-y: auto;">';
-            
-            window.historialGlobal.forEach(h => {
-                let mueble = window.mueblesCargados.find(m => m.id === h.id_mueble);
-                let ubicacionTexto = "Pieza eliminada/desconocida";
-                
-                if (mueble) {
-                    let blqStr = mueble.bloque ? ` - Blq ${mueble.bloque}` : '';
-                    ubicacionTexto = `<b>${mueble.proyecto}</b> (P${mueble.piso}${blqStr}-S${mueble.suite})`;
-                }
-
-                let icono = '▶️';
-                if (h.tipo_registro.includes('Falla')) icono = '🛑';
-                else if (h.tipo_registro.includes('Edición') || h.tipo_registro.includes('Sobreescritura')) icono = '✏️';
-                else if (h.tipo_registro.includes('Creación')) icono = '✨';
-
-                let tiempo = tiempoTranscurrido(h.created_at || h.fecha);
-
-                html += `
-                <div class="notif-item">
-                    <div class="notif-icon">${icono}</div>
-                    <div class="notif-content">
-                        <span style="color:#3b82f6; font-weight:bold;">👤 ${h.operador || 'Operador'}</span> 
-                        <span style="color:#334155;">registró: <b>${h.tipo_registro}</b> en ${ubicacionTexto}</span><br>
-                        <span style="color: #64748b; font-style: italic;">"${h.comentarios || h.etapa}"</span>
-                        <div class="notif-time">Hace ${tiempo}</div>
-                    </div>
-                </div>`;
-            });
-            
-            html += '</div>';
-
-            Swal.fire({ title: '🔔 Bitácora de Planta (Últimos 50)', html: html, width: '650px', showConfirmButton: true, confirmButtonText: 'Cerrar Panel', confirmButtonColor: '#475569' });
-        }
-
-        function tiempoTranscurrido(fechaDB) {
-            if (!fechaDB) return "poco tiempo";
-            const ahora = new Date();
-            const fechaNotif = new Date(fechaDB);
-            if(isNaN(fechaNotif)) return "un momento";
-
-            const segundos = Math.floor((ahora - fechaNotif) / 1000);
-            
-            if (segundos < 60) return "unos segundos";
-            let min = Math.floor(segundos / 60);
-            if (min < 60) return min + " min";
-            let hr = Math.floor(min / 60);
-            if (hr < 24) return hr + (hr === 1 ? " hora" : " horas");
-            let dias = Math.floor(hr / 24);
-            return dias + (dias === 1 ? " día" : " días");
-        }
-
-        document.getElementById('btn-notas').addEventListener('click', () => {
-            if ('Notification' in window && Notification.permission !== 'granted') {
-                Notification.requestPermission().then(perm => console.log("Permiso:", perm));
-            }
-
-            const panel = document.getElementById('panel-notas');
-            if (panel.style.display === 'none' || panel.style.display === '') {
-                panel.style.display = 'block';
-                localStorage.setItem(CACHE_NOTAS_KEY, new Date().toISOString());
-                document.getElementById('badge-notas').style.display = 'none';
-                window.notasNoLeidas = 0;
-                actualizarBadgeSistemaOS();
-                cargarNotasEquipo(); 
-            } else {
-                panel.style.display = 'none';
-            }
-        });
-
-        document.getElementById('btn-nueva-nota').addEventListener('click', abrirCajaEdicion);
-        document.getElementById('btn-cancelar-nota').addEventListener('click', cerrarCajaEdicion);
-        document.getElementById('btn-guardar-nota').addEventListener('click', guardarNotaEquipo);
-
-        async function cargarNotasEquipo() {
-            const contenedor = document.getElementById('lista-notas');
-            const { data: ocultas } = await supabaseClient.from('notas_ocultas').select('nota_id').eq('usuario_email', USUARIO_ACTUAL_EMAIL);
-            const idsOcultas = ocultas ? ocultas.map(o => o.nota_id) : [];
-
-            const { data: notas, error } = await supabaseClient.from('notas_equipo').select('*').order('fecha_actualizacion', { ascending: false });
-            if (error) { console.error("Error al cargar notas:", error.message); return; }
-
-            const notasVisibles = notas.filter(nota => !idsOcultas.includes(nota.id));
-            
-            contenedor.innerHTML = '';
-            if (notasVisibles.length === 0) {
-                contenedor.innerHTML = '<p style="text-align:center; font-size:12px; color:#94a3b8; padding:20px;">No hay notas del equipo por ahora.</p>';
-            } else {
-                notasVisibles.forEach(nota => {
-                    const esMio = nota.autor_email === USUARIO_ACTUAL_EMAIL;
-                    const editadaTexto = nota.editada ? ' <span style="font-style:italic; color:#94a3b8; font-size:10px;">(Editada)</span>' : '';
-                    const claseUrgente = nota.importante ? 'urgente' : '';
-                    
-                    const fechaObj = new Date(nota.fecha_actualizacion);
-                    const fechaFmt = `${fechaObj.getDate().toString().padStart(2, '0')}/${(fechaObj.getMonth()+1).toString().padStart(2, '0')} - ${fechaObj.getHours().toString().padStart(2, '0')}:${fechaObj.getMinutes().toString().padStart(2, '0')}`;
-
-                    contenedor.innerHTML += `
-                        <div class="nota-card ${claseUrgente}">
-                            <div class="nota-header">
-                                <span class="nota-autor">${nota.autor_nombre}</span>
-                                <span>${fechaFmt}${editadaTexto}</span>
-                            </div>
-                            <div class="nota-contenido">${nota.contenido}</div>
-                            <div class="nota-acciones">
-                                ${esMio ? `<span onclick="prepararEdicionNota('${nota.id}', \`${nota.contenido.replace(/`/g, '\\`')}\`, ${nota.importante})">✏️ Editar</span>` : ''}
-                                ${esMio ? `<span class="borrar" onclick="borrarNotaEquipo('${nota.id}')">🗑️ Borrar</span>` : ''}
-                                ${!esMio ? `<span onclick="ocultarNotaEquipo('${nota.id}')">👁‍🗨 Ocultar</span>` : ''}
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-            actualizarCampanitaNotas(notasVisibles);
-        }
-
-        async function guardarNotaEquipo() {
-            const contenido = document.getElementById('texto-nota').value.trim();
-            const importante = document.getElementById('chk-importante').checked;
-            const btn = document.getElementById('btn-guardar-nota');
-
-            if (!contenido) return Swal.fire({toast: true, position: 'top-end', title: 'La nota está vacía', icon: 'warning', showConfirmButton: false, timer: 2000});
-
-            btn.disabled = true; btn.innerText = "Guardando...";
-
-            if (idNotaEnEdicion) {
-                await supabaseClient.from('notas_equipo').update({ contenido: contenido, importante: importante, editada: true, fecha_actualizacion: new Date().toISOString() }).eq('id', idNotaEnEdicion);
-            } else {
-                await supabaseClient.from('notas_equipo').insert([{ autor_email: USUARIO_ACTUAL_EMAIL, autor_nombre: USUARIO_ACTUAL_NOMBRE, contenido: contenido, importante: importante }]);
-            }
-
-            btn.disabled = false; btn.innerText = "Publicar";
-            cerrarCajaEdicion();
-            cargarNotasEquipo();
-        }
-
-        async function borrarNotaEquipo(id) {
-            const result = await Swal.fire({ title: '¿Borrar nota?', text: "Se eliminará para todos los usuarios", icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar' });
-            if (result.isConfirmed) { await supabaseClient.from('notas_equipo').delete().eq('id', id); cargarNotasEquipo(); }
-        }
-
-        async function ocultarNotaEquipo(id) {
-            await supabaseClient.from('notas_ocultas').insert([{ nota_id: id, usuario_email: USUARIO_ACTUAL_EMAIL }]);
-            cargarNotasEquipo();
-        }
-
-        function actualizarCampanitaNotas(notas) {
-            const ultimaRevisionStr = localStorage.getItem(CACHE_NOTAS_KEY);
-            const badge = document.getElementById('badge-notas');
-            const panel = document.getElementById('panel-notas');
-            
-            if (panel.style.display === 'block') { badge.style.display = 'none'; window.notasNoLeidas = 0; actualizarBadgeSistemaOS(); return; }
-
-            if (!ultimaRevisionStr) {
-                badge.innerText = notas.length > 9 ? '9+' : notas.length;
-                badge.style.display = notas.length > 0 ? 'flex' : 'none';
-                window.notasNoLeidas = notas.length;
-                actualizarBadgeSistemaOS(); return;
-            }
-
-            const fechaUltimaRevision = new Date(ultimaRevisionStr);
-            const notasNuevas = notas.filter(nota => new Date(nota.fecha_actualizacion) > fechaUltimaRevision).length;
-
-            if (notasNuevas > 0) {
-                badge.innerText = notasNuevas > 9 ? '9+' : notasNuevas;
-                badge.style.display = 'flex';
-                window.notasNoLeidas = notasNuevas;
-            } else {
-                badge.style.display = 'none'; window.notasNoLeidas = 0;
-            }
-            actualizarBadgeSistemaOS();
-        }
-
-        function abrirCajaEdicion() { document.getElementById('caja-edicion-nota').style.display = 'block'; document.getElementById('texto-nota').focus(); }
-        function cerrarCajaEdicion() { document.getElementById('caja-edicion-nota').style.display = 'none'; document.getElementById('texto-nota').value = ''; document.getElementById('chk-importante').checked = false; idNotaEnEdicion = null; }
-        function prepararEdicionNota(id, contenido, importante) { idNotaEnEdicion = id; document.getElementById('texto-nota').value = contenido; document.getElementById('chk-importante').checked = importante; abrirCajaEdicion(); }
-
         // ===============================================
-        // FUNCIÓN PRINCIPAL DE LISTAS Y ORDENAMIENTO (ACTUALIZADA)
+        // FUNCIÓN PRINCIPAL DE LISTAS Y ORDENAMIENTO (3 NIVELES DE PRIORIDAD)
         // ===============================================
         function verListaModal(tipo) {
             let lista = []; let titulo = ""; let colorHex = "";
-            let permitirEstrella = true; // Por defecto permitimos marcar como urgente
+            let permitirEstrella = true;
+            let agruparPorLote = false;
             
             if (tipo === 'total') { 
-                lista = window.mueblesFiltradosGlobal; 
-                titulo = "📋 Todos los Muebles en el Filtro Actual"; colorHex = "#3b82f6"; 
-            } 
-            else if (tipo === 'digitalizar') { 
+                lista = window.mueblesFiltradosGlobal; titulo = "📋 Todos los Muebles en el Filtro Actual"; colorHex = "#3b82f6"; 
+            } else if (tipo === 'digitalizar') { 
                 lista = window.mueblesFiltradosGlobal.filter(m => m.estado && m.estado.toLowerCase() === 'por digitalizar'); 
                 titulo = "📐 Pendientes por Digitalizar"; colorHex = "#8b5cf6"; 
-            } 
-            else if (tipo === 'fabricar') { 
-                // Asumimos que cualquier variación de "fabric" entra aquí (Por Fabricar, Fabricando, etc)
+            } else if (tipo === 'fabricar') { 
                 lista = window.mueblesFiltradosGlobal.filter(m => m.estado && m.estado.toLowerCase().includes('fabric')); 
-                titulo = "🏭 Muebles en Área de Fabricación"; colorHex = "#f59e0b"; 
-                permitirEstrella = false; // Bloqueamos la estrella en fabricación
-            } 
-            else if (tipo === 'alertas') { 
+                titulo = "🏭 Lotes en Área de Fabricación"; colorHex = "#f59e0b"; 
+                permitirEstrella = false; 
+                agruparPorLote = true; // ACTIVAMOS LA FUSIÓN
+            } else if (tipo === 'alertas') { 
                 lista = window.mueblesFiltradosGlobal.filter(m => m.estado && m.estado.toLowerCase().includes('bloque')); 
                 titulo = "🛑 Muebles Bloqueados (Alertas)"; colorHex = "#ef4444"; 
-            } 
-            else if (tipo === 'completados') { 
+            } else if (tipo === 'completados') { 
                 lista = window.mueblesFiltradosGlobal.filter(m => window.estadosFinales.includes(m.estado)); 
                 titulo = "✅ Muebles Completados / Enviados"; colorHex = "#10b981"; 
             }
 
-            if(lista.length === 0) { Swal.fire({ icon: 'info', title: 'Lista vacía', text: 'No hay muebles en esta categoría con los filtros actuales.', confirmButtonColor: colorHex }); return; }
+            if(lista.length === 0) { Swal.fire({ icon: 'info', title: 'Lista vacía', text: 'No hay muebles en esta categoría.', confirmButtonColor: colorHex }); return; }
 
-            // LÓGICA DE ORDENAMIENTO ESTRICTA
-            lista.sort((a, b) => {
-                // Primero: La Estrella Manda (Solo si está permitida en este modo)
-                if (permitirEstrella) {
-                    if (a.urgente && !b.urgente) return -1;
-                    if (!a.urgente && b.urgente) return 1;
-                }
-                
-                // Segundo: Orden numérico por Código de Proyecto
-                let codA = parseInt(a.codigo_proyecto) || 999999; // Si no tiene código, se va al fondo
-                let codB = parseInt(b.codigo_proyecto) || 999999;
-                
-                return codA - codB;
-            });
+            let htmlTabla = `<div style="max-height: 55vh; overflow-y: auto; text-align: left;"><div class="tabla-responsive-wrapper"><table class="tabla-alertas">`;
 
-            // CABECERAS DE TABLA DINÁMICAS (Cambian dependiendo si hay estrella o firma)
-            let colExtraCabecera = permitirEstrella ? '<th style="width: 35px; text-align:center;" title="Prioridad">⭐</th>' : '<th>Firma Responsable</th>';
-
-            let htmlTabla = `<div style="max-height: 55vh; overflow-y: auto; text-align: left;">
-                <div class="tabla-responsive-wrapper">
-                    <table class="tabla-alertas">
-                    <thead>
-                        <tr>
-                            ${colExtraCabecera}
-                            <th>Cód.</th>
-                            <th>Ubicación</th>
-                            <th>Producto</th>
-                            <th>Estado/Obs.</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-            
-            lista.forEach(m => {
-                let blqStr = m.bloque ? ` - Blq ${m.bloque}` : '';
-                let ubi = `${m.proyecto} - P${m.piso}${blqStr}`;
-                let colorObs = m.estado.toLowerCase().includes('bloque') ? '#ef4444' : '#64748b';
-                let extra = m.observaciones ? `<br><small style="color:${colorObs};"><i>${m.observaciones}</i></small>` : '';
+            // --- LÓGICA DE FUSIÓN (MODO FABRICACIÓN) ---
+            if (agruparPorLote) {
+                let grupos = {};
+                lista.forEach(m => {
+                    let key = `${m.codigo_proyecto}_${m.proyecto}_${m.producto}`;
+                    if (!grupos[key]) {
+                        grupos[key] = { codigo_proyecto: m.codigo_proyecto, proyecto: m.proyecto, producto: m.producto, espacios: [], estado: m.estado, movido_por: m.movido_por, cantidad: 0 };
+                    }
+                    if (m.espacio) grupos[key].espacios.push(m.espacio);
+                    grupos[key].cantidad++;
+                });
                 
-                let prodEspacio = m.espacio ? `${m.producto} - ${m.espacio}` : m.producto;
-                
-                let colExtraContenido = "";
-                let estiloFila = "";
+                let listaAgrupada = Object.values(grupos);
+                // Orden numérico de Proyecto
+                listaAgrupada.sort((a,b) => (parseInt(a.codigo_proyecto)||999999) - (parseInt(b.codigo_proyecto)||999999));
 
-                if (permitirEstrella) {
-                    // Modo Digitalización (Con estrella de prioridad)
-                    let esUrgente = m.urgente === true;
-                    let iconoUrgencia = esUrgente ? '⭐' : '<span style="color:#cbd5e1; font-size:16px;">☆</span>';
-                    estiloFila = esUrgente ? 'background-color: #fffbeb; box-shadow: inset 4px 0 0 #f59e0b;' : '';
-                    colExtraContenido = `<td style="text-align:center; cursor:pointer; font-size:18px; user-select:none;" onclick="marcarUrgencia('${m.id}', ${esUrgente}, '${tipo}')">${iconoUrgencia}</td>`;
-                } else {
-                    // Modo Fabricación (Con Firma de quien lo procesó/digitalizó)
-                    let firmaTexto = "Sin registrar";
+                htmlTabla += `<thead><tr><th>Firma Responsable</th><th>Cód.</th><th>Lote (Proyecto - Producto - Espacios)</th><th>Estado General</th></tr></thead><tbody>`;
+
+                listaAgrupada.forEach(m => {
+                    let firmaTexto = `<span style="color:#94a3b8; font-style:italic;">Sin firma</span>`;
                     if (m.movido_por) {
                         let iniOp = m.movido_por.substring(0, 2).toUpperCase();
-                        firmaTexto = `<div class="firma-op"><span style="background:#8b5cf6; color:white; width:16px; height:16px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:8px;">${iniOp}</span> ${m.movido_por}</div>`;
+                        firmaTexto = `<div class="firma-op"><span style="background:#8b5cf6; color:white; width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:9px;">${iniOp}</span> ${m.movido_por}</div>`;
                     }
-                    colExtraContenido = `<td>${firmaTexto}</td>`;
-                }
 
-                htmlTabla += `<tr style="${estiloFila}">
-                    ${colExtraContenido}
-                    <td><strong>${m.codigo_proyecto || 'S/N'}</strong></td>
-                    <td>${ubi}<br><small>Suite ${m.suite}</small></td>
-                    <td style="white-space: nowrap;">${prodEspacio}</td>
-                    <td><span style="font-weight:bold; color:${colorHex}">${m.estado}</span>${extra}</td>
-                </tr>`;
-            });
+                    // Eliminamos espacios duplicados
+                    let arrEspacios = [...new Set(m.espacios)];
+                    let txtEspacios = arrEspacios.length > 0 ? ` - (${arrEspacios.join(' - ')})` : '';
+                    let descripcionLote = `<strong>${m.proyecto}</strong> - ${m.producto}${txtEspacios}`;
+
+                    htmlTabla += `<tr>
+                        <td style="white-space:nowrap;">${firmaTexto}</td>
+                        <td><strong>${m.codigo_proyecto || 'S/N'}</strong></td>
+                        <td>${descripcionLote}</td>
+                        <td><span style="font-weight:bold; color:${colorHex}">${m.estado}</span> <br><small>📦 ${m.cantidad} piezas</small></td>
+                    </tr>`;
+                });
+
+            } else {
+                // --- LÓGICA NORMAL (CON SISTEMA DE 3 ESTRELLAS) ---
+                lista.sort((a, b) => {
+                    if (permitirEstrella) {
+                        let rankA = (a.nivel_prioridad === 1) ? 3 : ((a.nivel_prioridad === 2) ? 2 : 1);
+                        let rankB = (b.nivel_prioridad === 1) ? 3 : ((b.nivel_prioridad === 2) ? 2 : 1);
+                        if (rankA !== rankB) return rankB - rankA; // Oro(1) va de primero, luego Naranja(2), luego Nada(0)
+                    }
+                    let codA = parseInt(a.codigo_proyecto) || 999999;
+                    let codB = parseInt(b.codigo_proyecto) || 999999;
+                    return codA - codB;
+                });
+
+                let colExtraCabecera = permitirEstrella ? '<th style="width: 35px; text-align:center;" title="Prioridad">⭐</th>' : '<th>Responsable</th>';
+                
+                htmlTabla += `<thead><tr>${colExtraCabecera}<th>Cód.</th><th>Ubicación</th><th>Producto</th><th>Estado/Obs.</th></tr></thead><tbody>`;
+
+                lista.forEach(m => {
+                    let blqStr = m.bloque ? ` - Blq ${m.bloque}` : '';
+                    let ubi = `${m.proyecto} - P${m.piso}${blqStr}`;
+                    let colorObs = m.estado.toLowerCase().includes('bloque') ? '#ef4444' : '#64748b';
+                    let extra = m.observaciones ? `<br><small style="color:${colorObs};"><i>${m.observaciones}</i></small>` : '';
+                    let prodEspacio = m.espacio ? `${m.producto} - ${m.espacio}` : m.producto;
+                    
+                    let colExtraContenido = ""; let estiloFila = "";
+
+                    if (permitirEstrella) {
+                        let prio = m.nivel_prioridad || 0;
+                        let iconoUrgencia = '<span class="prio-0">☆</span>';
+                        
+                        if (prio === 1) { // PRIORIDAD 1: ORO
+                            iconoUrgencia = '<span class="prio-1">★</span>';
+                            estiloFila = 'background-color: #fef9c3; box-shadow: inset 4px 0 0 #eab308;';
+                        } else if (prio === 2) { // PRIORIDAD 2: NARANJA
+                            iconoUrgencia = '<span class="prio-2">★</span>';
+                            estiloFila = 'background-color: #fff7ed; box-shadow: inset 4px 0 0 #f97316;';
+                        }
+
+                        colExtraContenido = `<td style="text-align:center; cursor:pointer; user-select:none;" onclick="cambiarPrioridad('${m.id}', ${prio}, '${tipo}')">${iconoUrgencia}</td>`;
+                    } else {
+                        colExtraContenido = `<td><span style="color:#94a3b8;">-</span></td>`;
+                    }
+
+                    htmlTabla += `<tr style="${estiloFila}">
+                        ${colExtraContenido}
+                        <td><strong>${m.codigo_proyecto || 'S/N'}</strong></td>
+                        <td>${ubi}<br><small>Suite ${m.suite}</small></td>
+                        <td style="white-space: nowrap;">${prodEspacio}</td>
+                        <td><span style="font-weight:bold; color:${colorHex}">${m.estado}</span>${extra}</td>
+                    </tr>`;
+                });
+            }
+            
             htmlTabla += `</tbody></table></div></div>`;
-
-            Swal.fire({ title: titulo, html: htmlTabla, width: '800px', confirmButtonText: 'Cerrar', confirmButtonColor: '#475569' });
+            Swal.fire({ title: titulo, html: htmlTabla, width: '850px', confirmButtonText: 'Cerrar', confirmButtonColor: '#475569' });
         }
 
-        async function marcarUrgencia(id_mueble, estadoActual, tipoModal) {
-            let nuevoEstado = !estadoActual;
+        async function cambiarPrioridad(id_mueble, prioActual, tipoModal) {
+            // Ciclo: 0 (Nada) -> 1 (Oro) -> 2 (Naranja) -> 0
+            let nuevaPrio = 0;
+            if (prioActual === 0 || !prioActual) nuevaPrio = 1;
+            else if (prioActual === 1) nuevaPrio = 2;
+            else nuevaPrio = 0;
             
             let mueble = window.mueblesCargados.find(m => m.id === id_mueble);
-            if(mueble) mueble.urgente = nuevoEstado;
+            if(mueble) mueble.nivel_prioridad = nuevaPrio;
 
-            verListaModal(tipoModal);
+            verListaModal(tipoModal); // Recarga instantánea visual
 
-            const { error } = await supabaseClient.from('registros_produccion').update({ urgente: nuevoEstado }).eq('id', id_mueble);
+            const { error } = await supabaseClient.from('registros_produccion').update({ nivel_prioridad: nuevaPrio }).eq('id', id_mueble);
             if(error) {
-                if(mueble) mueble.urgente = estadoActual;
+                if(mueble) mueble.nivel_prioridad = prioActual; // Si falla, lo devuelve
                 verListaModal(tipoModal);
                 Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Error de conexión', showConfirmButton: false, timer: 2000 });
             }
         }
 
+        // ===============================================
+        // RESTO DE FUNCIONES (GRAFICAS, NOTAS, ETC)
+        // ===============================================
         function actualizarFiltrosMetas() { document.getElementById('sel_piso').value = ""; resetearBarra(); actualizarGraficasDinamicas(); calcularAvance(); }
 
         function actualizarGraficasDinamicas() {
@@ -726,7 +529,6 @@
 
             animarContador('total_muebles', mueblesFiltrados.length);
             animarContador('total_digitalizar', mueblesFiltrados.filter(m => m.estado && m.estado.toLowerCase() === 'por digitalizar').length);
-            // Agregado animación para Por Fabricar
             animarContador('total_fabricar', mueblesFiltrados.filter(m => m.estado && m.estado.toLowerCase().includes('fabric')).length);
             animarContador('total_alertas', mueblesFiltrados.filter(m => m.estado && m.estado.toLowerCase().includes('bloque')).length);
             animarContador('total_completados', mueblesFiltrados.filter(m => window.estadosFinales.includes(m.estado)).length);
@@ -781,6 +583,22 @@
         function animarContador(idElemento, valorFinal) { let actual = 0; const elemento = document.getElementById(idElemento); const incremento = Math.max(1, Math.floor(valorFinal / 20)); const intervalo = setInterval(() => { actual += incremento; if (actual >= valorFinal) { actual = valorFinal; clearInterval(intervalo); } elemento.innerText = actual; }, 30); }        
         function dibujarGraficaEstados(datos) { const ctx = document.getElementById('chartEstados').getContext('2d'); if (myChartEstados) myChartEstados.destroy(); const etiquetas = Object.keys(datos); const valores = Object.values(datos); const colores = ['#94a3b8', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#14b8a6']; myChartEstados = new Chart(ctx, { type: 'doughnut', data: { labels: etiquetas, datasets: [{ data: valores, backgroundColor: colores.slice(0, etiquetas.length), borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { boxWidth: 15, font: { size: 11 } } } }, cutout: '60%' } }); }        
         function dibujarGraficaProyectos(datos, diccionarioColores) { const ctx = document.getElementById('chartProyectos').getContext('2d'); if (myChartProyectos) myChartProyectos.destroy(); const etiquetas = Object.keys(datos); const valores = Object.values(datos); const coloresBarra = etiquetas.map(lbl => diccionarioColores[lbl] || '#3b82f6'); myChartProyectos = new Chart(ctx, { type: 'bar', data: { labels: etiquetas, datasets: [{ label: 'Cant. de Muebles', data: valores, backgroundColor: coloresBarra, borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } }, x: { grid: { display: false } } } } }); }
+        
+        // FUNCIONES DE NOTIFICACIONES GLOBALES (REDUCIDAS PARA ESPACIO)
+        function verNotificacionesGlobales() {
+            if ('Notification' in window && Notification.permission !== 'granted') Notification.requestPermission();
+            if (!window.historialGlobal || window.historialGlobal.length === 0) return Swal.fire({ icon: 'info', title: 'Sin actividad', text: 'No hay registros recientes.' });
+            localStorage.setItem('ultimoIdNotifVeta', window.historialGlobal[0].id);
+            document.getElementById('badge_notificaciones').style.display = 'none'; window.alertasNoLeidas = 0; actualizarBadgeSistemaOS();
+            let html = '<div style="text-align: left; max-height: 450px; overflow-y: auto;">';
+            window.historialGlobal.forEach(h => {
+                let m = window.mueblesCargados.find(x => x.id === h.id_mueble);
+                let ubi = m ? `<b>${m.proyecto}</b> (P${m.piso}${m.bloque?'- Blq '+m.bloque:''}-S${m.suite})` : "Pieza desconocida";
+                let icono = h.tipo_registro.includes('Falla') ? '🛑' : (h.tipo_registro.includes('Edición') ? '✏️' : '✨');
+                html += `<div class="notif-item"><div class="notif-icon">${icono}</div><div class="notif-content"><span style="color:#3b82f6; font-weight:bold;">👤 ${h.operador || 'Operador'}</span> <span style="color:#334155;">registró: <b>${h.tipo_registro}</b> en ${ubi}</span><br><span style="color: #64748b; font-style: italic;">"${h.comentarios || h.etapa}"</span></div></div>`;
+            });
+            Swal.fire({ title: '🔔 Bitácora (Últimos 50)', html: html + '</div>', width: '650px' });
+        }
     </script>
 </body>
 </html>
