@@ -80,11 +80,10 @@
         .mi-lote-item.completado { background: #f8fafc; opacity: 0.75; border-left: 4px solid #10b981; }
         .mi-lote-item.completado .lote-titulo { text-decoration: line-through; color: #64748b; }
         .check-grande { width: 22px; height: 22px; margin-top: 2px; cursor: pointer; accent-color: #10b981; flex-shrink: 0; }
-        .lote-contenido { flex: 1; min-width: 0; /* Previene el desbordamiento flex */ }
-        .lote-titulo { font-size: 15px; color: #0f172a; margin-bottom: 4px; }
-        .lote-sub { font-size: 12px; color: #475569; margin-bottom: 8px; }
-        .lote-nota-input { width: 100%; border: none; border-bottom: 1px dashed #cbd5e1; background: transparent; font-size: 13px; color: #0f172a; padding: 4px 0; outline: none; font-style: italic; transition: 0.2s; }
-        .lote-nota-input:focus { border-bottom-color: #8b5cf6; background: #f8fafc; }
+        .lote-contenido { flex: 1; min-width: 0; }
+        .lote-titulo { font-size: 16px; font-weight: bold; color: #2563eb; margin-bottom: 4px; }
+        .lote-nombre { font-size: 14px; font-weight: bold; color: #1e293b; line-height: 1.4; margin-bottom: 6px; }
+        .lote-sub { font-size: 12px; color: #475569; margin-bottom: 12px; }
 
         /* --- PESTAÑA 3: BITÁCORA DE RELEVO DE TURNOS --- */
         .relevo-grid { display: grid; grid-template-columns: 1fr; gap: 20px; width: 100%; }
@@ -251,13 +250,13 @@
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
                             <div>
                                 <h3 style="margin:0; color:#1e293b;">📋 Mi Hoja de Ruta del Turno</h3>
-                                <p style="margin:3px 0 0 0; font-size:12px; color:#64748b;">Anota los códigos que vas a trabajar hoy, escribe tus notas (PDF, capturas) y márcalos al terminar.</p>
+                                <p style="margin:3px 0 0 0; font-size:12px; color:#64748b;">Anota los códigos que vas a trabajar hoy y márcalos al terminar.</p>
                             </div>
                             <button onclick="limpiarCompletadosLista()" style="background:#f1f5f9; border:1px solid #cbd5e1; color:#475569; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">🧹 Limpiar Terminados</button>
                         </div>
 
                         <div class="add-lote-bar">
-                            <input type="text" id="input_nuevo_lote_lista" placeholder="Escribe código (Ej: 474, 516) o descripción..." onkeypress="if(event.key==='Enter') agregarAMiLista()">
+                            <input type="text" id="input_nuevo_lote_lista" placeholder="Escribe código (Ej: 474, 516)..." onkeypress="if(event.key==='Enter') agregarAMiLista()">
                             <button onclick="agregarAMiLista()">+ Agregar</button>
                         </div>
 
@@ -590,7 +589,7 @@
         function cancelarOperacion() { piezasLoteActual = []; estadoSiguienteLote = null; document.getElementById('codigo_ingresado').value = ''; document.getElementById('panel_resultado').style.display = 'none'; document.getElementById('panel_busqueda').style.display = 'block'; document.getElementById('codigo_ingresado').focus(); }
 
         // ==========================================
-        // PESTAÑA 2: MI LISTA (MEJORADA CON LÓGICA DASHBOARD)
+        // PESTAÑA 2: MI LISTA (MEJORADA CON LÓGICA DASHBOARD "POR FABRICAR" Y FORMATO COMPLETO)
         // ==========================================
         function obtenerMiLista() { try { return JSON.parse(localStorage.getItem(STORAGE_LISTA_KEY) || '[]'); } catch { return []; } }
         function guardarMiLista(lista) { localStorage.setItem(STORAGE_LISTA_KEY, JSON.stringify(lista)); }
@@ -640,11 +639,11 @@
                 }
                 
                 let txtSub = arrSubItems.join(' | ');
-                resumenProyecto = `${pzas[0].proyecto} - ${pzas[0].producto} ${txtSub ? '- ' + txtSub : ''}`;
+                resumenProyecto = `${pzas[0].proyecto} — ${pzas[0].producto} ${txtSub ? '— ' + txtSub : ''}`;
                 estadoActual = pzas[0].estado; 
             }
             
-            lista.unshift({ id: Date.now(), codigo: texto, resumen: resumenProyecto, estado: estadoActual, nota: "PDF elaborado, captura enviada", completado: false });
+            lista.unshift({ id: Date.now(), codigo: texto, resumen: resumenProyecto, estado: estadoActual, completado: false });
             guardarMiLista(lista); input.value = ''; renderizarMiLista();
         }
 
@@ -657,12 +656,9 @@
                     <div class="mi-lote-item ${item.completado ? 'completado' : ''}">
                         <input type="checkbox" class="check-grande" ${item.completado ? 'checked' : ''} onchange="marcarItemLista(${item.id}, this.checked)">
                         <div class="lote-contenido">
-                            <div class="lote-titulo" style="line-height:1.4;">
-                                <span style="color:#2563eb; font-size:16px;">#${item.codigo}</span><br>
-                                <span style="font-size:13px; font-weight:normal; color:#334155;">${item.resumen}</span>
-                            </div>
-                            <div class="lote-sub" style="margin-top:6px;">Estado ref: <b style="color:#0f172a;">${item.estado}</b></div>
-                            <input type="text" class="lote-nota-input" value="${item.nota || ''}" placeholder="Escribe nota rápida..." onchange="actualizarNotaLista(${item.id}, this.value)" style="margin-bottom:12px; background:#f8fafc; padding:8px; border-radius:4px; border:1px solid #e2e8f0; width: 100%; box-sizing: border-box;">
+                            <div class="lote-titulo">#${item.codigo}</div>
+                            <div class="lote-nombre">${item.resumen}</div>
+                            <div class="lote-sub">Estado ref: <b style="color:#0f172a;">${item.estado}</b></div>
                             <div style="display:flex; align-items:center; gap:8px;">
                                 <button onclick="abrirEnEscaner('${item.codigo}')" style="flex:1; background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; padding:8px 10px; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer;">⚡ Procesar</button>
                                 <button onclick="eliminarItemLista(${item.id})" title="Quitar de mi lista" style="background:#fef2f2; color:#ef4444; border:1px solid #fecaca; padding:8px 14px; border-radius:6px; font-size:14px; cursor:pointer;">🗑️</button>
