@@ -707,13 +707,22 @@
 
             let rutasGuardadas = [];
 
-            // Subir imágenes si existen
+            // Subir imágenes si existen con manejo de errores blindado
             if (archivosFotosTurno.length > 0) {
                 for (let foto of archivosFotosTurno) {
                     let nombreUnico = Date.now() + "_" + foto.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
                     let filePath = "evidencia/" + nombreUnico;
+                    
                     const { error: uploadError } = await supabaseClient.storage.from('fotos_turno').upload(filePath, foto);
-                    if (!uploadError) { rutasGuardadas.push(filePath); }
+                    
+                    if (uploadError) {
+                        btn.disabled = false;
+                        actualizarTemaTurnoFormulario();
+                        Swal.fire('Error al subir foto', 'Detalle: ' + uploadError.message, 'error');
+                        return; // Detiene todo el proceso si falla la subida
+                    } else {
+                        rutasGuardadas.push(filePath);
+                    }
                 }
             }
 
