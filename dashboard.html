@@ -5,27 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Dashboard - VetaCucine</title>
     <link rel="manifest" href="manifest.json">
-    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
         /* --- ESTILOS BASE Y BLOQUEO DE DESBORDAMIENTO --- */
-        html, body { 
-            font-family: Arial, sans-serif; 
-            margin: 0; 
-            padding: 0; 
-            background-color: #f8fafc; 
-            width: 100vw;
-            overflow-x: hidden; /* Prohíbe el deslizamiento horizontal en toda la página */
-        }
-        .app-container { 
-            display: flex; 
-            height: 100vh; 
-            width: 100vw; 
-            overflow-x: hidden; 
-        }
+        html, body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f8fafc; width: 100vw; overflow-x: hidden; }
+        .app-container { display: flex; height: 100vh; width: 100vw; overflow-x: hidden; }
         
         .sidebar { width: 250px; background-color: #1e293b; color: white; display: flex; flex-direction: column; transition: 0.3s; box-shadow: 2px 0 10px rgba(0,0,0,0.1); z-index: 10; }
         .sidebar-header { padding: 25px 20px; font-size: 22px; font-weight: bold; border-bottom: 1px solid #334155; text-align: center; letter-spacing: 1px; color: white; }
@@ -38,7 +25,6 @@
         .nav-links a.active { background-color: #0f172a; border-left-color: #3b82f6; color: white; font-weight: bold; }
         
         .main-content { flex: 1; padding: 25px; overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; box-sizing: border-box; }
-
         .header-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; width: 100%; box-sizing: border-box; }
         .header-title { margin: 0; color: #1e293b; font-size: 24px; }
         
@@ -86,7 +72,7 @@
         .btn-salir:hover { background-color: #fef2f2; }
 
         /* TARJETAS Y CONTENIDO */
-        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 25px; width: 100%; box-sizing: border-box; }
+        .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; margin-bottom: 25px; width: 100%; box-sizing: border-box; }
         .stat-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); border-left: 5px solid #ccc; display: flex; flex-direction: column; justify-content: center; position: relative; }
         .stat-card h4 { margin: 0; font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
         .stat-card .numero { font-size: 32px; font-weight: bold; margin: 0; line-height: 1; }
@@ -95,6 +81,7 @@
         .border-purple { border-left-color: #8b5cf6; } .border-purple .numero { color: #7c3aed; }
         .border-red { border-left-color: #ef4444; } .border-red .numero { color: #ef4444; }
         .border-green { border-left-color: #10b981; } .border-green .numero { color: #10b981; }
+        .border-orange { border-left-color: #f59e0b; } .border-orange .numero { color: #d97706; }
 
         .clickable-card { cursor: pointer; transition: 0.2s ease; }
         .clickable-card:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1); }
@@ -120,7 +107,7 @@
 
         /* ESTILOS DE LA TABLA RESPONSIVA DENTRO DEL MODAL */
         .tabla-responsive-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        .tabla-alertas { width: 100%; min-width: 550px; /* Asegura que la tabla no se aplaste */ border-collapse: collapse; text-align: left; font-size: 12px; margin-top: 0; }
+        .tabla-alertas { width: 100%; min-width: 550px; border-collapse: collapse; text-align: left; font-size: 12px; margin-top: 0; }
         .tabla-alertas th, .tabla-alertas td { border-bottom: 1px solid #e2e8f0; padding: 10px 8px; }
         .tabla-alertas th { background-color: #f1f5f9; color: #334155; position: sticky; top: 0; z-index: 2; }
 
@@ -131,28 +118,23 @@
         .notif-content { flex: 1; }
         .notif-time { font-size: 11px; color: #94a3b8; margin-top: 5px; font-weight: bold; }
 
-        @media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+        /* FIRMA DE OPERADOR EN MODAL */
+        .firma-op { background:#f1f5f9; color:#475569; font-size:10px; font-weight:bold; padding:2px 6px; border-radius:4px; display:inline-flex; align-items:center; gap:4px; margin-top:4px; border:1px solid #e2e8f0; }
+
+        @media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }        
         
         /* --- REGLAS ESTRICTAS PARA DISPOSITIVOS MÓVILES --- */
         @media (max-width: 768px) { 
-            /* Bloqueo absoluto de deslizamiento horizontal en la página */
             html, body { overflow-x: hidden !important; overflow-y: auto !important; position: relative; }
             .app-container { flex-direction: column; height: auto; width: 100%; overflow-x: hidden !important; }
             
             .sidebar { width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 100; }
             .sidebar-header { padding: 15px; font-size: 20px; }
             
-            /* Menú superior deslizable suavemente */
-            .nav-links { 
-                flex-direction: row; margin-top: 0; justify-content: flex-start; 
-                background-color: #0f172a; overflow-x: auto; overflow-y: hidden; 
-                white-space: nowrap; -webkit-overflow-scrolling: touch; padding: 0 5px; 
-            }
+            .nav-links { flex-direction: row; margin-top: 0; justify-content: flex-start; background-color: #0f172a; overflow-x: auto; overflow-y: hidden; white-space: nowrap; -webkit-overflow-scrolling: touch; padding: 0 5px; }
             .nav-links::-webkit-scrollbar { display: none; } 
-            .nav-links a { 
-                padding: 12px 15px; font-size: 13px; border-left: none; border-bottom: 3px solid transparent; 
-                flex: 0 0 auto; gap: 6px; display: inline-flex; align-items: center;
-            }
+            .nav-links a { padding: 12px 15px; font-size: 13px; border-left: none; border-bottom: 3px solid transparent; flex: 0 0 auto; gap: 6px; display: inline-flex; align-items: center; }
             .nav-links a.active { border-left: none; border-bottom-color: #3b82f6; }
 
             .main-content { padding: 15px; height: auto; width: 100%; box-sizing: border-box; overflow-x: hidden !important; }
@@ -177,6 +159,7 @@
                 <li><a href="dashboard.html" class="active">📊 Dashboard</a></li>
                 <li><a href="taller.html">🏭 Panel Operador</a></li>
                 <li><a href="index.html">📝 Ingreso Muebles</a></li>
+                <li><a href="tablero.html">📋 Tablero Kanban</a></li>
                 <li><a href="reportes.html">🔍 Buscar y Reportes</a></li>
                 <li><a href="admin.html" id="link-admin">⚙️ Administrador</a></li>
             </ul>
@@ -237,6 +220,13 @@
                     <h4>Por Digitalizar</h4>
                     <p class="numero" id="total_digitalizar">0</p>
                 </div>
+                
+                <!-- NUEVA TARJETA: POR FABRICAR -->
+                <div class="stat-card border-orange clickable-card" onclick="verListaModal('fabricar')">
+                    <h4>Por Fabricar</h4>
+                    <p class="numero" id="total_fabricar">0</p>
+                </div>
+
                 <div class="stat-card border-red clickable-card" onclick="verListaModal('alertas')">
                     <h4>Alertas (Bloqueados)</h4>
                     <p class="numero" id="total_alertas">0</p>
@@ -355,6 +345,8 @@
                 window.estadosFinales = estadosCat.filter(e => !e.estado_siguiente || e.estado_siguiente.trim() === '' || e.nombre.toLowerCase().includes('enviad') || e.nombre.toLowerCase().includes('instalad')).map(e => e.nombre);
             }
 
+            // AHORA TAMBIÉN TRAEMOS EL CAMPO "movido_por" PARA LA FIRMA EN FABRICACIÓN
+            // Asumiendo que la firma del tablero Kanban se guardará eventualmente ahí. Si no, lo leeremos del historial
             const { data: muebles } = await supabaseClient.from('registros_produccion').select('*');
             if (muebles) {
                 window.mueblesCargados = muebles;
@@ -387,10 +379,7 @@
                 });
             }
 
-            const { data: historialReciente } = await supabaseClient.from('historial_trazabilidad')
-                .select('*')
-                .order('id', { ascending: false })
-                .limit(50);
+            const { data: historialReciente } = await supabaseClient.from('historial_trazabilidad').select('*').order('id', { ascending: false }).limit(50);
             
             if (historialReciente) {
                 window.historialGlobal = historialReciente;
@@ -459,14 +448,7 @@
             
             html += '</div>';
 
-            Swal.fire({
-                title: '🔔 Bitácora de Planta (Últimos 50)',
-                html: html,
-                width: '650px',
-                showConfirmButton: true,
-                confirmButtonText: 'Cerrar Panel',
-                confirmButtonColor: '#475569'
-            });
+            Swal.fire({ title: '🔔 Bitácora de Planta (Últimos 50)', html: html, width: '650px', showConfirmButton: true, confirmButtonText: 'Cerrar Panel', confirmButtonColor: '#475569' });
         }
 
         function tiempoTranscurrido(fechaDB) {
@@ -510,7 +492,6 @@
 
         async function cargarNotasEquipo() {
             const contenedor = document.getElementById('lista-notas');
-
             const { data: ocultas } = await supabaseClient.from('notas_ocultas').select('nota_id').eq('usuario_email', USUARIO_ACTUAL_EMAIL);
             const idsOcultas = ocultas ? ocultas.map(o => o.nota_id) : [];
 
@@ -560,13 +541,9 @@
             btn.disabled = true; btn.innerText = "Guardando...";
 
             if (idNotaEnEdicion) {
-                await supabaseClient.from('notas_equipo').update({ 
-                    contenido: contenido, importante: importante, editada: true, fecha_actualizacion: new Date().toISOString() 
-                }).eq('id', idNotaEnEdicion);
+                await supabaseClient.from('notas_equipo').update({ contenido: contenido, importante: importante, editada: true, fecha_actualizacion: new Date().toISOString() }).eq('id', idNotaEnEdicion);
             } else {
-                await supabaseClient.from('notas_equipo').insert([{ 
-                    autor_email: USUARIO_ACTUAL_EMAIL, autor_nombre: USUARIO_ACTUAL_NOMBRE, contenido: contenido, importante: importante 
-                }]);
+                await supabaseClient.from('notas_equipo').insert([{ autor_email: USUARIO_ACTUAL_EMAIL, autor_nombre: USUARIO_ACTUAL_NOMBRE, contenido: contenido, importante: importante }]);
             }
 
             btn.disabled = false; btn.innerText = "Publicar";
@@ -576,10 +553,7 @@
 
         async function borrarNotaEquipo(id) {
             const result = await Swal.fire({ title: '¿Borrar nota?', text: "Se eliminará para todos los usuarios", icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar' });
-            if (result.isConfirmed) {
-                await supabaseClient.from('notas_equipo').delete().eq('id', id);
-                cargarNotasEquipo();
-            }
+            if (result.isConfirmed) { await supabaseClient.from('notas_equipo').delete().eq('id', id); cargarNotasEquipo(); }
         }
 
         async function ocultarNotaEquipo(id) {
@@ -592,19 +566,13 @@
             const badge = document.getElementById('badge-notas');
             const panel = document.getElementById('panel-notas');
             
-            if (panel.style.display === 'block') { 
-                badge.style.display = 'none'; 
-                window.notasNoLeidas = 0;
-                actualizarBadgeSistemaOS();
-                return; 
-            }
+            if (panel.style.display === 'block') { badge.style.display = 'none'; window.notasNoLeidas = 0; actualizarBadgeSistemaOS(); return; }
 
             if (!ultimaRevisionStr) {
                 badge.innerText = notas.length > 9 ? '9+' : notas.length;
                 badge.style.display = notas.length > 0 ? 'flex' : 'none';
                 window.notasNoLeidas = notas.length;
-                actualizarBadgeSistemaOS();
-                return;
+                actualizarBadgeSistemaOS(); return;
             }
 
             const fechaUltimaRevision = new Date(ultimaRevisionStr);
@@ -615,51 +583,71 @@
                 badge.style.display = 'flex';
                 window.notasNoLeidas = notasNuevas;
             } else {
-                badge.style.display = 'none';
-                window.notasNoLeidas = 0;
+                badge.style.display = 'none'; window.notasNoLeidas = 0;
             }
             actualizarBadgeSistemaOS();
         }
 
-        function abrirCajaEdicion() {
-            document.getElementById('caja-edicion-nota').style.display = 'block';
-            document.getElementById('texto-nota').focus();
-        }
+        function abrirCajaEdicion() { document.getElementById('caja-edicion-nota').style.display = 'block'; document.getElementById('texto-nota').focus(); }
+        function cerrarCajaEdicion() { document.getElementById('caja-edicion-nota').style.display = 'none'; document.getElementById('texto-nota').value = ''; document.getElementById('chk-importante').checked = false; idNotaEnEdicion = null; }
+        function prepararEdicionNota(id, contenido, importante) { idNotaEnEdicion = id; document.getElementById('texto-nota').value = contenido; document.getElementById('chk-importante').checked = importante; abrirCajaEdicion(); }
 
-        function cerrarCajaEdicion() {
-            document.getElementById('caja-edicion-nota').style.display = 'none';
-            document.getElementById('texto-nota').value = '';
-            document.getElementById('chk-importante').checked = false;
-            idNotaEnEdicion = null;
-        }
-
-        function prepararEdicionNota(id, contenido, importante) {
-            idNotaEnEdicion = id;
-            document.getElementById('texto-nota').value = contenido;
-            document.getElementById('chk-importante').checked = importante;
-            abrirCajaEdicion();
-        }
-
+        // ===============================================
+        // FUNCIÓN PRINCIPAL DE LISTAS Y ORDENAMIENTO (ACTUALIZADA)
+        // ===============================================
         function verListaModal(tipo) {
             let lista = []; let titulo = ""; let colorHex = "";
-
-            if (tipo === 'total') { lista = window.mueblesFiltradosGlobal; titulo = "📋 Todos los Muebles en el Filtro Actual"; colorHex = "#3b82f6"; } 
-            else if (tipo === 'digitalizar') { lista = window.mueblesFiltradosGlobal.filter(m => m.estado && m.estado.toLowerCase() === 'por digitalizar'); titulo = "📐 Pendientes por Digitalizar"; colorHex = "#8b5cf6"; } 
-            else if (tipo === 'alertas') { lista = window.mueblesFiltradosGlobal.filter(m => m.estado && m.estado.toLowerCase().includes('bloque')); titulo = "🛑 Muebles Bloqueados (Alertas)"; colorHex = "#ef4444"; } 
-            else if (tipo === 'completados') { lista = window.mueblesFiltradosGlobal.filter(m => window.estadosFinales.includes(m.estado)); titulo = "✅ Muebles Completados / Enviados"; colorHex = "#10b981"; }
+            let permitirEstrella = true; // Por defecto permitimos marcar como urgente
+            
+            if (tipo === 'total') { 
+                lista = window.mueblesFiltradosGlobal; 
+                titulo = "📋 Todos los Muebles en el Filtro Actual"; colorHex = "#3b82f6"; 
+            } 
+            else if (tipo === 'digitalizar') { 
+                lista = window.mueblesFiltradosGlobal.filter(m => m.estado && m.estado.toLowerCase() === 'por digitalizar'); 
+                titulo = "📐 Pendientes por Digitalizar"; colorHex = "#8b5cf6"; 
+            } 
+            else if (tipo === 'fabricar') { 
+                // Asumimos que cualquier variación de "fabric" entra aquí (Por Fabricar, Fabricando, etc)
+                lista = window.mueblesFiltradosGlobal.filter(m => m.estado && m.estado.toLowerCase().includes('fabric')); 
+                titulo = "🏭 Muebles en Área de Fabricación"; colorHex = "#f59e0b"; 
+                permitirEstrella = false; // Bloqueamos la estrella en fabricación
+            } 
+            else if (tipo === 'alertas') { 
+                lista = window.mueblesFiltradosGlobal.filter(m => m.estado && m.estado.toLowerCase().includes('bloque')); 
+                titulo = "🛑 Muebles Bloqueados (Alertas)"; colorHex = "#ef4444"; 
+            } 
+            else if (tipo === 'completados') { 
+                lista = window.mueblesFiltradosGlobal.filter(m => window.estadosFinales.includes(m.estado)); 
+                titulo = "✅ Muebles Completados / Enviados"; colorHex = "#10b981"; 
+            }
 
             if(lista.length === 0) { Swal.fire({ icon: 'info', title: 'Lista vacía', text: 'No hay muebles en esta categoría con los filtros actuales.', confirmButtonColor: colorHex }); return; }
 
-            // Ordenamos la lista para que los urgentes queden de primeros
-            lista.sort((a, b) => (b.urgente === true) - (a.urgente === true));
+            // LÓGICA DE ORDENAMIENTO ESTRICTA
+            lista.sort((a, b) => {
+                // Primero: La Estrella Manda (Solo si está permitida en este modo)
+                if (permitirEstrella) {
+                    if (a.urgente && !b.urgente) return -1;
+                    if (!a.urgente && b.urgente) return 1;
+                }
+                
+                // Segundo: Orden numérico por Código de Proyecto
+                let codA = parseInt(a.codigo_proyecto) || 999999; // Si no tiene código, se va al fondo
+                let codB = parseInt(b.codigo_proyecto) || 999999;
+                
+                return codA - codB;
+            });
 
-            // ENCAPSULAMIENTO RESPONSIVO DE LA TABLA
+            // CABECERAS DE TABLA DINÁMICAS (Cambian dependiendo si hay estrella o firma)
+            let colExtraCabecera = permitirEstrella ? '<th style="width: 35px; text-align:center;" title="Prioridad">⭐</th>' : '<th>Firma Responsable</th>';
+
             let htmlTabla = `<div style="max-height: 55vh; overflow-y: auto; text-align: left;">
                 <div class="tabla-responsive-wrapper">
                     <table class="tabla-alertas">
                     <thead>
                         <tr>
-                            <th style="width: 35px; text-align:center;" title="Prioridad">⭐</th>
+                            ${colExtraCabecera}
                             <th>Cód.</th>
                             <th>Ubicación</th>
                             <th>Producto</th>
@@ -674,16 +662,29 @@
                 let colorObs = m.estado.toLowerCase().includes('bloque') ? '#ef4444' : '#64748b';
                 let extra = m.observaciones ? `<br><small style="color:${colorObs};"><i>${m.observaciones}</i></small>` : '';
                 
-                // LÓGICA DE DISEÑO DE URGENCIA
-                let esUrgente = m.urgente === true;
-                let iconoUrgencia = esUrgente ? '⭐' : '<span style="color:#cbd5e1; font-size:16px;">☆</span>';
-                let estiloFila = esUrgente ? 'background-color: #fffbeb; box-shadow: inset 4px 0 0 #f59e0b;' : '';
-
-                // LÓGICA DE PRODUCTO - ESPACIO
                 let prodEspacio = m.espacio ? `${m.producto} - ${m.espacio}` : m.producto;
+                
+                let colExtraContenido = "";
+                let estiloFila = "";
+
+                if (permitirEstrella) {
+                    // Modo Digitalización (Con estrella de prioridad)
+                    let esUrgente = m.urgente === true;
+                    let iconoUrgencia = esUrgente ? '⭐' : '<span style="color:#cbd5e1; font-size:16px;">☆</span>';
+                    estiloFila = esUrgente ? 'background-color: #fffbeb; box-shadow: inset 4px 0 0 #f59e0b;' : '';
+                    colExtraContenido = `<td style="text-align:center; cursor:pointer; font-size:18px; user-select:none;" onclick="marcarUrgencia('${m.id}', ${esUrgente}, '${tipo}')">${iconoUrgencia}</td>`;
+                } else {
+                    // Modo Fabricación (Con Firma de quien lo procesó/digitalizó)
+                    let firmaTexto = "Sin registrar";
+                    if (m.movido_por) {
+                        let iniOp = m.movido_por.substring(0, 2).toUpperCase();
+                        firmaTexto = `<div class="firma-op"><span style="background:#8b5cf6; color:white; width:16px; height:16px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:8px;">${iniOp}</span> ${m.movido_por}</div>`;
+                    }
+                    colExtraContenido = `<td>${firmaTexto}</td>`;
+                }
 
                 htmlTabla += `<tr style="${estiloFila}">
-                    <td style="text-align:center; cursor:pointer; font-size:18px; user-select:none;" onclick="marcarUrgencia('${m.id}', ${esUrgente}, '${tipo}')">${iconoUrgencia}</td>
+                    ${colExtraContenido}
                     <td><strong>${m.codigo_proyecto || 'S/N'}</strong></td>
                     <td>${ubi}<br><small>Suite ${m.suite}</small></td>
                     <td style="white-space: nowrap;">${prodEspacio}</td>
@@ -698,30 +699,20 @@
         async function marcarUrgencia(id_mueble, estadoActual, tipoModal) {
             let nuevoEstado = !estadoActual;
             
-            // 1. Actualizamos nuestra memoria local para que la interfaz reaccione al instante
             let mueble = window.mueblesCargados.find(m => m.id === id_mueble);
             if(mueble) mueble.urgente = nuevoEstado;
 
-            // 2. Recargamos el modal para que el mueble salte arriba y cambie de color
             verListaModal(tipoModal);
 
-            // 3. Enviamos el dato silenciosamente a Supabase
-            const { error } = await supabaseClient.from('registros_produccion')
-                .update({ urgente: nuevoEstado })
-                .eq('id', id_mueble);
-
+            const { error } = await supabaseClient.from('registros_produccion').update({ urgente: nuevoEstado }).eq('id', id_mueble);
             if(error) {
-                console.error("Fallo al guardar urgencia:", error);
-                // Si falla el internet, revertimos el cambio visualmente
                 if(mueble) mueble.urgente = estadoActual;
                 verListaModal(tipoModal);
                 Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Error de conexión', showConfirmButton: false, timer: 2000 });
             }
         }
 
-        function actualizarFiltrosMetas() {
-            document.getElementById('sel_piso').value = ""; resetearBarra(); actualizarGraficasDinamicas(); calcularAvance();
-        }
+        function actualizarFiltrosMetas() { document.getElementById('sel_piso').value = ""; resetearBarra(); actualizarGraficasDinamicas(); calcularAvance(); }
 
         function actualizarGraficasDinamicas() {
             let proy = document.getElementById('sel_proy').value; let pisoRaw = document.getElementById('sel_piso').value.trim().toUpperCase(); let prod = document.getElementById('sel_prod').value;
@@ -735,6 +726,8 @@
 
             animarContador('total_muebles', mueblesFiltrados.length);
             animarContador('total_digitalizar', mueblesFiltrados.filter(m => m.estado && m.estado.toLowerCase() === 'por digitalizar').length);
+            // Agregado animación para Por Fabricar
+            animarContador('total_fabricar', mueblesFiltrados.filter(m => m.estado && m.estado.toLowerCase().includes('fabric')).length);
             animarContador('total_alertas', mueblesFiltrados.filter(m => m.estado && m.estado.toLowerCase().includes('bloque')).length);
             animarContador('total_completados', mueblesFiltrados.filter(m => window.estadosFinales.includes(m.estado)).length);
 
@@ -746,16 +739,14 @@
         function calcularAvance() {
             actualizarGraficasDinamicas();
             let proy = document.getElementById('sel_proy').value; let pisoRaw = document.getElementById('sel_piso').value.trim().toUpperCase(); let piso = pisoRaw === "" ? "TODOS" : pisoRaw; let prod = document.getElementById('sel_prod').value;
-
             if(!proy || !prod) { resetearBarra(); document.getElementById('texto_progreso').innerHTML = "Selecciona un proyecto y producto para ver el progreso real."; return; }
-
+            
             let metaTotal = 0; let usoMetaGeneral = false; let mensajeAviso = "";
-
+            
             if (piso === "TODOS") {
                 let metaGral = window.metasCargadas.find(m => m.proyecto === proy && m.piso === "TODOS" && m.producto === prod);
                 let mueblesDelProy = window.mueblesCargados.filter(m => { let nombreArmado = m.bloque ? `${m.proyecto} - Bloque ${m.bloque}` : m.proyecto; return nombreArmado === proy; });
                 let pisosActivos = [...new Set(mueblesDelProy.map(m => (m.piso || "").toUpperCase()))];
-
                 if (pisosActivos.length === 0) { if (metaGral) metaTotal = metaGral.cantidad_esperada; } 
                 else { pisosActivos.forEach(p => { let metaEsp = window.metasCargadas.find(m => m.proyecto === proy && m.piso === p && m.producto === prod); if (metaEsp) { metaTotal += metaEsp.cantidad_esperada; } else if (metaGral) { metaTotal += metaGral.cantidad_esperada; usoMetaGeneral = true; } }); }
                 if (metaTotal === 0) { document.getElementById('texto_progreso').innerHTML = "<span style='color:#ef4444;'>⚠️ No hay meta general registrada.</span>"; resetearBarra(); return; }
@@ -767,24 +758,28 @@
                 metaTotal = meta.cantidad_esperada;
                 if (usoMetaGeneral) { mensajeAviso = `<br><span style="color:#3b82f6; font-size:11px;">*Usando la meta general (plantilla) para el piso ${pisoRaw}.</span>`; }
             }
-
+            
             let mueblesReales = window.mueblesCargados.filter(m => { let nombreArmado = m.bloque ? `${m.proyecto} - Bloque ${m.bloque}` : m.proyecto; return nombreArmado === proy && m.producto === prod; });
             if(piso !== "TODOS") { mueblesReales = mueblesReales.filter(m => (m.piso || "").toUpperCase() === pisoRaw); }
-
-            let terminadas = mueblesReales.filter(m => window.estadosFinales.includes(m.estado)).length; let bloqueadas = mueblesReales.filter(m => m.estado && m.estado.toLowerCase().includes('bloque')).length; let enProceso = mueblesReales.length - terminadas - bloqueadas;
-            let totalReal = terminadas + enProceso + bloqueadas; let baseVisual = Math.max(metaTotal, totalReal); let faltantes = metaTotal - totalReal; if (faltantes < 0) faltantes = 0; 
             
-            document.getElementById('bar_verde').style.width = `${(terminadas / baseVisual) * 100}%`; document.getElementById('bar_verde').innerHTML = terminadas > 0 ? `${terminadas}` : '';
-            document.getElementById('bar_amarillo').style.width = `${(enProceso / baseVisual) * 100}%`; document.getElementById('bar_amarillo').innerHTML = enProceso > 0 ? `${enProceso}` : '';
+            let terminadas = mueblesReales.filter(m => window.estadosFinales.includes(m.estado)).length; 
+            let bloqueadas = mueblesReales.filter(m => m.estado && m.estado.toLowerCase().includes('bloque')).length; 
+            let enProceso = mueblesReales.length - terminadas - bloqueadas;            
+            let totalReal = terminadas + enProceso + bloqueadas; 
+            let baseVisual = Math.max(metaTotal, totalReal); 
+            let faltantes = metaTotal - totalReal; if (faltantes < 0) faltantes = 0;                         
+            
+            document.getElementById('bar_verde').style.width = `${(terminadas / baseVisual) * 100}%`; document.getElementById('bar_verde').innerHTML = terminadas > 0 ? `${terminadas}` : '';            
+            document.getElementById('bar_amarillo').style.width = `${(enProceso / baseVisual) * 100}%`; document.getElementById('bar_amarillo').innerHTML = enProceso > 0 ? `${enProceso}` : '';            
             document.getElementById('bar_rojo').style.width = `${(bloqueadas / baseVisual) * 100}%`; document.getElementById('bar_rojo').innerHTML = bloqueadas > 0 ? `${bloqueadas}` : '';
-
-            let avisoSobreproduccion = totalReal > metaTotal ? `<span style="color:#ef4444; margin-left:10px;">(¡Sobreproducción: +${totalReal - metaTotal}!)</span>` : '';
-            document.getElementById('texto_progreso').innerHTML = `<span style="min-width:150px;">Meta Base: ${metaTotal} unds. ${avisoSobreproduccion}</span> <span style="color:#10b981;">✅ ${terminadas} Completadas</span> <span style="color:#f59e0b;">⏳ ${enProceso} En Planta</span> <span style="color:#94a3b8;">⚪ ${faltantes} Sin Ingresar</span> ${mensajeAviso}`;
+            
+            let avisoSobreproduccion = totalReal > metaTotal ? `<span style="color:#ef4444; margin-left:10px;">(¡Sobreproducción: +${totalReal - metaTotal}!)</span>` : '';            
+            document.getElementById('texto_progreso').innerHTML = `<span style="min-width:150px;">Meta Base: ${metaTotal} unds. ${avisoSobreproduccion}</span> <span style="color:#10b981;">✅ ${terminadas} Completadas</span> <span style="color:#f59e0b;">⏳ ${enProceso} En Planta</span> <span style="color:#94a3b8;">⚪ ${faltantes} Sin Ingresar</span> ${mensajeAviso}`;        
         }
 
-        function resetearBarra() { document.getElementById('bar_verde').style.width = `0%`; document.getElementById('bar_verde').innerHTML = ''; document.getElementById('bar_amarillo').style.width = `0%`; document.getElementById('bar_amarillo').innerHTML = ''; document.getElementById('bar_rojo').style.width = `0%`; document.getElementById('bar_rojo').innerHTML = ''; }
-        function animarContador(idElemento, valorFinal) { let actual = 0; const elemento = document.getElementById(idElemento); const incremento = Math.max(1, Math.floor(valorFinal / 20)); const intervalo = setInterval(() => { actual += incremento; if (actual >= valorFinal) { actual = valorFinal; clearInterval(intervalo); } elemento.innerText = actual; }, 30); }
-        function dibujarGraficaEstados(datos) { const ctx = document.getElementById('chartEstados').getContext('2d'); if (myChartEstados) myChartEstados.destroy(); const etiquetas = Object.keys(datos); const valores = Object.values(datos); const colores = ['#94a3b8', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#14b8a6']; myChartEstados = new Chart(ctx, { type: 'doughnut', data: { labels: etiquetas, datasets: [{ data: valores, backgroundColor: colores.slice(0, etiquetas.length), borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { boxWidth: 15, font: { size: 11 } } } }, cutout: '60%' } }); }
+        function resetearBarra() { document.getElementById('bar_verde').style.width = `0%`; document.getElementById('bar_verde').innerHTML = ''; document.getElementById('bar_amarillo').style.width = `0%`; document.getElementById('bar_amarillo').innerHTML = ''; document.getElementById('bar_rojo').style.width = `0%`; document.getElementById('bar_rojo').innerHTML = ''; }        
+        function animarContador(idElemento, valorFinal) { let actual = 0; const elemento = document.getElementById(idElemento); const incremento = Math.max(1, Math.floor(valorFinal / 20)); const intervalo = setInterval(() => { actual += incremento; if (actual >= valorFinal) { actual = valorFinal; clearInterval(intervalo); } elemento.innerText = actual; }, 30); }        
+        function dibujarGraficaEstados(datos) { const ctx = document.getElementById('chartEstados').getContext('2d'); if (myChartEstados) myChartEstados.destroy(); const etiquetas = Object.keys(datos); const valores = Object.values(datos); const colores = ['#94a3b8', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#14b8a6']; myChartEstados = new Chart(ctx, { type: 'doughnut', data: { labels: etiquetas, datasets: [{ data: valores, backgroundColor: colores.slice(0, etiquetas.length), borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { boxWidth: 15, font: { size: 11 } } } }, cutout: '60%' } }); }        
         function dibujarGraficaProyectos(datos, diccionarioColores) { const ctx = document.getElementById('chartProyectos').getContext('2d'); if (myChartProyectos) myChartProyectos.destroy(); const etiquetas = Object.keys(datos); const valores = Object.values(datos); const coloresBarra = etiquetas.map(lbl => diccionarioColores[lbl] || '#3b82f6'); myChartProyectos = new Chart(ctx, { type: 'bar', data: { labels: etiquetas, datasets: [{ label: 'Cant. de Muebles', data: valores, backgroundColor: coloresBarra, borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } }, x: { grid: { display: false } } } } }); }
     </script>
 </body>
