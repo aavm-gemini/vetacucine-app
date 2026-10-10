@@ -37,7 +37,7 @@
         .tab-btn.active { background: white; color: #2563eb; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
         .secciones-taller { width: 100%; max-width: 750px; display: flex; flex-direction: column; align-items: center; }
 
-        /* --- PESTAÑA 1: ESCÁNER Y PROCESAMIENTO DE LOTES --- */
+        /* --- PESTAÑA 1: ESCÁNER Y PROCESAMIENTO --- */
         .scanner-card { background: white; width: 100%; max-width: 550px; padding: 25px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; border-top: 8px solid #3b82f6; box-sizing: border-box; }
         .scanner-card h2 { margin-top: 0; color: #1e293b; font-size: 22px; margin-bottom: 8px; }
         .scanner-card p { color: #64748b; font-size: 14px; margin-bottom: 20px; }
@@ -192,7 +192,7 @@
 
             <!-- NAVEGACIÓN INTERNA DEL OPERADOR -->
             <div class="tabs-operador">
-                <button class="tab-btn active" id="tab_btn_escaner" onclick="cambiarTab('escaner')">🔍 Procesar Lote</button>
+                <button class="tab-btn active" id="tab_btn_escaner" onclick="cambiarTab('escaner')">🔍 Procesar Proyecto</button>
                 <button class="tab-btn" id="tab_btn_lista" onclick="cambiarTab('lista')">📋 Mi Lista (Corte/Taller)</button>
                 <button class="tab-btn" id="tab_btn_relevo" onclick="cambiarTab('relevo')">🤝 Relevo de Turno</button>
             </div>
@@ -200,12 +200,12 @@
             <div class="secciones-taller">
                 
                 <!-- =========================================================
-                     SECCIÓN 1: ESCÁNER Y PROCESADOR DE LOTES
+                     SECCIÓN 1: ESCÁNER Y PROCESAMIENTO
                      ========================================================= -->
                 <div id="seccion_escaner" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
                     <div class="scanner-card" id="panel_busqueda">
                         <h2>Control de Planta</h2>
-                        <p>Ingresa el código de proyecto/lote para avanzar una o todas sus piezas</p>
+                        <p>Ingresa el código de proyecto para avanzar una o todas sus piezas</p>
                         
                         <input type="text" id="codigo_ingresado" class="input-gigante" placeholder="Ej: 516" onkeypress="manejarEnter(event)">
                         <button class="btn-gigante btn-buscar" onclick="buscarMueble()">🔍 Buscar Código</button>
@@ -213,7 +213,7 @@
 
                     <div class="resultado-card" id="panel_resultado">
                         <div class="res-header">
-                            <span id="res_titulo_header">Lote Encontrado</span>
+                            <span id="res_titulo_header">Proyecto Encontrado</span>
                             <span id="res_codigo" style="color: #93c5fd;">#516</span>
                         </div>
                         <div class="res-body">
@@ -289,7 +289,7 @@
                                     </select>
                                 </div>
                                 <div class="campo-relevo">
-                                    <label>Cód. Proyecto / Lote</label>
+                                    <label>Cód. Proyecto</label>
                                     <input type="text" id="rel_codigo" placeholder="Ej: 516 o General" style="text-transform:uppercase;">
                                 </div>
                                 <div class="campo-relevo">
@@ -483,7 +483,7 @@
             let codigo = codigoForzado || document.getElementById('codigo_ingresado').value.trim();
             if (!codigo) { Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Escribe un código', showConfirmButton: false, timer: 1500 }); return; }
 
-            Swal.fire({ title: 'Buscando lote...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+            Swal.fire({ title: 'Buscando proyecto...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
             const { data: muebles, error } = await supabaseClient.from('registros_produccion').select('*').eq('codigo_proyecto', codigo).order('piso', { ascending: true }).order('suite', { ascending: true });
             
@@ -501,7 +501,7 @@
 
             document.getElementById('panel_busqueda').style.display = 'none';
             document.getElementById('panel_resultado').style.display = 'block';
-            document.getElementById('res_titulo_header').innerText = muebles.length > 1 ? `Lote Encontrado (${muebles.length} piezas)` : `Mueble Encontrado (1 pieza)`;
+            document.getElementById('res_titulo_header').innerText = muebles.length > 1 ? `Proyecto Encontrado (${muebles.length} piezas)` : `Mueble Encontrado (1 pieza)`;
             document.getElementById('res_codigo').innerText = `#${codigo}`;
             document.getElementById('res_proyecto_nombre').innerText = muebles[0].proyecto;
             document.getElementById('nota_avance_lote').value = '';
@@ -568,7 +568,7 @@
 
             let filasHistorial = idsSeleccionados.map(idMueble => {
                 let piezaOriginal = piezasLoteActual.find(p => String(p.id) === String(idMueble));
-                return { id_mueble: idMueble, etapa: piezaOriginal ? piezaOriginal.estado : estadoObjetivoLote, operador: operadorNombreCompleto, tipo_registro: 'Avance de Lote', comentarios: notaExtra ? `Avanzó a ${estadoSiguienteLote}. Nota: ${notaExtra}` : `Avanzó a ${estadoSiguienteLote}` };
+                return { id_mueble: idMueble, etapa: piezaOriginal ? piezaOriginal.estado : estadoObjetivoLote, operador: operadorNombreCompleto, tipo_registro: 'Avance de Proyecto', comentarios: notaExtra ? `Avanzó a ${estadoSiguienteLote}. Nota: ${notaExtra}` : `Avanzó a ${estadoSiguienteLote}` };
             });
 
             const { error: errHistorial } = await supabaseClient.from('historial_trazabilidad').insert(filasHistorial);
@@ -828,7 +828,7 @@
                             <span class="ruta-areas">${r.area_origen} ➡️ Para: ${r.area_destino}</span>
                             <span class="badge-turno ${claseBadgeTurno}">${iconoTurno} • ${fechaCorta} (${horaStr})</span>
                         </div>
-                        <div class="turno-proy">📦 Proy/Lote: #${r.codigo_proyecto}</div>
+                        <div class="turno-proy">📦 Proy: #${r.codigo_proyecto}</div>
                         <div class="turno-msj">${r.mensaje}</div>
                         ${bloqueFotos}
                         <div class="turno-footer" style="margin-top:10px;">
