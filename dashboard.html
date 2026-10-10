@@ -114,7 +114,7 @@
         .notif-time { font-size: 11px; color: #94a3b8; margin-top: 5px; font-weight: bold; }
 
         /* FIRMA DE OPERADOR Y DISEÑOS DE PRIORIDAD */
-        .firma-op { background:#8b5cf6; color:white; font-size:10px; font-weight:bold; width: 26px; height: 26px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 0 auto; cursor: help; }
+        .firma-op { background:#f8fafc; color:#475569; font-size:11px; font-weight:bold; padding:4px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:6px; border:1px solid #e2e8f0; }
         .prio-1 { color: #eab308; font-size: 20px; text-shadow: 0 0 4px rgba(234,179,8,0.5); }
         .prio-2 { color: #f97316; font-size: 20px; text-shadow: 0 0 4px rgba(249,115,22,0.5); }
         .prio-0 { color: #cbd5e1; font-size: 18px; }
@@ -368,7 +368,7 @@
         }
 
         // ===============================================
-        // FUNCIÓN PRINCIPAL DE LISTAS Y ORDENAMIENTO (CONSOLIDADOS Y AVATAR REDUCIDO)
+        // FUNCIÓN PRINCIPAL DE LISTAS Y ORDENAMIENTO (CONSOLIDADOS IGNORANDO PISO EN LA LLAVE)
         // ===============================================
         function verListaModal(tipo) {
             let lista = []; let titulo = ""; let colorHex = "";
@@ -477,7 +477,7 @@
 
                     htmlTabla += `<tr>
                         <td style="text-align:center; vertical-align:middle;">${firmaTexto}</td>
-                        <td style="vertical-align:middle;"><strong>${g.codigo_proyecto || 'S/N'}</strong></td>
+                        <td style="vertical-align:middle; white-space: nowrap;"><strong>${g.codigo_proyecto || 'S/N'}</strong></td>
                         <td style="vertical-align:middle;">${descripcionLote}</td>
                         <td style="vertical-align:middle;"><span style="font-weight:bold; color:${colorHex}">${g.estado}</span> <br><small style="color:#64748b;">📦 ${g.cantidad} piezas agrupadas</small></td>
                     </tr>`;
@@ -528,7 +528,7 @@
 
                     htmlTabla += `<tr style="${estiloFila}">
                         ${colExtraContenido}
-                        <td style="vertical-align:middle;"><strong>${m.codigo_proyecto || 'S/N'}</strong></td>
+                        <td style="vertical-align:middle; white-space: nowrap;"><strong>${m.codigo_proyecto || 'S/N'}</strong></td>
                         <td style="vertical-align:middle;">${ubi}<br><small>Suite ${m.suite}</small></td>
                         <td style="white-space: nowrap; vertical-align:middle;">${prodEspacio}</td>
                         <td style="vertical-align:middle;"><span style="font-weight:bold; color:${colorHex}">${m.estado}</span>${extra}</td>
