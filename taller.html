@@ -70,7 +70,7 @@
         .btn-accion-verde:hover { background-color: #059669; }
         .btn-cancelar { width: 100%; font-size: 15px; padding: 10px; margin-top: 8px; border: none; background: transparent; color: #64748b; font-weight: bold; cursor: pointer; text-decoration: underline; }
 
-        /* --- PESTAÑA 2: MI LISTA DE TRABAJO (MEJORADA) --- */
+        /* --- PESTAÑA 2: MI LISTA DE TRABAJO --- */
         .checklist-card { background: white; width: 100%; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 6px solid #8b5cf6; box-sizing: border-box; }
         .add-lote-bar { display: flex; gap: 10px; margin-bottom: 20px; }
         .add-lote-bar input { flex: 1; padding: 12px; font-size: 15px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; }
@@ -85,7 +85,7 @@
         .lote-nombre { font-size: 14px; font-weight: bold; color: #1e293b; line-height: 1.4; margin-bottom: 6px; }
         .lote-sub { font-size: 12px; color: #475569; margin-bottom: 12px; }
 
-        /* --- PESTAÑA 3: BITÁCORA DE RELEVO DE TURNOS --- */
+        /* --- PESTAÑA 3: BITÁCORA Y DIARIO DE PROYECTO --- */
         .relevo-grid { display: grid; grid-template-columns: 1fr; gap: 20px; width: 100%; }
         .card-relevo { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 6px solid #f59e0b; box-sizing: border-box; transition: all 0.35s ease; }
         
@@ -117,9 +117,11 @@
         .tarjeta-turno.cat-Material { border-left-color: #f59e0b; }
         .tarjeta-turno.cat-Falla { border-left-color: #ef4444; background: #fef2f2 !important; border-color: #fecaca !important; }
         .tarjeta-turno.cat-Aviso { border-left-color: #3b82f6; }
+        .tarjeta-turno.cat-Personal { border-left-color: #8b5cf6; background: #faf5ff !important; border-color: #e9d5ff !important; }
         
         .turno-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 6px; font-size: 12px; }
         .ruta-areas { background: #1e293b; color: white; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 11px; }
+        .ruta-areas.ruta-personal { background: #8b5cf6; }
         
         .badge-turno { padding: 4px 10px; border-radius: 20px; font-weight: bold; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; }
         .turno-manana { background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; }
@@ -132,30 +134,20 @@
         .btn-enterado:hover { background: #059669; transform: scale(1.03); }
         .leido-tag { color: #059669; font-weight: bold; }
 
-        /* Estilos visualización de fotos en muro */
         .contenedor-fotos-muro { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
         .foto-miniatura { width: 80px; height: 80px; border-radius: 8px; object-fit: cover; border: 1px solid #cbd5e1; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .foto-miniatura:hover { transform: scale(1.05); box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-color: #3b82f6; }
 
-        /* --- RESPONSIVO MÓVIL UNIFICADO --- */
+        /* --- RESPONSIVO MÓVIL --- */
         @media (max-width: 768px) { 
             html, body { overflow-x: hidden !important; overflow-y: auto !important; }
             .app-container { flex-direction: column; height: auto; width: 100%; overflow-x: hidden !important; }
             .sidebar { width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 100; }
             .sidebar-header { padding: 15px; font-size: 20px; }
-            
-            .nav-links { 
-                flex-direction: row; margin-top: 0; justify-content: flex-start; 
-                background-color: #0f172a; overflow-x: auto; overflow-y: hidden; 
-                white-space: nowrap; -webkit-overflow-scrolling: touch; padding: 0 5px; 
-            }
+            .nav-links { flex-direction: row; margin-top: 0; justify-content: flex-start; background-color: #0f172a; overflow-x: auto; overflow-y: hidden; white-space: nowrap; -webkit-overflow-scrolling: touch; padding: 0 5px; }
             .nav-links::-webkit-scrollbar { display: none; }
-            .nav-links a { 
-                padding: 12px 15px; font-size: 13px; border-left: none; border-bottom: 3px solid transparent; 
-                flex: 0 0 auto; gap: 6px; display: inline-flex; align-items: center;
-            }
+            .nav-links a { padding: 12px 15px; font-size: 13px; border-left: none; border-bottom: 3px solid transparent; flex: 0 0 auto; gap: 6px; display: inline-flex; align-items: center; }
             .nav-links a.active { border-left: none; border-bottom-color: #3b82f6; }
-            
             .main-content { padding: 12px; height: auto; width: 100%; overflow-x: hidden !important; }
             .tabs-operador { overflow-x: auto; }
             .tab-btn { font-size: 12px; padding: 10px 8px; }
@@ -187,11 +179,10 @@
                 </div>
             </div>
 
-            <!-- NAVEGACIÓN INTERNA DEL OPERADOR -->
             <div class="tabs-operador">
                 <button class="tab-btn active" id="tab_btn_escaner" onclick="cambiarTab('escaner')">🔍 Procesar Proyecto</button>
                 <button class="tab-btn" id="tab_btn_lista" onclick="cambiarTab('lista')">📋 Mi Lista (Corte/Taller)</button>
-                <button class="tab-btn" id="tab_btn_relevo" onclick="cambiarTab('relevo')">🤝 Relevo de Turno</button>
+                <button class="tab-btn" id="tab_btn_relevo" onclick="cambiarTab('relevo')">🤝 Relevo y Bitácora</button>
             </div>
 
             <div class="secciones-taller">
@@ -250,7 +241,7 @@
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
                             <div>
                                 <h3 style="margin:0; color:#1e293b;">📋 Mi Hoja de Ruta del Turno</h3>
-                                <p style="margin:3px 0 0 0; font-size:12px; color:#64748b;">Anota los códigos que vas a trabajar hoy y márcalos al terminar.</p>
+                                <p style="margin:3px 0 0 0; font-size:12px; color:#64748b;">Anota los códigos de hoy y registra tu productividad.</p>
                             </div>
                             <button onclick="limpiarCompletadosLista()" style="background:#f1f5f9; border:1px solid #cbd5e1; color:#475569; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">🧹 Limpiar Terminados</button>
                         </div>
@@ -265,12 +256,24 @@
                 </div>
 
                 <!-- =========================================================
-                     SECCIÓN 3: BITÁCORA DE RELEVO DE TURNOS POR ÁREA
+                     SECCIÓN 3: BITÁCORA Y BUSCADOR DE DIARIOS
                      ========================================================= -->
                 <div id="seccion_relevo" style="width: 100%; display: none;">
                     <div class="relevo-grid">
                         
-                        <!-- Formulario para dejar reporte al turno siguiente -->
+                        <!-- NUEVO: BUSCADOR DE DIARIO DE PROYECTO PERMANENTE -->
+                        <div class="card-relevo" style="border-top-color: #8b5cf6; padding-bottom: 25px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                                <h3 style="margin:0; color:#1e293b;">📜 Consultar Diario de Proyecto</h3>
+                                <p style="margin:0; font-size:12px; color:#64748b;">Busca el historial de trabajo de cualquier código sin importar quién lo hizo.</p>
+                            </div>
+                            <div style="display:flex; gap:10px; margin-top:12px;">
+                                <input type="text" id="input_buscar_diario" placeholder="Ej: 516 o 495" style="flex:1; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-size:14px; outline:none;" onkeypress="if(event.key==='Enter') verHistorialProyecto(this.value)">
+                                <button onclick="verHistorialProyecto(document.getElementById('input_buscar_diario').value)" style="background:#8b5cf6; color:white; border:none; padding:0 20px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:14px;">🔍 Ver Diario</button>
+                            </div>
+                        </div>
+
+                        <!-- Formulario de Relevo de turno -->
                         <div class="card-relevo tema-manana" id="card_formulario_relevo">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
                                 <h3 style="margin:0; color:#1e293b;" id="titulo_form_relevo">📝 Dejar Reporte / Novedad de Turno</h3>
@@ -329,7 +332,6 @@
                                 <textarea id="rel_mensaje" rows="3" placeholder="Ej: Quedaron cortadas las 5 puertas del 516, falta cantear los cantos largos..."></textarea>
                             </div>
 
-                            <!-- INPUT PARA FOTOS CON COMPRESIÓN SÚPER RÁPIDA -->
                             <div class="campo-relevo" style="margin-bottom:15px;">
                                 <label>📸 Evidencia Visual (Máx. 2 fotos)</label>
                                 <input type="file" id="input_fotos_turno" accept="image/*" multiple style="display:none;" onchange="validarFotos(this)">
@@ -344,10 +346,10 @@
                             </button>
                         </div>
 
-                        <!-- Muro de visualización y filtros -->
+                        <!-- Muro Global de visualización y filtros -->
                         <div class="card-relevo" style="border-top-color: #3b82f6;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
-                                <h3 style="margin:0; color:#1e293b;">📖 Historial de Entregas de Turno</h3>
+                                <h3 style="margin:0; color:#1e293b;">📖 Muro Global de Taller</h3>
                                 <span id="subtitulo_muro_relevo" style="font-size:12px; font-weight:bold; color:#2563eb; background:#dbeafe; padding:4px 10px; border-radius:12px;">Cargando...</span>
                             </div>
 
@@ -367,13 +369,13 @@
                                 <div>
                                     <label>Filtrar Área</label>
                                     <select id="filtro_rel_area" onchange="cargarBitacoraTurnos()">
-                                        <option value="Todas">Todas las máquinas/áreas</option>
+                                        <option value="Todas">Todas las áreas</option>
                                         <option value="Corte">🪚 Corte</option>
                                         <option value="Canteo">📏 Canteo</option>
-                                        <option value="CNC (Pratix S)">⚙️ CNC (Pratix S)</option>
-                                        <option value="CNC (Z2)">🔩 CNC (Z2)</option>
+                                        <option value="CNC">⚙️ CNC</option>
                                         <option value="Digitalización">📐 Digitalización</option>
                                         <option value="Ensamblado">🔨 Ensamblado</option>
+                                        <option value="Instalación">🚚 Instalación</option>
                                     </select>
                                 </div>
                                 <button onclick="limpiarFechaRelevo()" style="background:#e2e8f0; border:none; padding:8px 12px; border-radius:5px; font-size:12px; font-weight:bold; color:#334155; cursor:pointer;">Ver Últimos</button>
@@ -396,17 +398,16 @@
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBucm50bWtjaXNneW15dm16c29uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNzAwODQsImV4cCI6MjEwNDc0NjA4NH0.fdW9mj9rkO0rxHXB8rBeJc6a32QSQxtvsNtu9_rL6yc';
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
         
-        // URL de la API Privada (Google Sheets 2026 PROYECTOS)
         const SCRIPT_SHEETS_URL = "https://script.google.com/macros/s/AKfycbycFWoQnsupcx32gUHx9CbVig1GT-MJxGz41DsDzXVW4aFjWI0-ZK4bnLPIGfSvuTud/exec";
 
         let operadorNombreCompleto = "";
         let operadorEmail = "";
+        let operadorArea = "Taller"; // Rol automático
+        
         let catalogoEstadosGlobal = [];
         let piezasLoteActual = [];
         let estadoObjetivoLote = null;
         let estadoSiguienteLote = null;
-        
-        // Variable Global para las Fotos del Turno
         let archivosFotosTurno = [];
 
         const STORAGE_LISTA_KEY = 'veta_mi_lista_taller_v1';
@@ -419,8 +420,11 @@
             operadorNombreCompleto = session.user.user_metadata.full_name || operadorEmail.split('@')[0];
             document.getElementById('nombreOperador').innerText = operadorNombreCompleto.split(' ')[0];
 
-            const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol').eq('email', operadorEmail).single();
+            // 1. OBTENEMOS EL ROL / ÁREA ASIGNADA AUTOMÁTICAMENTE
+            const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol, area_asignada').eq('email', operadorEmail).single();
             const rolUsuario = empleado ? empleado.rol.trim() : 'Operador'; 
+            operadorArea = (empleado && empleado.area_asignada) ? empleado.area_asignada.trim() : 'Taller';
+            
             if (rolUsuario !== 'Administrador') {
                 const linkAdmin = document.getElementById('link-admin');
                 if (linkAdmin) linkAdmin.parentElement.style.display = 'none';
@@ -477,7 +481,7 @@
         function manejarEnter(e) { if (e.key === 'Enter') buscarMueble(); }
 
         // ==========================================
-        // PESTAÑA 1: BUSCADOR (AHORA CON PUENTE SHEETS)
+        // PESTAÑA 1: BUSCADOR
         // ==========================================
         async function buscarMueble(codigoForzado = null) {
             let codigo = codigoForzado || document.getElementById('codigo_ingresado').value.trim();
@@ -485,10 +489,8 @@
 
             Swal.fire({ title: 'Buscando proyecto...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
-            // 1. Buscamos primero en nuestra base de datos (Supabase)
             const { data: muebles, error } = await supabaseClient.from('registros_produccion').select('*').eq('codigo_proyecto', codigo).order('piso', { ascending: true }).order('suite', { ascending: true });
             
-            // 2. Si no existe en la app, vamos a buscar al archivo de Google Sheets de la oficina
             if (error || !muebles || muebles.length === 0) {
                 try {
                     let urlBusqueda = `${SCRIPT_SHEETS_URL}?codigo=${codigo}`;
@@ -496,21 +498,18 @@
                     let result = await resp.json();
                     
                     if(result.success) {
-                        // Lo encontramos en Sheets (Proyecto Externo)
                         Swal.close();
                         document.getElementById('panel_busqueda').style.display = 'none';
                         document.getElementById('panel_resultado').style.display = 'block';
                         
-                        // Adaptar interfaz visual a "Modo Externo" (Morado)
                         document.getElementById('res_titulo_header').innerText = `Proyecto Externo (Sheets)`;
                         document.getElementById('res_header_box').style.backgroundColor = '#8b5cf6';
                         document.getElementById('res_codigo').innerText = `#${codigo}`;
                         document.getElementById('res_proyecto_nombre').innerText = result.nombre;
                         
-                        // Ocultamos las herramientas de proyecto interno
                         document.getElementById('capa_controles_lote').style.display = 'none';
                         document.getElementById('nota_avance_lote').style.display = 'none';
-                        document.getElementById('contenedor_piezas_lote').innerHTML = `<div style="padding:25px; text-align:center; color:#64748b; line-height:1.5;">Este proyecto es externo.<br>No tiene despiece en el sistema.<br><br>Agrégalo a tu Lista de Trabajo para registrar tu avance en la bitácora.</div>`;
+                        document.getElementById('contenedor_piezas_lote').innerHTML = `<div style="padding:25px; text-align:center; color:#64748b; line-height:1.5;">Este proyecto es externo.<br>No tiene despiece en el sistema.<br><br>Agrégalo a tu Lista de Trabajo para registrar tu avance de productividad.</div>`;
                         
                         let btnAccion = document.getElementById('btn_procesar');
                         btnAccion.disabled = false;
@@ -519,9 +518,8 @@
                         btnAccion.innerHTML = `➕ Agregar a Mi Lista`;
                         btnAccion.onclick = () => { agregarProyectoExternoALista(codigo, result.nombre); };
                         
-                        return; // Terminamos aquí
+                        return;
                     } else {
-                        // Tampoco estaba en Sheets
                         Swal.fire({ icon: 'error', title: 'Código no encontrado', text: `El código "${codigo}" no existe en el sistema ni en el Excel de Proyectos (Sheets).`, confirmButtonColor: '#1e293b' }); 
                         return;
                     }
@@ -531,17 +529,13 @@
                 }
             }
 
-            // ========================================================
-            // 3. SI LO ENCUENTRA EN SUPABASE (PROYECTO INTERNO NORMAL)
-            // ========================================================
             piezasLoteActual = muebles; Swal.close();
             
-            // Restablecer estilos a normales (Azul marino) por si antes había buscado uno externo
             document.getElementById('res_header_box').style.backgroundColor = '#1e293b'; 
             document.getElementById('capa_controles_lote').style.display = 'flex';
             document.getElementById('nota_avance_lote').style.display = 'block';
             let btnAccion = document.getElementById('btn_procesar');
-            btnAccion.onclick = registrarAvanceLote; // Devolvemos su función original
+            btnAccion.onclick = registrarAvanceLote; 
 
             let mapaOrden = {}; catalogoEstadosGlobal.forEach(e => { mapaOrden[e.nombre] = e.orden || 999; });
             let piezasOrdenadasPorEtapa = [...muebles].sort((a, b) => (mapaOrden[a.estado] || 1) - (mapaOrden[b.estado] || 1));
@@ -647,7 +641,6 @@
             document.getElementById('panel_busqueda').style.display = 'block'; 
             document.getElementById('codigo_ingresado').focus(); 
             
-            // Restablecer estilos visuales
             document.getElementById('res_header_box').style.backgroundColor = '#1e293b'; 
             document.getElementById('capa_controles_lote').style.display = 'flex';
             document.getElementById('nota_avance_lote').style.display = 'block';
@@ -656,12 +649,11 @@
         }
 
         // ==========================================
-        // PESTAÑA 2: MI LISTA (MEJORADA CON LÓGICA DASHBOARD "POR FABRICAR" Y PUENTE SHEETS)
+        // PESTAÑA 2: MI LISTA 
         // ==========================================
         function obtenerMiLista() { try { return JSON.parse(localStorage.getItem(STORAGE_LISTA_KEY) || '[]'); } catch { return []; } }
         function guardarMiLista(lista) { localStorage.setItem(STORAGE_LISTA_KEY, JSON.stringify(lista)); }
 
-        // Función auxiliar cuando el puente de Sheets manda un proyecto a la lista
         function agregarProyectoExternoALista(codigo, nombre) {
             let lista = obtenerMiLista(); 
             let existe = lista.find(x => String(x.codigo) === String(codigo));
@@ -726,7 +718,6 @@
                 resumenProyecto = `${pzas[0].proyecto} — ${pzas[0].producto} ${txtSub ? '— ' + txtSub : ''}`;
                 estadoActual = pzas[0].estado; 
             } else {
-                // Si lo agrega directo desde "Mi Lista" y no está en Supabase, preguntamos a Sheets
                 try {
                     let urlBusqueda = `${SCRIPT_SHEETS_URL}?codigo=${texto}`;
                     let resp = await fetch(urlBusqueda);
@@ -759,9 +750,10 @@
                             <div class="lote-titulo">#${item.codigo}</div>
                             <div class="lote-nombre">${item.resumen}</div>
                             <div class="lote-sub">Estado ref: <b style="color:#0f172a;">${item.estado}</b></div>
-                            <div style="display:flex; align-items:center; gap:8px;">
-                                <button onclick="abrirEnEscaner('${item.codigo}')" style="flex:1; background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; padding:8px 10px; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer;">⚡ Procesar</button>
-                                <button onclick="eliminarItemLista(${item.id})" title="Quitar de mi lista" style="background:#fef2f2; color:#ef4444; border:1px solid #fecaca; padding:8px 14px; border-radius:6px; font-size:14px; cursor:pointer;">🗑️</button>
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <button onclick="registrarLaborManual('${item.codigo}', '${item.resumen.replace(/'/g, "\\'")}')" style="flex:1; background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; padding:8px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">⏱️ Mi Avance</button>
+                                <button onclick="abrirEnEscaner('${item.codigo}')" style="flex:1; background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; padding:8px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">⚡ Procesar</button>
+                                <button onclick="eliminarItemLista(${item.id})" title="Quitar de mi lista" style="background:#fef2f2; color:#ef4444; border:1px solid #fecaca; padding:8px 12px; border-radius:6px; font-size:13px; cursor:pointer;">🗑️</button>
                             </div>
                         </div>
                     </div>
@@ -769,16 +761,123 @@
             });
         }
 
+        // ==========================================
+        // REGISTRO DE PRODUCTIVIDAD (INTELIGENTE POR ROL) Y LECTURA DE DIARIOS
+        // ==========================================
+        async function registrarLaborManual(codigo, nombreProyecto) {
+            const { value: formValues } = await Swal.fire({
+                title: 'Registrar Mi Avance',
+                html: `
+                    <div style="text-align:left; font-size:14px; margin-bottom:12px; color:#475569;">
+                        <b>Proyecto:</b> #${codigo}<br>${nombreProyecto}<br>
+                        <div style="margin-top:8px; display:inline-block; background:#eff6ff; padding:4px 10px; border-radius:12px; font-size:12px; color:#2563eb; font-weight:bold;">
+                            👤 Área Registrada: ${operadorArea}
+                        </div>
+                    </div>
+                    <textarea id="swal-detalle" class="swal2-textarea" placeholder="Escribe tu observación... (Ej: Corté todas las puertas principales)" style="width:100%; max-width:100%; font-size:14px; margin-top:0; height:80px;"></textarea>
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Guardar Avance',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#10b981',
+                preConfirm: () => {
+                    const detalle = document.getElementById('swal-detalle').value.trim();
+                    if (!detalle) {
+                        Swal.showValidationMessage('Escribe una breve observación de lo que hiciste');
+                        return false;
+                    }
+                    return { detalle };
+                }
+            });
+
+            if (formValues) {
+                Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+                const offset = (new Date()).getTimezoneOffset() * 60000;
+                const fechaHoyLocal = (new Date(Date.now() - offset)).toISOString().split('T')[0];
+                
+                const { error } = await supabaseClient.from('bitacora_turnos').insert([{
+                    fecha: fechaHoyLocal,
+                    turno: document.getElementById('rel_turno').value,
+                    area_origen: operadorArea, // Se llena solo con la variable global
+                    area_destino: 'Mismo Operador',
+                    codigo_proyecto: codigo,
+                    categoria: 'Personal',
+                    mensaje: `[PRODUCTIVIDAD] ${formValues.detalle}`,
+                    autor_email: operadorEmail,
+                    autor_nombre: operadorNombreCompleto,
+                    leido: true, 
+                    leido_por: 'Sistema' 
+                }]);
+
+                if (error) {
+                    Swal.fire('Error', 'No se pudo guardar tu avance: ' + error.message, 'error');
+                } else {
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Avance registrado en el Diario del Proyecto', showConfirmButton: false, timer: 2000 });
+                    cargarBitacoraTurnos(); 
+                }
+            }
+        }
+
+        // Buscador Inteligente Permanente para leer diarios en cualquier momento
+        async function verHistorialProyecto(codigoRaw) {
+            let codigo = codigoRaw.trim();
+            if (!codigo) { Swal.fire('Escribe un código', 'Debes ingresar un número de proyecto.', 'warning'); return; }
+
+            Swal.fire({ title: 'Cargando diario...', didOpen: () => Swal.showLoading() });
+            
+            const { data, error } = await supabaseClient
+                .from('bitacora_turnos')
+                .select('*')
+                .eq('codigo_proyecto', codigo)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                Swal.fire('Error', 'No se pudo cargar el historial del proyecto', 'error'); return;
+            }
+
+            if (!data || data.length === 0) {
+                Swal.fire('Diario en Blanco', `El proyecto #${codigo} aún no tiene avances ni reportes anotados por el equipo.`, 'info'); return;
+            }
+
+            let htmlHistorial = `<div style="text-align:left; max-height:350px; overflow-y:auto; font-size:13px; padding-right:5px; margin-top:10px;">`;
+            
+            data.forEach(r => {
+                let d = new Date(r.created_at);
+                let fechaHora = d.toLocaleString('es-ES', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit', hour12:true });
+                let colorBarra = r.categoria === 'Personal' ? '#10b981' : '#3b82f6';
+                let msjLimpio = r.mensaje.replace('[PRODUCTIVIDAD] ', ''); 
+                
+                htmlHistorial += `
+                    <div style="border-left: 4px solid ${colorBarra}; padding-left: 10px; margin-bottom: 15px; background: #f8fafc; padding-top:8px; padding-bottom:8px; border-radius:0 8px 8px 0;">
+                        <div style="font-size:11px; color:#64748b; margin-bottom:4px;">
+                            <b style="color:#0f172a;">${r.autor_nombre}</b> • ${r.area_origen} • ${fechaHora}
+                        </div>
+                        <div style="color:#1e293b; line-height:1.4;">${msjLimpio}</div>
+                    </div>
+                `;
+            });
+            htmlHistorial += `</div>`;
+
+            Swal.fire({
+                title: `Diario: Proyecto #${codigo}`,
+                html: htmlHistorial,
+                width: 500,
+                showConfirmButton: true,
+                confirmButtonText: 'Cerrar Diario',
+                confirmButtonColor: '#3b82f6'
+            });
+        }
+
         function eliminarItemLista(id) { let lista = obtenerMiLista().filter(x => x.id !== id); guardarMiLista(lista); renderizarMiLista(); }
         function marcarItemLista(id, estadoCheck) { let lista = obtenerMiLista(); let item = lista.find(x => x.id === id); if (item) item.completado = estadoCheck; guardarMiLista(lista); renderizarMiLista(); }
-        function actualizarNotaLista(id, nuevaNota) { let lista = obtenerMiLista(); let item = lista.find(x => x.id === id); if (item) item.nota = nuevaNota; guardarMiLista(lista); }
         function limpiarCompletadosLista() { let lista = obtenerMiLista().filter(x => !x.completado); guardarMiLista(lista); renderizarMiLista(); }
         function abrirEnEscaner(codigo) { cambiarTab('escaner'); document.getElementById('codigo_ingresado').value = codigo; buscarMueble(codigo); }
 
         // ==========================================
         // PESTAÑA 3: BITÁCORA, FOTOS Y COMPRESIÓN JS
         // ==========================================
-        
         async function comprimirImagen(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -852,20 +951,15 @@
 
             if (archivosFotosTurno.length > 0) {
                 for (let fotoOriginal of archivosFotosTurno) {
-                    
                     let fotoComprimida = await comprimirImagen(fotoOriginal);
                     let nameUnico = Date.now() + "_" + fotoComprimida.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
                     let filePath = "evidencia/" + nameUnico;
-                    
                     const { error: uploadError } = await supabaseClient.storage.from('fotos_turno').upload(filePath, fotoComprimida);
-                    
                     if (uploadError) {
                         btn.disabled = false; actualizarTemaTurnoFormulario();
-                        Swal.fire('Error al subir foto', 'Asegúrate de haber creado la política SQL en Supabase. Detalle: ' + uploadError.message, 'error');
+                        Swal.fire('Error al subir foto', 'Detalle: ' + uploadError.message, 'error');
                         return; 
-                    } else {
-                        rutasGuardadas.push(filePath);
-                    }
+                    } else { rutasGuardadas.push(filePath); }
                 }
             }
 
@@ -874,28 +968,17 @@
             const fechaHoyLocal = (new Date(Date.now() - offset)).toISOString().split('T')[0];
 
             const { error } = await supabaseClient.from('bitacora_turnos').insert([{
-                fecha: fechaHoyLocal,
-                turno: turno,
-                area_origen: origen,
-                area_destino: destino,
-                codigo_proyecto: codigo,
-                categoria: categoria,
-                mensaje: mensaje,
-                autor_email: operadorEmail,
-                autor_nombre: operadorNombreCompleto,
-                rutas_fotos: rutasGuardadas
+                fecha: fechaHoyLocal, turno: turno, area_origen: origen, area_destino: destino,
+                codigo_proyecto: codigo, categoria: categoria, mensaje: mensaje,
+                autor_email: operadorEmail, autor_nombre: operadorNombreCompleto, rutas_fotos: rutasGuardadas
             }]);
 
             btn.disabled = false; actualizarTemaTurnoFormulario();
 
-            if (error) {
-                Swal.fire('Error al guardar', 'Detalle: ' + error.message, 'error'); return;
-            }
+            if (error) { Swal.fire('Error al guardar', 'Detalle: ' + error.message, 'error'); return; }
 
-            document.getElementById('rel_mensaje').value = '';
-            document.getElementById('rel_codigo').value = '';
-            document.getElementById('input_fotos_turno').value = '';
-            document.getElementById('preview_fotos').innerText = 'No hay fotos seleccionadas. (A los 7 días se borrarán solas)';
+            document.getElementById('rel_mensaje').value = ''; document.getElementById('rel_codigo').value = '';
+            document.getElementById('input_fotos_turno').value = ''; document.getElementById('preview_fotos').innerText = 'No hay fotos seleccionadas.';
             archivosFotosTurno = [];
 
             Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Reporte de turno publicado', showConfirmButton: false, timer: 2000 });
@@ -922,7 +1005,6 @@
             if (error) { contenedor.innerHTML = `<p style="color:#ef4444; text-align:center;">⚠️ Error leyendo bitácora.</p>`; return; }
 
             let registros = data || [];
-            
             if (!fechaFiltro && registros.length > 0) {
                 let ultimaFechaRegistrada = registros[0].fecha;
                 registros = registros.filter(r => r.fecha === ultimaFechaRegistrada);
@@ -931,7 +1013,6 @@
             else { subtitulo.innerText = `Sin registros`; }
 
             if (areaFiltro !== 'Todas') { registros = registros.filter(r => r.area_origen === areaFiltro || r.area_destino === areaFiltro || r.area_destino === 'Todas'); }
-
             if (registros.length === 0) { contenedor.innerHTML = `<p style="text-align:center; color:#94a3b8; padding:25px; font-style:italic;">No hay reportes para estos filtros.</p>`; return; }
 
             contenedor.innerHTML = '';
@@ -958,14 +1039,18 @@
                     bloqueFotos = `<div class="contenedor-fotos-muro">${imagenesHtml}</div>`;
                 }
 
+                let esProductividad = r.categoria === 'Personal';
+                let nombreCategoriaStr = esProductividad ? `<span style="color:#8b5cf6;">💪 Avance de Operador</span>` : `<span class="ruta-areas">${r.area_origen} ➡️ Para: ${r.area_destino}</span>`;
+                let msjFinal = esProductividad ? r.mensaje.replace('[PRODUCTIVIDAD] ', '') : r.mensaje;
+
                 contenedor.innerHTML += `
                     <div class="tarjeta-turno ${claseCardTurno} cat-${r.categoria}">
                         <div class="turno-top">
-                            <span class="ruta-areas">${r.area_origen} ➡️ Para: ${r.area_destino}</span>
+                            ${nombreCategoriaStr}
                             <span class="badge-turno ${claseBadgeTurno}">${iconoTurno} • ${fechaCorta} (${horaStr})</span>
                         </div>
                         <div class="turno-proy">📦 Proy: #${r.codigo_proyecto}</div>
-                        <div class="turno-msj">${r.mensaje}</div>
+                        <div class="turno-msj">${msjFinal}</div>
                         ${bloqueFotos}
                         <div class="turno-footer" style="margin-top:10px;">
                             <span>✍️ Reportó: <b>${r.autor_nombre}</b> ${btnBorrarReporte}</span>
@@ -983,7 +1068,6 @@
                 if (reporte && reporte.rutas_fotos && reporte.rutas_fotos.length > 0) {
                     await supabaseClient.storage.from('fotos_turno').remove(reporte.rutas_fotos);
                 }
-                
                 await supabaseClient.from('bitacora_turnos').delete().eq('id', idReporte);
                 cargarBitacoraTurnos();
             }
