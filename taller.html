@@ -52,7 +52,7 @@
         .resultado-card { width: 100%; max-width: 600px; background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); overflow: hidden; display: none; text-align: left; animation: aparecer 0.3s ease-out; box-sizing: border-box; }
         @keyframes aparecer { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         
-        .res-header { background-color: #1e293b; color: white; padding: 15px 20px; font-size: 17px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        .res-header { background-color: #1e293b; color: white; padding: 15px 20px; font-size: 17px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; transition: 0.3s; }
         .res-body { padding: 20px; }
         
         .lote-controles { display: flex; justify-content: space-between; align-items: center; background: #f1f5f9; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; font-weight: bold; }
@@ -209,7 +209,7 @@
                     </div>
 
                     <div class="resultado-card" id="panel_resultado">
-                        <div class="res-header">
+                        <div class="res-header" id="res_header_box">
                             <span id="res_titulo_header">Proyecto Encontrado</span>
                             <span id="res_codigo" style="color: #93c5fd;">#516</span>
                         </div>
@@ -219,7 +219,7 @@
                                 <div style="font-size: 18px; font-weight: bold; color: #0f172a;" id="res_proyecto_nombre">Quarzo Mohedano</div>
                             </div>
 
-                            <div class="lote-controles">
+                            <div class="lote-controles" id="capa_controles_lote">
                                 <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
                                     <input type="checkbox" id="chk_seleccionar_todo" onchange="alternarSeleccionLote(this.checked)" style="width:18px; height:18px;">
                                     Seleccionar todas las del mismo estado
@@ -230,7 +230,7 @@
                             <div class="lista-piezas-lote" id="contenedor_piezas_lote"></div>
 
                             <div style="margin-bottom: 10px;">
-                                <input type="text" id="nota_avance_lote" placeholder="Nota opcional (Ej: PDF elaborado, cantos listos...)" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; font-size:13px;">
+                                <input type="text" id="nota_avance_lote" placeholder="Nota opcional (Ej: cantos listos, medida ajustada...)" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; font-size:13px;">
                             </div>
 
                             <button class="btn-gigante btn-accion-verde" id="btn_procesar" onclick="registrarAvanceLote()">
@@ -243,7 +243,7 @@
                 </div>
 
                 <!-- =========================================================
-                     SECCIÓN 2: MI LISTA DE TRABAJO (MEJORADA)
+                     SECCIÓN 2: MI LISTA DE TRABAJO
                      ========================================================= -->
                 <div id="seccion_lista" style="width: 100%; display: none;">
                     <div class="checklist-card">
@@ -396,6 +396,9 @@
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBucm50bWtjaXNneW15dm16c29uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNzAwODQsImV4cCI6MjEwNDc0NjA4NH0.fdW9mj9rkO0rxHXB8rBeJc6a32QSQxtvsNtu9_rL6yc';
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
         
+        // URL de la API Privada (Google Sheets 2026 PROYECTOS)
+        const SCRIPT_SHEETS_URL = "https://script.google.com/macros/s/AKfycbycFWoQnsupcx32gUHx9CbVig1GT-MJxGz41DsDzXVW4aFjWI0-ZK4bnLPIGfSvuTud/exec";
+
         let operadorNombreCompleto = "";
         let operadorEmail = "";
         let catalogoEstadosGlobal = [];
@@ -474,7 +477,7 @@
         function manejarEnter(e) { if (e.key === 'Enter') buscarMueble(); }
 
         // ==========================================
-        // PESTAÑA 1: BUSCADOR
+        // PESTAÑA 1: BUSCADOR (AHORA CON PUENTE SHEETS)
         // ==========================================
         async function buscarMueble(codigoForzado = null) {
             let codigo = codigoForzado || document.getElementById('codigo_ingresado').value.trim();
@@ -482,13 +485,64 @@
 
             Swal.fire({ title: 'Buscando proyecto...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
+            // 1. Buscamos primero en nuestra base de datos (Supabase)
             const { data: muebles, error } = await supabaseClient.from('registros_produccion').select('*').eq('codigo_proyecto', codigo).order('piso', { ascending: true }).order('suite', { ascending: true });
             
+            // 2. Si no existe en la app, vamos a buscar al archivo de Google Sheets de la oficina
             if (error || !muebles || muebles.length === 0) {
-                Swal.fire({ icon: 'error', title: 'Código no encontrado', text: `No existe ningún mueble registrado con el código "${codigo}".`, confirmButtonColor: '#1e293b' }); return;
+                try {
+                    let urlBusqueda = `${SCRIPT_SHEETS_URL}?codigo=${codigo}`;
+                    let resp = await fetch(urlBusqueda);
+                    let result = await resp.json();
+                    
+                    if(result.success) {
+                        // Lo encontramos en Sheets (Proyecto Externo)
+                        Swal.close();
+                        document.getElementById('panel_busqueda').style.display = 'none';
+                        document.getElementById('panel_resultado').style.display = 'block';
+                        
+                        // Adaptar interfaz visual a "Modo Externo" (Morado)
+                        document.getElementById('res_titulo_header').innerText = `Proyecto Externo (Sheets)`;
+                        document.getElementById('res_header_box').style.backgroundColor = '#8b5cf6';
+                        document.getElementById('res_codigo').innerText = `#${codigo}`;
+                        document.getElementById('res_proyecto_nombre').innerText = result.nombre;
+                        
+                        // Ocultamos las herramientas de proyecto interno
+                        document.getElementById('capa_controles_lote').style.display = 'none';
+                        document.getElementById('nota_avance_lote').style.display = 'none';
+                        document.getElementById('contenedor_piezas_lote').innerHTML = `<div style="padding:25px; text-align:center; color:#64748b; line-height:1.5;">Este proyecto es externo.<br>No tiene despiece en el sistema.<br><br>Agrégalo a tu Lista de Trabajo para registrar tu avance en la bitácora.</div>`;
+                        
+                        let btnAccion = document.getElementById('btn_procesar');
+                        btnAccion.disabled = false;
+                        btnAccion.className = "btn-gigante";
+                        btnAccion.style.backgroundColor = "#8b5cf6";
+                        btnAccion.innerHTML = `➕ Agregar a Mi Lista`;
+                        btnAccion.onclick = () => { agregarProyectoExternoALista(codigo, result.nombre); };
+                        
+                        return; // Terminamos aquí
+                    } else {
+                        // Tampoco estaba en Sheets
+                        Swal.fire({ icon: 'error', title: 'Código no encontrado', text: `El código "${codigo}" no existe en el sistema ni en el Excel de Proyectos (Sheets).`, confirmButtonColor: '#1e293b' }); 
+                        return;
+                    }
+                } catch(e) {
+                    Swal.fire({ icon: 'error', title: 'Error de conexión', text: `Falló la búsqueda en el archivo externo de Sheets.`, confirmButtonColor: '#1e293b' }); 
+                    return;
+                }
             }
 
+            // ========================================================
+            // 3. SI LO ENCUENTRA EN SUPABASE (PROYECTO INTERNO NORMAL)
+            // ========================================================
             piezasLoteActual = muebles; Swal.close();
+            
+            // Restablecer estilos a normales (Azul marino) por si antes había buscado uno externo
+            document.getElementById('res_header_box').style.backgroundColor = '#1e293b'; 
+            document.getElementById('capa_controles_lote').style.display = 'flex';
+            document.getElementById('nota_avance_lote').style.display = 'block';
+            let btnAccion = document.getElementById('btn_procesar');
+            btnAccion.onclick = registrarAvanceLote; // Devolvemos su función original
+
             let mapaOrden = {}; catalogoEstadosGlobal.forEach(e => { mapaOrden[e.nombre] = e.orden || 999; });
             let piezasOrdenadasPorEtapa = [...muebles].sort((a, b) => (mapaOrden[a.estado] || 1) - (mapaOrden[b.estado] || 1));
             estadoObjetivoLote = piezasOrdenadasPorEtapa[0].estado;
@@ -586,16 +640,46 @@
             cancelarOperacion();
         }
 
-        function cancelarOperacion() { piezasLoteActual = []; estadoSiguienteLote = null; document.getElementById('codigo_ingresado').value = ''; document.getElementById('panel_resultado').style.display = 'none'; document.getElementById('panel_busqueda').style.display = 'block'; document.getElementById('codigo_ingresado').focus(); }
+        function cancelarOperacion() { 
+            piezasLoteActual = []; estadoSiguienteLote = null; 
+            document.getElementById('codigo_ingresado').value = ''; 
+            document.getElementById('panel_resultado').style.display = 'none'; 
+            document.getElementById('panel_busqueda').style.display = 'block'; 
+            document.getElementById('codigo_ingresado').focus(); 
+            
+            // Restablecer estilos visuales
+            document.getElementById('res_header_box').style.backgroundColor = '#1e293b'; 
+            document.getElementById('capa_controles_lote').style.display = 'flex';
+            document.getElementById('nota_avance_lote').style.display = 'block';
+            let btnAccion = document.getElementById('btn_procesar');
+            btnAccion.onclick = registrarAvanceLote;
+        }
 
         // ==========================================
-        // PESTAÑA 2: MI LISTA (MEJORADA CON LÓGICA DASHBOARD "POR FABRICAR" Y FORMATO COMPLETO)
+        // PESTAÑA 2: MI LISTA (MEJORADA CON LÓGICA DASHBOARD "POR FABRICAR" Y PUENTE SHEETS)
         // ==========================================
         function obtenerMiLista() { try { return JSON.parse(localStorage.getItem(STORAGE_LISTA_KEY) || '[]'); } catch { return []; } }
         function guardarMiLista(lista) { localStorage.setItem(STORAGE_LISTA_KEY, JSON.stringify(lista)); }
 
+        // Función auxiliar cuando el puente de Sheets manda un proyecto a la lista
+        function agregarProyectoExternoALista(codigo, nombre) {
+            let lista = obtenerMiLista(); 
+            let existe = lista.find(x => String(x.codigo) === String(codigo));
+            if(!existe) {
+                lista.unshift({ id: Date.now(), codigo: codigo, resumen: nombre + " (Externo)", estado: "En Proceso", completado: false });
+                guardarMiLista(lista);
+                renderizarMiLista();
+            }
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Agregado a Mi Lista', showConfirmButton: false, timer: 2000 });
+            cancelarOperacion();
+            cambiarTab('lista'); 
+        }
+
         async function agregarAMiLista() {
             const input = document.getElementById('input_nuevo_lote_lista'); let texto = input.value.trim(); if (!texto) return;
+            
+            Swal.fire({ title: 'Agregando...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
             let lista = obtenerMiLista(); 
             let resumenProyecto = "Proyecto manual / Externo"; 
             let estadoActual = "Pendiente";
@@ -641,10 +725,26 @@
                 let txtSub = arrSubItems.join(' | ');
                 resumenProyecto = `${pzas[0].proyecto} — ${pzas[0].producto} ${txtSub ? '— ' + txtSub : ''}`;
                 estadoActual = pzas[0].estado; 
+            } else {
+                // Si lo agrega directo desde "Mi Lista" y no está en Supabase, preguntamos a Sheets
+                try {
+                    let urlBusqueda = `${SCRIPT_SHEETS_URL}?codigo=${texto}`;
+                    let resp = await fetch(urlBusqueda);
+                    let json = await resp.json();
+                    if(json.success) {
+                        resumenProyecto = json.nombre + " (Externo)";
+                        estadoActual = "En Proceso";
+                    } else {
+                        resumenProyecto = "Desconocido (Anotación Manual)";
+                    }
+                } catch(e) {
+                    resumenProyecto = "Desconocido (Anotación Manual)";
+                }
             }
             
             lista.unshift({ id: Date.now(), codigo: texto, resumen: resumenProyecto, estado: estadoActual, completado: false });
             guardarMiLista(lista); input.value = ''; renderizarMiLista();
+            Swal.close();
         }
 
         function renderizarMiLista() {
