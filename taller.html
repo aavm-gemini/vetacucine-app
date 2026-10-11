@@ -754,8 +754,8 @@
                 for (let fotoOriginal of archivosFotosTurno) {
                     
                     let fotoComprimida = await comprimirImagen(fotoOriginal);
-                    let nombreUnico = Date.now() + "_" + fotoComprimida.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
-                    let filePath = "evidencia/" + nombreUnico;
+                    let nameUnico = Date.now() + "_" + fotoComprimida.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
+                    let filePath = "evidencia/" + nameUnico;
                     
                     const { error: uploadError } = await supabaseClient.storage.from('fotos_turno').upload(filePath, fotoComprimida);
                     
