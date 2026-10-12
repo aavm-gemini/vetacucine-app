@@ -120,7 +120,7 @@
         .prio-0 { color: #cbd5e1; font-size: 18px; }
 
         @media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } }
-        @media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }        
+        @media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
         
         /* --- REGLAS ESTRICTAS PARA DISPOSITIVOS MÓVILES --- */
         @media (max-width: 768px) { 
@@ -150,7 +150,6 @@
                 <li><a href="dashboard.html" class="active">📊 Dashboard</a></li>
                 <li><a href="taller.html">🏭 Panel Operador</a></li>
                 <li><a href="index.html">📝 Ingreso Muebles</a></li>
-                <li><a href="tablero.html">📋 Tablero Kanban</a></li>
                 <li><a href="reportes.html">🔍 Buscar y Reportes</a></li>
                 <li><a href="admin.html" id="link-admin">⚙️ Administrador</a></li>
             </ul>
@@ -160,6 +159,7 @@
             <div class="header-top">
                 <h2 class="header-title">Tablero de Producción</h2>
                 <div class="perfil-usuario">
+                    <!-- WIDGET DE NOTAS REPARADO -->
                     <div class="widget-notas">
                         <button id="btn-notas" class="btn-icono" title="Notas del Equipo">
                             📝<span id="badge-notas" class="badge-notas-urgente" style="display: none;">0</span>
@@ -293,7 +293,6 @@
 
             const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol').eq('email', USUARIO_ACTUAL_EMAIL).single();
             const rolUsuario = (empleado && empleado.rol) ? empleado.rol.trim() : 'Operador'; 
-
             if (rolUsuario !== 'Administrador') {
                 const linkAdmin = document.getElementById('link-admin');
                 if (linkAdmin) linkAdmin.parentElement.style.display = 'none';
@@ -306,12 +305,157 @@
             cargarNotasEquipo();
             setInterval(cargarNotasEquipo, 120000);
             
+            // --- EVENTOS DEL PANEL DE NOTAS ---
+            const btnNotas = document.getElementById('btn-notas');
+            const panelNotas = document.getElementById('panel-notas');
+            const btnNuevaNota = document.getElementById('btn-nueva-nota');
+            const btnCancelarNota = document.getElementById('btn-cancelar-nota');
+            const btnGuardarNota = document.getElementById('btn-guardar-nota');
+            const cajaEdicion = document.getElementById('caja-edicion-nota');
+            const txtNota = document.getElementById('texto-nota');
+            const chkUrgente = document.getElementById('chk-importante');
+
+            // Abrir / Cerrar el panel
+            btnNotas.addEventListener('click', (e) => {
+                e.stopPropagation();
+                panelNotas.style.display = (panelNotas.style.display === 'block') ? 'none' : 'block';
+                if (panelNotas.style.display === 'block') marcarNotasComoLeidas();
+            });
+
+            // Cerrar si hace clic fuera
             document.addEventListener('click', (e) => {
-                const widget = document.querySelector('.widget-notas');
-                const panel = document.getElementById('panel-notas');
-                if (widget && panel && !widget.contains(e.target) && panel.style.display === 'block') panel.style.display = 'none';
+                if (!document.querySelector('.widget-notas').contains(e.target)) {
+                    panelNotas.style.display = 'none';
+                }
+            });
+
+            // Mostrar el formulario para escribir nueva nota
+            btnNuevaNota.addEventListener('click', () => {
+                idNotaEnEdicion = null;
+                txtNota.value = '';
+                chkUrgente.checked = false;
+                cajaEdicion.style.display = 'block';
+                txtNota.focus();
+            });
+
+            // Ocultar formulario
+            btnCancelarNota.addEventListener('click', () => {
+                cajaEdicion.style.display = 'none';
+                idNotaEnEdicion = null;
+            });
+
+            // Guardar Nota en la base de datos
+            btnGuardarNota.addEventListener('click', async () => {
+                let texto = txtNota.value.trim();
+                if (!texto) return Swal.fire({ toast:true, position:'top-end', icon:'warning', title:'La nota está vacía', showConfirmButton:false, timer:2000 });
+                
+                btnGuardarNota.disabled = true;
+                btnGuardarNota.innerText = '...';
+
+                let urgente = chkUrgente.checked;
+                let payload = {
+                    autor_nombre: USUARIO_ACTUAL_NOMBRE.split(' ')[0],
+                    autor_email: USUARIO_ACTUAL_EMAIL,
+                    texto: texto,
+                    importante: urgente
+                };
+
+                let err = null;
+                if (idNotaEnEdicion) {
+                    const { error } = await supabaseClient.from('notas_equipo').update(payload).eq('id', idNotaEnEdicion);
+                    err = error;
+                } else {
+                    const { error } = await supabaseClient.from('notas_equipo').insert([payload]);
+                    err = error;
+                }
+
+                btnGuardarNota.disabled = false;
+                btnGuardarNota.innerText = 'Publicar';
+
+                if (err) {
+                    Swal.fire({ toast:true, position:'top-end', icon:'error', title:'Error al guardar', showConfirmButton:false, timer:2000 });
+                } else {
+                    cajaEdicion.style.display = 'none';
+                    cargarNotasEquipo();
+                }
             });
         });
+
+        // --- FUNCIONES LÓGICAS DE NOTAS ---
+        async function cargarNotasEquipo() {
+            const { data, error } = await supabaseClient.from('notas_equipo').select('*').order('created_at', { ascending: false }).limit(20);
+            const lista = document.getElementById('lista-notas');
+            const badge = document.getElementById('badge-notas');
+
+            if (error) { lista.innerHTML = `<p style="text-align:center; font-size:12px; color:#ef4444; padding:20px;">Error al cargar notas.</p>`; return; }
+            if (!data || data.length === 0) { lista.innerHTML = `<p style="text-align:center; font-size:12px; color:#94a3b8; padding:20px;">No hay notas en el equipo.</p>`; return; }
+
+            lista.innerHTML = '';
+            let notasNuevasParaMi = 0;
+            let ultimaVezStr = localStorage.getItem(CACHE_NOTAS_KEY);
+            let ultimaVez = ultimaVezStr ? new Date(ultimaVezStr) : new Date(0);
+
+            data.forEach(nota => {
+                let fCrea = new Date(nota.created_at);
+                if (fCrea > ultimaVez && nota.autor_email !== USUARIO_ACTUAL_EMAIL) notasNuevasParaMi++;
+
+                let horaFormateada = fCrea.toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute:'2-digit' });
+                let claseUrgente = nota.importante ? 'urgente' : '';
+                let insignia = nota.importante ? '🚨 ' : '';
+                
+                let htmlAcciones = '';
+                if (nota.autor_email === USUARIO_ACTUAL_EMAIL) {
+                    htmlAcciones = `<div class="nota-acciones">
+                        <span onclick="editarNota(${nota.id}, '${nota.texto.replace(/'/g, "\\'")}', ${nota.importante})">Editar</span>
+                        <span class="borrar" onclick="borrarNota(${nota.id})">Borrar</span>
+                    </div>`;
+                }
+
+                lista.innerHTML += `
+                    <div class="nota-card ${claseUrgente}">
+                        <div class="nota-header">
+                            <span class="nota-autor">${insignia}${nota.autor_nombre}</span>
+                            <span>${horaFormateada}</span>
+                        </div>
+                        <div class="nota-contenido">${nota.texto}</div>
+                        ${htmlAcciones}
+                    </div>
+                `;
+            });
+
+            if (notasNuevasParaMi > 0) {
+                badge.style.display = 'flex';
+                badge.innerText = notasNuevasParaMi > 9 ? '9+' : notasNuevasParaMi;
+                window.notasNoLeidas = notasNuevasParaMi;
+            } else {
+                badge.style.display = 'none';
+                window.notasNoLeidas = 0;
+            }
+            actualizarBadgeSistemaOS();
+        }
+
+        function marcarNotasComoLeidas() {
+            localStorage.setItem(CACHE_NOTAS_KEY, new Date().toISOString());
+            document.getElementById('badge-notas').style.display = 'none';
+            window.notasNoLeidas = 0;
+            actualizarBadgeSistemaOS();
+        }
+
+        function editarNota(id, texto, importante) {
+            document.getElementById('caja-edicion-nota').style.display = 'block';
+            document.getElementById('texto-nota').value = texto;
+            document.getElementById('chk-importante').checked = importante;
+            idNotaEnEdicion = id;
+            document.getElementById('texto-nota').focus();
+        }
+
+        async function borrarNota(id) {
+            const conf = await Swal.fire({ title: '¿Borrar esta nota?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Sí, borrar' });
+            if (conf.isConfirmed) {
+                await supabaseClient.from('notas_equipo').delete().eq('id', id);
+                cargarNotasEquipo();
+            }
+        }
 
         async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; }
 
@@ -403,7 +547,6 @@
             if (agruparPorLote) {
                 let grupos = {};
                 lista.forEach(m => {
-                    // Ahora la llave NO incluye m.piso para juntar lotes del mismo proyecto
                     let key = `${m.codigo_proyecto}_${m.proyecto}_${m.producto}`;
                     if (!grupos[key]) {
                         
@@ -436,7 +579,6 @@
 
                     let isCommon = g.piezas.some(p => p.producto === 'PP' || p.espacio === 'AC');
                     
-                    // Agrupar primero por piso para construir el texto limpio
                     let mapPisos = {};
                     g.piezas.forEach(p => {
                         let pisoNro = p.piso ? p.piso : 'S/P';
@@ -560,7 +702,7 @@
         }
 
         // ===============================================
-        // RESTO DE FUNCIONES (GRAFICAS, NOTAS, ETC)
+        // RESTO DE FUNCIONES (GRAFICAS, METAS, ETC)
         // ===============================================
         function actualizarFiltrosMetas() { document.getElementById('sel_piso').value = ""; resetearBarra(); actualizarGraficasDinamicas(); calcularAvance(); }
 
@@ -613,22 +755,27 @@
             
             let terminadas = mueblesReales.filter(m => window.estadosFinales.includes(m.estado)).length; 
             let bloqueadas = mueblesReales.filter(m => m.estado && m.estado.toLowerCase().includes('bloque')).length; 
-            let enProceso = mueblesReales.length - terminadas - bloqueadas;            
+            let enProceso = mueblesReales.length - terminadas - bloqueadas;
+            
             let totalReal = terminadas + enProceso + bloqueadas; 
             let baseVisual = Math.max(metaTotal, totalReal); 
-            let faltantes = metaTotal - totalReal; if (faltantes < 0) faltantes = 0;                         
+            let faltantes = metaTotal - totalReal; if (faltantes < 0) faltantes = 0;
             
-            document.getElementById('bar_verde').style.width = `${(terminadas / baseVisual) * 100}%`; document.getElementById('bar_verde').innerHTML = terminadas > 0 ? `${terminadas}` : '';            
-            document.getElementById('bar_amarillo').style.width = `${(enProceso / baseVisual) * 100}%`; document.getElementById('bar_amarillo').innerHTML = enProceso > 0 ? `${enProceso}` : '';            
+            document.getElementById('bar_verde').style.width = `${(terminadas / baseVisual) * 100}%`; document.getElementById('bar_verde').innerHTML = terminadas > 0 ? `${terminadas}` : '';
+            document.getElementById('bar_amarillo').style.width = `${(enProceso / baseVisual) * 100}%`; document.getElementById('bar_amarillo').innerHTML = enProceso > 0 ? `${enProceso}` : '';
             document.getElementById('bar_rojo').style.width = `${(bloqueadas / baseVisual) * 100}%`; document.getElementById('bar_rojo').innerHTML = bloqueadas > 0 ? `${bloqueadas}` : '';
             
-            let avisoSobreproduccion = totalReal > metaTotal ? `<span style="color:#ef4444; margin-left:10px;">(¡Sobreproducción: +${totalReal - metaTotal}!)</span>` : '';            
-            document.getElementById('texto_progreso').innerHTML = `<span style="min-width:150px;">Meta Base: ${metaTotal} unds. ${avisoSobreproduccion}</span> <span style="color:#10b981;">✅ ${terminadas} Completadas</span> <span style="color:#f59e0b;">⏳ ${enProceso} En Planta</span> <span style="color:#94a3b8;">⚪ ${faltantes} Sin Ingresar</span> ${mensajeAviso}`;        
+            let avisoSobreproduccion = totalReal > metaTotal ? `<span style="color:#ef4444; margin-left:10px;">(¡Sobreproducción: +${totalReal - metaTotal}!)</span>` : '';
+            
+            document.getElementById('texto_progreso').innerHTML = `<span style="min-width:150px;">Meta Base: ${metaTotal} unds. ${avisoSobreproduccion}</span> <span style="color:#10b981;">✅ ${terminadas} Completadas</span> <span style="color:#f59e0b;">⏳ ${enProceso} En Planta</span> <span style="color:#94a3b8;">⚪ ${faltantes} Sin Ingresar</span> ${mensajeAviso}`;
         }
 
-        function resetearBarra() { document.getElementById('bar_verde').style.width = `0%`; document.getElementById('bar_verde').innerHTML = ''; document.getElementById('bar_amarillo').style.width = `0%`; document.getElementById('bar_amarillo').innerHTML = ''; document.getElementById('bar_rojo').style.width = `0%`; document.getElementById('bar_rojo').innerHTML = ''; }        
-        function animarContador(idElemento, valorFinal) { let actual = 0; const elemento = document.getElementById(idElemento); const incremento = Math.max(1, Math.floor(valorFinal / 20)); const intervalo = setInterval(() => { actual += incremento; if (actual >= valorFinal) { actual = valorFinal; clearInterval(intervalo); } elemento.innerText = actual; }, 30); }        
-        function dibujarGraficaEstados(datos) { const ctx = document.getElementById('chartEstados').getContext('2d'); if (myChartEstados) myChartEstados.destroy(); const etiquetas = Object.keys(datos); const valores = Object.values(datos); const colores = ['#94a3b8', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#14b8a6']; myChartEstados = new Chart(ctx, { type: 'doughnut', data: { labels: etiquetas, datasets: [{ data: valores, backgroundColor: colores.slice(0, etiquetas.length), borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { boxWidth: 15, font: { size: 11 } } } }, cutout: '60%' } }); }        
+        function resetearBarra() { document.getElementById('bar_verde').style.width = `0%`; document.getElementById('bar_verde').innerHTML = ''; document.getElementById('bar_amarillo').style.width = `0%`; document.getElementById('bar_amarillo').innerHTML = ''; document.getElementById('bar_rojo').style.width = `0%`; document.getElementById('bar_rojo').innerHTML = ''; }
+        
+        function animarContador(idElemento, valorFinal) { let actual = 0; const elemento = document.getElementById(idElemento); const incremento = Math.max(1, Math.floor(valorFinal / 20)); const intervalo = setInterval(() => { actual += incremento; if (actual >= valorFinal) { actual = valorFinal; clearInterval(intervalo); } elemento.innerText = actual; }, 30); }
+        
+        function dibujarGraficaEstados(datos) { const ctx = document.getElementById('chartEstados').getContext('2d'); if (myChartEstados) myChartEstados.destroy(); const etiquetas = Object.keys(datos); const valores = Object.values(datos); const colores = ['#94a3b8', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#14b8a6']; myChartEstados = new Chart(ctx, { type: 'doughnut', data: { labels: etiquetas, datasets: [{ data: valores, backgroundColor: colores.slice(0, etiquetas.length), borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { boxWidth: 15, font: { size: 11 } } } }, cutout: '60%' } }); }
+        
         function dibujarGraficaProyectos(datos, diccionarioColores) { const ctx = document.getElementById('chartProyectos').getContext('2d'); if (myChartProyectos) myChartProyectos.destroy(); const etiquetas = Object.keys(datos); const valores = Object.values(datos); const coloresBarra = etiquetas.map(lbl => diccionarioColores[lbl] || '#3b82f6'); myChartProyectos = new Chart(ctx, { type: 'bar', data: { labels: etiquetas, datasets: [{ label: 'Cant. de Muebles', data: valores, backgroundColor: coloresBarra, borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } }, x: { grid: { display: false } } } } }); }
         
         // FUNCIONES DE NOTIFICACIONES GLOBALES
