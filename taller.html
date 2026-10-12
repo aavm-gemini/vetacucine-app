@@ -79,7 +79,6 @@
         .mi-lote-item { display: flex; align-items: flex-start; gap: 12px; padding: 16px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 12px; background: white; transition: 0.2s; }
         .mi-lote-item.completado { background: #f8fafc; opacity: 0.75; border-left: 4px solid #10b981; }
         .mi-lote-item.completado .lote-titulo { text-decoration: line-through; color: #64748b; }
-        .check-grande { width: 22px; height: 22px; margin-top: 2px; cursor: pointer; accent-color: #10b981; flex-shrink: 0; }
         .lote-contenido { flex: 1; min-width: 0; }
         .lote-titulo { font-size: 16px; font-weight: bold; color: #2563eb; margin-bottom: 4px; }
         .lote-nombre { font-size: 14px; font-weight: bold; color: #1e293b; line-height: 1.4; margin-bottom: 6px; }
@@ -234,16 +233,23 @@
                 </div>
 
                 <!-- =========================================================
-                     SECCIÓN 2: MI LISTA DE TRABAJO
+                     SECCIÓN 2: MI LISTA DE TRABAJO (CON NUEVO BOTON HISTORIAL)
                      ========================================================= -->
                 <div id="seccion_lista" style="width: 100%; display: none;">
                     <div class="checklist-card">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
                             <div>
                                 <h3 style="margin:0; color:#1e293b;">📋 Mi Hoja de Ruta del Turno</h3>
-                                <p style="margin:3px 0 0 0; font-size:12px; color:#64748b;">Anota los códigos de hoy y registra tu productividad.</p>
+                                <p style="margin:3px 0 0 0; font-size:12px; color:#64748b;">Anota los códigos para no olvidarlos de tu ruta.</p>
                             </div>
-                            <button onclick="limpiarCompletadosLista()" style="background:#f1f5f9; border:1px solid #cbd5e1; color:#475569; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">🧹 Limpiar Terminados</button>
+                            <div style="display:flex; gap:10px;">
+                                <button onclick="verMiHistorialPersonal()" style="background:#fff; border:1px solid #e2e8f0; color:#8b5cf6; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:5px; box-shadow:0 2px 4px rgba(0,0,0,0.05);" title="Ver todo lo que he procesado hoy">
+                                    <span style="font-size:16px;">🗂️</span> Mi Historial
+                                </button>
+                                <button onclick="limpiarCompletadosLista()" style="background:#f1f5f9; border:1px solid #cbd5e1; color:#475569; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">
+                                    🧹 Limpiar Terminados
+                                </button>
+                            </div>
                         </div>
 
                         <div class="add-lote-bar">
@@ -261,7 +267,7 @@
                 <div id="seccion_relevo" style="width: 100%; display: none;">
                     <div class="relevo-grid">
                         
-                        <!-- NUEVO: BUSCADOR DE DIARIO DE PROYECTO PERMANENTE -->
+                        <!-- BUSCADOR DE DIARIO DE PROYECTO PERMANENTE -->
                         <div class="card-relevo" style="border-top-color: #8b5cf6; padding-bottom: 25px;">
                             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                                 <h3 style="margin:0; color:#1e293b;">📜 Consultar Diario de Proyecto</h3>
@@ -402,7 +408,7 @@
 
         let operadorNombreCompleto = "";
         let operadorEmail = "";
-        let operadorArea = "Taller"; // Rol automático
+        let operadorArea = "Taller"; 
         
         let catalogoEstadosGlobal = [];
         let piezasLoteActual = [];
@@ -411,6 +417,8 @@
         let archivosFotosTurno = [];
 
         const STORAGE_LISTA_KEY = 'veta_mi_lista_taller_v1';
+        // NUEVA LLAVE PARA EL HISTORIAL LOCAL
+        const STORAGE_HISTORIAL_KEY = 'veta_mi_historial_taller_v1';
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -420,7 +428,6 @@
             operadorNombreCompleto = session.user.user_metadata.full_name || operadorEmail.split('@')[0];
             document.getElementById('nombreOperador').innerText = operadorNombreCompleto.split(' ')[0];
 
-            // 1. OBTENEMOS EL ROL / ÁREA ASIGNADA AUTOMÁTICAMENTE
             const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol, area_asignada').eq('email', operadorEmail).single();
             const rolUsuario = empleado ? empleado.rol.trim() : 'Operador'; 
             operadorArea = (empleado && empleado.area_asignada) ? empleado.area_asignada.trim() : 'Taller';
@@ -481,7 +488,7 @@
         function manejarEnter(e) { if (e.key === 'Enter') buscarMueble(); }
 
         // ==========================================
-        // PESTAÑA 1: BUSCADOR
+        // PESTAÑA 1: BUSCADOR (ACCIÓN DIRECTA PARA EXTERNOS)
         // ==========================================
         async function buscarMueble(codigoForzado = null) {
             let codigo = codigoForzado || document.getElementById('codigo_ingresado').value.trim();
@@ -509,14 +516,27 @@
                         
                         document.getElementById('capa_controles_lote').style.display = 'none';
                         document.getElementById('nota_avance_lote').style.display = 'none';
-                        document.getElementById('contenedor_piezas_lote').innerHTML = `<div style="padding:25px; text-align:center; color:#64748b; line-height:1.5;">Este proyecto es externo.<br>No tiene despiece en el sistema.<br><br>Agrégalo a tu Lista de Trabajo para registrar tu avance de productividad.</div>`;
+                        
+                        document.getElementById('contenedor_piezas_lote').innerHTML = `
+                            <div style="padding:20px; text-align:center; color:#64748b; background:#f8fafc; border-radius:8px; border:1px dashed #cbd5e1; margin-bottom:15px;">
+                                <p style="margin-top:0; font-weight:bold; color:#1e293b;">Este proyecto es externo.</p>
+                                <p style="font-size:13px; margin-bottom:15px;">No tiene despiece en el sistema. Registra directamente tu intervención.</p>
+                                <div style="text-align:left;">
+                                    <label style="font-size:12px; font-weight:bold; color:#475569;">Área que reporta:</label>
+                                    <div style="margin-top:4px; margin-bottom:12px; display:inline-block; background:#eff6ff; padding:4px 10px; border-radius:12px; font-size:12px; color:#2563eb; font-weight:bold;">
+                                        👤 ${operadorArea}
+                                    </div>
+                                </div>
+                                <textarea id="nota_avance_externo" placeholder="Describe qué hiciste... (Ej: Corté todo el lote de piezas)" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; font-size:13px; height:80px; resize:vertical;"></textarea>
+                            </div>
+                        `;
                         
                         let btnAccion = document.getElementById('btn_procesar');
                         btnAccion.disabled = false;
                         btnAccion.className = "btn-gigante";
                         btnAccion.style.backgroundColor = "#8b5cf6";
-                        btnAccion.innerHTML = `➕ Agregar a Mi Lista`;
-                        btnAccion.onclick = () => { agregarProyectoExternoALista(codigo, result.nombre); };
+                        btnAccion.innerHTML = `✅ Registrar mi Labor`;
+                        btnAccion.onclick = () => { registrarAvanceExterno(codigo, result.nombre); };
                         
                         return;
                     } else {
@@ -630,8 +650,57 @@
                 if (errMueble) { Swal.fire('Error', 'Falla al actualizar las piezas.', 'error'); btnAccion.disabled = false; return; }
             }
 
+            // --- MEJORA: REGISTRAR EN HISTORIAL LOCAL Y BORRAR DE MI LISTA ---
+            const codigoTerminado = document.getElementById('res_codigo').innerText.replace('#', '').trim();
+            agregarAMiHistorialLocal(codigoTerminado, `Avanzó a ${estadoSiguienteLote}`, notaExtra || 'Procesamiento estándar');
+            removerDeMiListaPorCodigo(codigoTerminado);
+
             Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `¡${idsSeleccionados.length} pieza(s) actualizadas!`, text: `Enviadas a ${estadoSiguienteLote}`, showConfirmButton: false, timer: 3000 });
             cancelarOperacion();
+        }
+
+        // Nueva función para registro de externos directamente a bitácora
+        async function registrarAvanceExterno(codigo, nombreProyecto) {
+            const detalle = document.getElementById('nota_avance_externo').value.trim();
+            if (!detalle) {
+                Swal.fire('Falta detalle', 'Por favor escribe una breve observación de lo que hiciste.', 'warning');
+                return;
+            }
+
+            let btnAccion = document.getElementById('btn_procesar');
+            btnAccion.disabled = true;
+            btnAccion.innerHTML = '⏳ Guardando...';
+
+            const offset = (new Date()).getTimezoneOffset() * 60000;
+            const fechaHoyLocal = (new Date(Date.now() - offset)).toISOString().split('T')[0];
+            
+            const { error } = await supabaseClient.from('bitacora_turnos').insert([{
+                fecha: fechaHoyLocal,
+                turno: document.getElementById('rel_turno').value,
+                area_origen: operadorArea,
+                area_destino: 'Mismo Operador',
+                codigo_proyecto: codigo,
+                categoria: 'Personal',
+                mensaje: `[PRODUCTIVIDAD] ${detalle}`,
+                autor_email: operadorEmail,
+                autor_nombre: operadorNombreCompleto,
+                leido: true, 
+                leido_por: 'Sistema' 
+            }]);
+
+            if (error) {
+                Swal.fire('Error', 'No se pudo guardar tu avance: ' + error.message, 'error');
+                btnAccion.disabled = false;
+                btnAccion.innerHTML = `✅ Registrar mi Labor`;
+            } else {
+                // --- MEJORA: REGISTRAR EN HISTORIAL LOCAL Y BORRAR DE MI LISTA ---
+                agregarAMiHistorialLocal(codigo, `Labor Registrada`, detalle);
+                removerDeMiListaPorCodigo(codigo);
+
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Avance guardado con éxito', showConfirmButton: false, timer: 2000 });
+                cargarBitacoraTurnos(); 
+                cancelarOperacion();
+            }
         }
 
         function cancelarOperacion() { 
@@ -649,27 +718,72 @@
         }
 
         // ==========================================
-        // PESTAÑA 2: MI LISTA 
+        // PESTAÑA 2: MI LISTA DE TRABAJO Y AUTO-BORRADO
         // ==========================================
         function obtenerMiLista() { try { return JSON.parse(localStorage.getItem(STORAGE_LISTA_KEY) || '[]'); } catch { return []; } }
         function guardarMiLista(lista) { localStorage.setItem(STORAGE_LISTA_KEY, JSON.stringify(lista)); }
 
-        function agregarProyectoExternoALista(codigo, nombre) {
-            let lista = obtenerMiLista(); 
-            let existe = lista.find(x => String(x.codigo) === String(codigo));
-            if(!existe) {
-                lista.unshift({ id: Date.now(), codigo: codigo, resumen: nombre + " (Externo)", estado: "En Proceso", completado: false });
-                guardarMiLista(lista);
+        // --- NUEVA FUNCIÓN: REMOVER DE LA LISTA AUTOMÁTICAMENTE ---
+        function removerDeMiListaPorCodigo(codigo) {
+            let lista = obtenerMiLista();
+            let nuevaLista = lista.filter(x => String(x.codigo) !== String(codigo));
+            if (lista.length !== nuevaLista.length) {
+                guardarMiLista(nuevaLista);
                 renderizarMiLista();
             }
-            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Agregado a Mi Lista', showConfirmButton: false, timer: 2000 });
-            cancelarOperacion();
-            cambiarTab('lista'); 
+        }
+
+        // --- NUEVA FUNCIÓN: AGREGAR AL HISTORIAL LOCAL ---
+        function agregarAMiHistorialLocal(codigo, accion, detalle) {
+            let historial = JSON.parse(localStorage.getItem(STORAGE_HISTORIAL_KEY) || '[]');
+            historial.unshift({
+                id: Date.now(),
+                codigo: codigo,
+                accion: accion,
+                detalle: detalle,
+                fecha: new Date().toISOString()
+            });
+            if(historial.length > 50) historial.pop(); // Solo guarda los últimos 50 localmente
+            localStorage.setItem(STORAGE_HISTORIAL_KEY, JSON.stringify(historial));
+        }
+
+        // --- NUEVA FUNCIÓN: VER EL HISTORIAL LOCAL EN PANTALLA ---
+        function verMiHistorialPersonal() {
+            let historial = JSON.parse(localStorage.getItem(STORAGE_HISTORIAL_KEY) || '[]');
+            if (historial.length === 0) {
+                Swal.fire('Historial Vacío', 'No has procesado ningún proyecto en este dispositivo hoy.', 'info');
+                return;
+            }
+
+            let htmlHistorial = `<div style="text-align:left; max-height:350px; overflow-y:auto; font-size:13px; padding-right:5px; margin-top:10px;">`;
+            historial.forEach(r => {
+                let d = new Date(r.fecha);
+                let fechaHora = d.toLocaleString('es-ES', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit', hour12:true });
+                
+                htmlHistorial += `
+                    <div style="border-left: 4px solid #8b5cf6; padding-left: 10px; margin-bottom: 15px; background: #f8fafc; padding-top:8px; padding-bottom:8px; border-radius:0 8px 8px 0;">
+                        <div style="font-size:11px; color:#64748b; margin-bottom:4px;">
+                            <b style="color:#0f172a;">Proyecto #${r.codigo}</b> • ${fechaHora}
+                        </div>
+                        <div style="color:#1e293b; font-weight:bold; margin-bottom:2px;">${r.accion}</div>
+                        <div style="color:#475569; line-height:1.4;">${r.detalle}</div>
+                    </div>
+                `;
+            });
+            htmlHistorial += `</div>`;
+
+            Swal.fire({
+                title: `🗂️ Mi Historial de Trabajo`,
+                html: htmlHistorial,
+                width: 450,
+                showConfirmButton: true,
+                confirmButtonText: 'Cerrar Historial',
+                confirmButtonColor: '#3b82f6'
+            });
         }
 
         async function agregarAMiLista() {
             const input = document.getElementById('input_nuevo_lote_lista'); let texto = input.value.trim(); if (!texto) return;
-            
             Swal.fire({ title: 'Agregando...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
             let lista = obtenerMiLista(); 
@@ -745,13 +859,11 @@
             lista.forEach(item => {
                 contenedor.innerHTML += `
                     <div class="mi-lote-item ${item.completado ? 'completado' : ''}">
-                        <input type="checkbox" class="check-grande" ${item.completado ? 'checked' : ''} onchange="marcarItemLista(${item.id}, this.checked)">
                         <div class="lote-contenido">
                             <div class="lote-titulo">#${item.codigo}</div>
                             <div class="lote-nombre">${item.resumen}</div>
                             <div class="lote-sub">Estado ref: <b style="color:#0f172a;">${item.estado}</b></div>
                             <div style="display:flex; align-items:center; gap:6px;">
-                                <button onclick="registrarLaborManual('${item.codigo}', '${item.resumen.replace(/'/g, "\\'")}')" style="flex:1; background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; padding:8px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">⏱️ Mi Avance</button>
                                 <button onclick="abrirEnEscaner('${item.codigo}')" style="flex:1; background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; padding:8px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">⚡ Procesar</button>
                                 <button onclick="eliminarItemLista(${item.id})" title="Quitar de mi lista" style="background:#fef2f2; color:#ef4444; border:1px solid #fecaca; padding:8px 12px; border-radius:6px; font-size:13px; cursor:pointer;">🗑️</button>
                             </div>
@@ -761,66 +873,13 @@
             });
         }
 
+        function eliminarItemLista(id) { let lista = obtenerMiLista().filter(x => x.id !== id); guardarMiLista(lista); renderizarMiLista(); }
+        function limpiarCompletadosLista() { let lista = obtenerMiLista().filter(x => !x.completado); guardarMiLista(lista); renderizarMiLista(); }
+        function abrirEnEscaner(codigo) { cambiarTab('escaner'); document.getElementById('codigo_ingresado').value = codigo; buscarMueble(codigo); }
+
         // ==========================================
-        // REGISTRO DE PRODUCTIVIDAD (INTELIGENTE POR ROL) Y LECTURA DE DIARIOS
+        // PESTAÑA 3: LECTURA DE DIARIOS Y BITÁCORA
         // ==========================================
-        async function registrarLaborManual(codigo, nombreProyecto) {
-            const { value: formValues } = await Swal.fire({
-                title: 'Registrar Mi Avance',
-                html: `
-                    <div style="text-align:left; font-size:14px; margin-bottom:12px; color:#475569;">
-                        <b>Proyecto:</b> #${codigo}<br>${nombreProyecto}<br>
-                        <div style="margin-top:8px; display:inline-block; background:#eff6ff; padding:4px 10px; border-radius:12px; font-size:12px; color:#2563eb; font-weight:bold;">
-                            👤 Área Registrada: ${operadorArea}
-                        </div>
-                    </div>
-                    <textarea id="swal-detalle" class="swal2-textarea" placeholder="Escribe tu observación... (Ej: Corté todas las puertas principales)" style="width:100%; max-width:100%; font-size:14px; margin-top:0; height:80px;"></textarea>
-                `,
-                focusConfirm: false,
-                showCancelButton: true,
-                confirmButtonText: 'Guardar Avance',
-                cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#10b981',
-                preConfirm: () => {
-                    const detalle = document.getElementById('swal-detalle').value.trim();
-                    if (!detalle) {
-                        Swal.showValidationMessage('Escribe una breve observación de lo que hiciste');
-                        return false;
-                    }
-                    return { detalle };
-                }
-            });
-
-            if (formValues) {
-                Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
-
-                const offset = (new Date()).getTimezoneOffset() * 60000;
-                const fechaHoyLocal = (new Date(Date.now() - offset)).toISOString().split('T')[0];
-                
-                const { error } = await supabaseClient.from('bitacora_turnos').insert([{
-                    fecha: fechaHoyLocal,
-                    turno: document.getElementById('rel_turno').value,
-                    area_origen: operadorArea, // Se llena solo con la variable global
-                    area_destino: 'Mismo Operador',
-                    codigo_proyecto: codigo,
-                    categoria: 'Personal',
-                    mensaje: `[PRODUCTIVIDAD] ${formValues.detalle}`,
-                    autor_email: operadorEmail,
-                    autor_nombre: operadorNombreCompleto,
-                    leido: true, 
-                    leido_por: 'Sistema' 
-                }]);
-
-                if (error) {
-                    Swal.fire('Error', 'No se pudo guardar tu avance: ' + error.message, 'error');
-                } else {
-                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Avance registrado en el Diario del Proyecto', showConfirmButton: false, timer: 2000 });
-                    cargarBitacoraTurnos(); 
-                }
-            }
-        }
-
-        // Buscador Inteligente Permanente para leer diarios en cualquier momento
         async function verHistorialProyecto(codigoRaw) {
             let codigo = codigoRaw.trim();
             if (!codigo) { Swal.fire('Escribe un código', 'Debes ingresar un número de proyecto.', 'warning'); return; }
@@ -860,24 +919,9 @@
             });
             htmlHistorial += `</div>`;
 
-            Swal.fire({
-                title: `Diario: Proyecto #${codigo}`,
-                html: htmlHistorial,
-                width: 500,
-                showConfirmButton: true,
-                confirmButtonText: 'Cerrar Diario',
-                confirmButtonColor: '#3b82f6'
-            });
+            Swal.fire({ title: `Diario: Proyecto #${codigo}`, html: htmlHistorial, width: 500, showConfirmButton: true, confirmButtonText: 'Cerrar Diario', confirmButtonColor: '#3b82f6' });
         }
 
-        function eliminarItemLista(id) { let lista = obtenerMiLista().filter(x => x.id !== id); guardarMiLista(lista); renderizarMiLista(); }
-        function marcarItemLista(id, estadoCheck) { let lista = obtenerMiLista(); let item = lista.find(x => x.id === id); if (item) item.completado = estadoCheck; guardarMiLista(lista); renderizarMiLista(); }
-        function limpiarCompletadosLista() { let lista = obtenerMiLista().filter(x => !x.completado); guardarMiLista(lista); renderizarMiLista(); }
-        function abrirEnEscaner(codigo) { cambiarTab('escaner'); document.getElementById('codigo_ingresado').value = codigo; buscarMueble(codigo); }
-
-        // ==========================================
-        // PESTAÑA 3: BITÁCORA, FOTOS Y COMPRESIÓN JS
-        // ==========================================
         async function comprimirImagen(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -887,29 +931,13 @@
                     img.src = event.target.result;
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
-                        const MAX_WIDTH = 1200; 
-                        const MAX_HEIGHT = 1200; 
-                        let width = img.width;
-                        let height = img.height;
-
-                        if (width > height) {
-                            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-                        } else {
-                            if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
-                        }
-                        
-                        canvas.width = width;
-                        canvas.height = height;
+                        const MAX_WIDTH = 1200; const MAX_HEIGHT = 1200; 
+                        let width = img.width; let height = img.height;
+                        if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } } else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } }
+                        canvas.width = width; canvas.height = height;
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
-                        
-                        canvas.toBlob((blob) => {
-                            const nuevoArchivo = new File([blob], file.name, {
-                                type: 'image/jpeg',
-                                lastModified: Date.now()
-                            });
-                            resolve(nuevoArchivo);
-                        }, 'image/jpeg', 0.7);
+                        canvas.toBlob((blob) => { const nuevoArchivo = new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }); resolve(nuevoArchivo); }, 'image/jpeg', 0.7);
                     };
                     img.onerror = error => reject(error);
                 };
@@ -920,10 +948,8 @@
         function validarFotos(input) {
             if (input.files.length > 2) {
                 Swal.fire('Límite excedido', 'Solo puedes adjuntar un máximo de 2 imágenes.', 'warning');
-                input.value = ""; 
-                document.getElementById('preview_fotos').innerText = "No hay fotos seleccionadas. (A los 7 días se borrarán solas)";
-                archivosFotosTurno = [];
-                return;
+                input.value = ""; document.getElementById('preview_fotos').innerText = "No hay fotos seleccionadas. (A los 7 días se borrarán solas)";
+                archivosFotosTurno = []; return;
             }
             archivosFotosTurno = Array.from(input.files);
             if (archivosFotosTurno.length > 0) {
@@ -957,8 +983,7 @@
                     const { error: uploadError } = await supabaseClient.storage.from('fotos_turno').upload(filePath, fotoComprimida);
                     if (uploadError) {
                         btn.disabled = false; actualizarTemaTurnoFormulario();
-                        Swal.fire('Error al subir foto', 'Detalle: ' + uploadError.message, 'error');
-                        return; 
+                        Swal.fire('Error al subir foto', 'Detalle: ' + uploadError.message, 'error'); return; 
                     } else { rutasGuardadas.push(filePath); }
                 }
             }
@@ -981,7 +1006,7 @@
             document.getElementById('input_fotos_turno').value = ''; document.getElementById('preview_fotos').innerText = 'No hay fotos seleccionadas.';
             archivosFotosTurno = [];
 
-            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Reporte de turno publicado', showConfirmButton: false, timer: 2000 });
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Reporte publicado', showConfirmButton: false, timer: 2000 });
             cargarBitacoraTurnos();
         }
 
@@ -1062,12 +1087,10 @@
         }
 
         async function eliminarReporteTurno(idReporte) {
-            const conf = await Swal.fire({ title: '¿Borrar este reporte?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Sí, borrar' });
+            const conf = await Swal.fire({ title: '¿Borrar este reporte?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Sí, borrar' });
             if (conf.isConfirmed) {
                 const { data: reporte } = await supabaseClient.from('bitacora_turnos').select('rutas_fotos').eq('id', idReporte).single();
-                if (reporte && reporte.rutas_fotos && reporte.rutas_fotos.length > 0) {
-                    await supabaseClient.storage.from('fotos_turno').remove(reporte.rutas_fotos);
-                }
+                if (reporte && reporte.rutas_fotos && reporte.rutas_fotos.length > 0) { await supabaseClient.storage.from('fotos_turno').remove(reporte.rutas_fotos); }
                 await supabaseClient.from('bitacora_turnos').delete().eq('id', idReporte);
                 cargarBitacoraTurnos();
             }
@@ -1079,9 +1102,7 @@
         }
 
         function formatearFechaBonita(fechaISO) {
-            if (!fechaISO) return '';
-            let p = fechaISO.split('-');
-            return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : fechaISO;
+            if (!fechaISO) return ''; let p = fechaISO.split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : fechaISO;
         }
     </script>
 </body>
