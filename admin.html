@@ -105,7 +105,7 @@
             </div>
 
             <!-- ==========================================
-                 PESTAÑA 1: PERSONAL Y ÁREAS (ACTUALIZADA CON ROLES DE TALLER)
+                 PESTAÑA 1: PERSONAL Y ÁREAS
                  ========================================== -->
             <div id="tab-personal" class="tab-content active">
                 <div class="card">
@@ -114,7 +114,9 @@
                         <input type="hidden" id="emp_id">
                         <div class="form-group">
                             <label>Correo Electrónico (Gmail)</label>
-                            <input type="email" id="emp_email" placeholder="ejemplo@gmail.com">
+                            <!-- Lista desplegable inteligente conectada al datalist -->
+                            <input type="email" id="emp_email" placeholder="ejemplo@gmail.com" list="lista_emails" onchange="autoLlenarEmpleado()">
+                            <datalist id="lista_emails"></datalist>
                         </div>
                         <div class="form-group">
                             <label>Nombre del Empleado</label>
@@ -154,7 +156,7 @@
             </div>
 
             <!-- ==========================================
-                 PESTAÑA 2: FLUJO DE ESTADOS (LIMPIA, SIN KANBAN)
+                 PESTAÑA 2: FLUJO DE ESTADOS
                  ========================================== -->
             <div id="tab-flujo" class="tab-content">
                 <div class="card">
@@ -194,7 +196,7 @@
             </div>
 
             <!-- ==========================================
-                 PESTAÑA 3: METAS DE PRODUCCIÓN (DASHBOARD)
+                 PESTAÑA 3: METAS DE PRODUCCIÓN
                  ========================================== -->
             <div id="tab-metas" class="tab-content">
                 <div class="card">
@@ -234,7 +236,7 @@
             </div>
 
             <!-- ==========================================
-                 PESTAÑA 4: PROYECTOS, PRODUCTOS Y ESPACIOS (CATÁLOGOS)
+                 PESTAÑA 4: PROYECTOS, PRODUCTOS Y ESPACIOS
                  ========================================== -->
             <div id="tab-proyectos" class="tab-content">
                 <div class="grid-catalogos">
@@ -280,7 +282,7 @@
                         </div>
                     </div>
 
-                    <!-- ESPACIOS (NUEVO) -->
+                    <!-- ESPACIOS -->
                     <div class="card" style="border-top: 5px solid #8b5cf6; margin-bottom:0;">
                         <h3>Catálogo de Espacios</h3>
                         <div style="display:flex; gap:10px; margin-bottom: 15px;">
@@ -310,6 +312,7 @@
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
         let estadosCargados = [];
+        let empleadosCargados = []; // Variable para autocompletado
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -327,7 +330,7 @@
             cargarEstados();
             cargarProyectos();
             cargarProductos();
-            cargarEspacios(); // Llamada al cargar Espacios
+            cargarEspacios(); 
             cargarMetas();
         });
 
@@ -341,14 +344,27 @@
         }
 
         /* =========================================================================================
-           1. GESTIÓN DE EMPLEADOS Y ÁREAS
+           1. GESTIÓN DE EMPLEADOS Y ÁREAS (CON AUTOCOMPLETADO)
            ========================================================================================= */
         async function cargarEmpleados() {
-            const { data, error } = await supabaseClient.from('empleados_autorizados').select('*').order('nombre');
+            // Cambié el orden a 'email' para que no dé error si la columna 'nombre' aún no se ha creado
+            const { data, error } = await supabaseClient.from('empleados_autorizados').select('*').order('email');
             const tabla = document.getElementById('tabla-empleados');
-            if (error) { tabla.innerHTML = `<tr><td colspan="5">Error: ${error.message}</td></tr>`; return; }
+            const datalist = document.getElementById('lista_emails');
+            
+            if (error) { 
+                tabla.innerHTML = `<tr><td colspan="5" style="color:red;">Error de Base de Datos (Probablemente falte la columna 'nombre').<br>${error.message}</td></tr>`; 
+                return; 
+            }
+            
+            empleadosCargados = data;
             tabla.innerHTML = '';
+            datalist.innerHTML = '';
+            
             data.forEach(e => {
+                // Agregar al desplegable inteligente
+                datalist.innerHTML += `<option value="${e.email}">`;
+                
                 let areaBadge = e.area_asignada ? `<span style="background:#eff6ff; color:#2563eb; padding:2px 8px; border-radius:12px; font-size:12px; font-weight:bold;">${e.area_asignada}</span>` : '-';
                 tabla.innerHTML += `
                     <tr>
@@ -360,6 +376,23 @@
                     </tr>
                 `;
             });
+        }
+
+        // Función Mágica que auto-llena el formulario si seleccionas un correo del desplegable
+        function autoLlenarEmpleado() {
+            const emailInput = document.getElementById('emp_email').value.trim();
+            const empEncontrado = empleadosCargados.find(e => e.email === emailInput);
+            
+            if (empEncontrado) {
+                // Si el correo ya existe, llena los datos para editar
+                document.getElementById('emp_id').value = empEncontrado.id;
+                document.getElementById('emp_nombre').value = empEncontrado.nombre || '';
+                document.getElementById('emp_rol').value = empEncontrado.rol || 'Operador';
+                document.getElementById('emp_area').value = empEncontrado.area_asignada || 'Taller General';
+            } else {
+                // Si es un correo nuevo, limpia el ID interno para crear uno nuevo
+                document.getElementById('emp_id').value = '';
+            }
         }
 
         async function guardarEmpleado() {
@@ -392,6 +425,7 @@
             document.getElementById('emp_rol').value = rol;
             document.getElementById('emp_area').value = area;
             document.getElementById('emp_email').focus();
+            window.scrollTo(0, 0);
         }
 
         async function eliminarEmpleado(id) {
