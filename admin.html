@@ -61,6 +61,8 @@
 
         .badge-activo { background: #fef3c7; color: #d97706; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; border: 1px solid #fde68a; }
 
+        .grid-catalogos { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+
         @media (max-width: 768px) { 
             .app-container { flex-direction: column; height: auto; width: 100%; overflow-x: hidden !important; }
             .sidebar { width: 100%; z-index: 100; }
@@ -70,6 +72,7 @@
             .form-grid { grid-template-columns: 1fr; }
             table { font-size: 12px; }
             th, td { padding: 8px 10px; }
+            .grid-catalogos { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -231,52 +234,69 @@
             </div>
 
             <!-- ==========================================
-                 PESTAÑA 4: PROYECTOS Y PRODUCTOS (CATÁLOGOS)
+                 PESTAÑA 4: PROYECTOS, PRODUCTOS Y ESPACIOS (CATÁLOGOS)
                  ========================================== -->
             <div id="tab-proyectos" class="tab-content">
-                <div class="card" style="border-left: 5px solid #3b82f6;">
-                    <h3>Gestión de Proyectos</h3>
-                    <div class="form-grid">
-                        <input type="hidden" id="proy_id">
-                        <div class="form-group">
+                <div class="grid-catalogos">
+                    <!-- PROYECTOS -->
+                    <div class="card" style="border-top: 5px solid #3b82f6; margin-bottom:0;">
+                        <h3>Gestión de Proyectos</h3>
+                        <div class="form-group" style="margin-bottom: 10px;">
                             <label>Nombre del Proyecto</label>
                             <input type="text" id="proy_nombre" placeholder="Ej: Quarzo Mohedano">
                         </div>
-                        <div class="form-group">
-                            <label>Bloques (Separados por coma)</label>
-                            <input type="text" id="proy_bloques" placeholder="Ej: A, B, C (Opcional)">
+                        <div style="display:flex; gap:10px; margin-bottom: 15px;">
+                            <div class="form-group" style="flex:1;">
+                                <label>Bloques (Con coma)</label>
+                                <input type="text" id="proy_bloques" placeholder="Ej: A, B, C">
+                            </div>
+                            <div class="form-group" style="width:50px;">
+                                <label>Color</label>
+                                <input type="color" id="proy_color" value="#3b82f6" style="padding:0; height:38px; width:100%; cursor:pointer;">
+                            </div>
                         </div>
-                        <div class="form-group" style="max-width: 80px;">
-                            <label>Color</label>
-                            <input type="color" id="proy_color" value="#3b82f6" style="padding:0; height:40px; cursor:pointer;">
+                        <button class="btn-accion" style="width:100%; background:#3b82f6; margin-bottom: 15px;" onclick="guardarProyecto()">Guardar Proyecto</button>
+                        <div style="overflow-x: auto; max-height: 250px;">
+                            <table><tbody id="tabla-proyectos"></tbody></table>
                         </div>
-                        <button class="btn-accion" style="background:#3b82f6;" onclick="guardarProyecto()">Guardar Proyecto</button>
                     </div>
-                    <div style="overflow-x: auto; max-height: 250px;">
-                        <table>
-                            <tbody id="tabla-proyectos"></tbody>
-                        </table>
-                    </div>
-                </div>
 
-                <div class="card" style="border-left: 5px solid #10b981;">
-                    <h3>Catálogo de Productos</h3>
-                    <div class="form-grid">
-                        <input type="hidden" id="prod_id">
-                        <div class="form-group" style="max-width: 150px;">
-                            <label>Sigla Técnica</label>
-                            <input type="text" id="prod_sigla" placeholder="Ej: PP" style="text-transform:uppercase;">
+                    <!-- PRODUCTOS -->
+                    <div class="card" style="border-top: 5px solid #10b981; margin-bottom:0;">
+                        <h3>Catálogo de Productos</h3>
+                        <div style="display:flex; gap:10px; margin-bottom: 15px;">
+                            <div class="form-group" style="width:80px;">
+                                <label>Sigla</label>
+                                <input type="text" id="prod_sigla" placeholder="Ej: PP" style="text-transform:uppercase;">
+                            </div>
+                            <div class="form-group" style="flex:1;">
+                                <label>Nombre Completo</label>
+                                <input type="text" id="prod_nombre" placeholder="Ej: Puerta Principal">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Nombre Completo</label>
-                            <input type="text" id="prod_nombre" placeholder="Ej: Puerta Principal">
+                        <button class="btn-accion" style="width:100%; background:#10b981; margin-bottom: 15px;" onclick="guardarProducto()">Guardar Producto</button>
+                        <div style="overflow-x: auto; max-height: 250px;">
+                            <table><tbody id="tabla-productos"></tbody></table>
                         </div>
-                        <button class="btn-accion" style="background:#10b981;" onclick="guardarProducto()">Guardar Producto</button>
                     </div>
-                    <div style="overflow-x: auto; max-height: 250px;">
-                        <table>
-                            <tbody id="tabla-productos"></tbody>
-                        </table>
+
+                    <!-- ESPACIOS (NUEVO) -->
+                    <div class="card" style="border-top: 5px solid #8b5cf6; margin-bottom:0;">
+                        <h3>Catálogo de Espacios</h3>
+                        <div style="display:flex; gap:10px; margin-bottom: 15px;">
+                            <div class="form-group" style="width:80px;">
+                                <label>Sigla</label>
+                                <input type="text" id="esp_sigla" placeholder="Ej: AC" style="text-transform:uppercase;">
+                            </div>
+                            <div class="form-group" style="flex:1;">
+                                <label>Nombre del Espacio</label>
+                                <input type="text" id="esp_nombre" placeholder="Ej: Área Común">
+                            </div>
+                        </div>
+                        <button class="btn-accion" style="width:100%; background:#8b5cf6; margin-bottom: 15px;" onclick="guardarEspacio()">Guardar Espacio</button>
+                        <div style="overflow-x: auto; max-height: 250px;">
+                            <table><tbody id="tabla-espacios"></tbody></table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -307,6 +327,7 @@
             cargarEstados();
             cargarProyectos();
             cargarProductos();
+            cargarEspacios(); // Llamada al cargar Espacios
             cargarMetas();
         });
 
@@ -509,7 +530,7 @@
         }
 
         /* =========================================================================================
-           4. GESTIÓN DE PROYECTOS Y PRODUCTOS
+           4. GESTIÓN DE PROYECTOS, PRODUCTOS Y ESPACIOS
            ========================================================================================= */
         async function cargarProyectos() {
             const { data, error } = await supabaseClient.from('catalogo_proyectos').select('*').order('nombre');
@@ -558,6 +579,34 @@
         }
 
         async function eliminarProducto(id) { if(confirm("¿Eliminar producto?")) { await supabaseClient.from('catalogo_productos').delete().eq('id', id); cargarProductos(); } }
+
+        // --- FUNCIONES DEL CATÁLOGO DE ESPACIOS ---
+        async function cargarEspacios() {
+            const { data, error } = await supabaseClient.from('catalogo_espacios').select('*').order('sigla');
+            const tabla = document.getElementById('tabla-espacios');
+            if (error) return;
+            tabla.innerHTML = '';
+            data.forEach(e => {
+                tabla.innerHTML += `<tr><td><strong>${e.sigla}</strong> - ${e.nombre}</td><td style="text-align:right;"><button class="btn-icon delete" onclick="eliminarEspacio('${e.id}')">🗑️</button></td></tr>`;
+            });
+        }
+
+        async function guardarEspacio() {
+            const sigla = document.getElementById('esp_sigla').value.trim().toUpperCase();
+            const nombre = document.getElementById('esp_nombre').value.trim();
+            if (!sigla || !nombre) return Swal.fire('Faltan Datos', '', 'warning');
+            Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
+            const { error } = await supabaseClient.from('catalogo_espacios').insert([{ sigla, nombre }]);
+            if (!error) { document.getElementById('esp_sigla').value = ''; document.getElementById('esp_nombre').value = ''; cargarEspacios(); Swal.close(); }
+        }
+
+        async function eliminarEspacio(id) { 
+            if(confirm("¿Estás seguro de eliminar este espacio?")) { 
+                await supabaseClient.from('catalogo_espacios').delete().eq('id', id); 
+                cargarEspacios(); 
+            } 
+        }
+
     </script>
 </body>
 </html>
