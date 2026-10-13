@@ -32,8 +32,6 @@
         .form-group label { font-size: 12px; font-weight: bold; color: #475569; }
         .form-group select, .form-group input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; outline: none; transition: 0.2s; background: white; }
         .form-group input:focus, .form-group select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
-        .btn-accion { background: #8b5cf6; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; height: 40px; margin-top: 17px; white-space: nowrap; }
-        .btn-accion:hover { background: #7c3aed; }
 
         /* --- MATRIZ (TABLA) --- */
         .matriz-container { background: white; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: hidden; flex: 1; display: flex; flex-direction: column; }
@@ -78,7 +76,6 @@
             .nav-links a { padding: 12px 15px; font-size: 13px; }
             .main-content { padding: 15px; height: calc(100vh - 60px); }
             .filtros-card { flex-direction: column; align-items: stretch; }
-            .btn-accion { margin-top: 0; }
         }
     </style>
 </head>
@@ -106,28 +103,27 @@
                 <button onclick="cerrarSesion()" style="background:transparent; border:1px solid #ef4444; color:#ef4444; padding:6px 12px; border-radius:6px; font-weight:bold; cursor:pointer;">Salir</button>
             </div>
 
-            <!-- FILTROS AHORA CON PISO OBLIGATORIO -->
+            <!-- FILTROS (SIN BOTÓN Y CON EVENTOS AUTO-GENERADORES) -->
             <div class="filtros-card">
                 <div class="form-group">
                     <label>Proyecto</label>
-                    <select id="filtro_proyecto"><option value="">Cargando...</option></select>
+                    <select id="filtro_proyecto" onchange="autoGenerarMapa()"><option value="">Cargando...</option></select>
                 </div>
                 <div class="form-group">
                     <label>Producto</label>
-                    <select id="filtro_producto"><option value="">Cargando...</option></select>
+                    <select id="filtro_producto" onchange="autoGenerarMapa()"><option value="">Cargando...</option></select>
                 </div>
                 <div class="form-group" style="max-width: 150px;">
                     <label>Piso</label>
-                    <input type="text" id="filtro_piso" placeholder="Ej: 4" style="text-transform:uppercase;">
+                    <input type="text" id="filtro_piso" placeholder="Ej: 4" style="text-transform:uppercase;" oninput="autoGenerarMapa()">
                 </div>
-                <button class="btn-accion" onclick="generarMapa()">🚀 Generar Mapa</button>
             </div>
 
             <!-- MATRIZ -->
             <div class="matriz-container">
                 <div class="matriz-scroll">
                     <table class="tabla-matriz" id="tabla_matriz">
-                        <thead><tr><th style="text-align:center; padding: 40px;">Usa los filtros de arriba para generar el mapa</th></tr></thead>
+                        <thead><tr><th style="text-align:center; padding: 40px;">Usa los filtros de arriba para generar el mapa de forma automática</th></tr></thead>
                     </table>
                 </div>
                 <div class="leyenda">
@@ -149,6 +145,7 @@
 
         let estadosFinales = [];
         window.catalogoEspaciosGlobal = []; 
+        let temporizadorMapa = null; // Variable para el retraso inteligente
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -182,10 +179,31 @@
 
         async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; }
 
-        // Motor de Limpieza de Texto (Quita acentos y espacios raros para igualar "Área" con "Area")
+        // Motor de Limpieza de Texto (Quita acentos y espacios raros)
         function normalizeText(text) {
             if (!text) return '';
             return String(text).normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+        }
+
+        // --- SISTEMA DE GENERACIÓN AUTOMÁTICA ---
+        function autoGenerarMapa() {
+            const proyecto = document.getElementById('filtro_proyecto').value;
+            const producto = document.getElementById('filtro_producto').value;
+            const pisoInput = document.getElementById('filtro_piso').value.trim();
+
+            // Reinicia el contador de tiempo cada vez que tecleas algo
+            clearTimeout(temporizadorMapa);
+
+            // Si falta algún dato, limpiamos la pantalla suavemente y no buscamos nada
+            if (!proyecto || !producto || !pisoInput) {
+                document.getElementById('tabla_matriz').innerHTML = `<thead><tr><th style="text-align:center; padding: 40px; color:#64748b;">Llenando datos... esperando para generar el mapa.</th></tr></thead>`;
+                return;
+            }
+
+            // Si los 3 campos están llenos, espera 500ms y dispara la búsqueda a la base de datos
+            temporizadorMapa = setTimeout(() => {
+                generarMapa();
+            }, 500); 
         }
 
         async function generarMapa() {
@@ -193,11 +211,7 @@
             const producto = document.getElementById('filtro_producto').value;
             const pisoInput = document.getElementById('filtro_piso').value.trim();
 
-            if (!proyecto || !producto || !pisoInput) {
-                return Swal.fire('Filtros incompletos', 'Selecciona Proyecto, Producto y escribe el Piso.', 'warning');
-            }
-
-            Swal.fire({ title: 'Generando Mapa...', didOpen: () => Swal.showLoading() });
+            Swal.fire({ title: 'Cargando Piso...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
             // 1. Obtener las plantillas (Filas de Suites)
             const { data: plantillas, error: errPlan } = await supabaseClient.from('plantillas_matriz').select('*').eq('proyecto', proyecto).eq('producto', producto).order('suite');
@@ -211,11 +225,10 @@
             const { data: registros, error: errReg } = await supabaseClient.from('registros_produccion').select('id, codigo_proyecto, suite, piso, espacio, estado, producto').eq('proyecto', proyecto).eq('producto', producto);
             let mueblesReales = registros || [];
 
-            // 3. AISLAMIENTO POR PISO (El Filtro Crucial)
+            // 3. AISLAMIENTO POR PISO
             let filterPiso = normalizeText(pisoInput);
             mueblesReales = mueblesReales.filter(m => {
                 let p = normalizeText(m.piso);
-                // Compara si la DB dice "4", "PISO 4", o "P4" para que encaje perfecto
                 return p === filterPiso || p === `PISO ${filterPiso}` || p === `P${filterPiso}`;
             });
 
@@ -248,7 +261,6 @@
                     } else {
                         // SI lleva este espacio, buscamos el mueble real
                         
-                        // Traductor inteligente de Siglas a Nombres
                         let cat = window.catalogoEspaciosGlobal.find(e => normalizeText(e.nombre) === espPlan || normalizeText(e.sigla) === espPlan);
                         let siglaEsperada = cat ? normalizeText(cat.sigla) : espPlan;
                         let nombreEsperado = cat ? normalizeText(cat.nombre) : espPlan;
@@ -257,13 +269,10 @@
                             let strMuebleSuite = normalizeText(m.suite);
                             let mEsp = normalizeText(m.espacio);
                             
-                            // ¿Es exactamente esta Suite?
                             let matchLugar = (strMuebleSuite === strPlanSuite);
-
-                            // ¿Es exactamente este Espacio?
                             let matchEspacio = (mEsp === siglaEsperada || mEsp === nombreEsperado);
 
-                            // Salvavidas para Puertas Principales (A veces no le ponen espacio pero asumen que es AC)
+                            // Salvavidas para Puertas Principales (AC)
                             if (!mEsp && (siglaEsperada === 'AC' || nombreEsperado.includes('COMUN') || nombreEsperado.includes('COMÚN'))) {
                                 matchEspacio = true;
                             }
