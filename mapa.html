@@ -40,7 +40,7 @@
         .tabla-matriz { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; }
         .tabla-matriz th, .tabla-matriz td { border: 1px solid #e2e8f0; padding: 8px 5px; min-width: 90px; }
         .tabla-matriz th { background-color: #1e293b; color: white; position: sticky; top: 0; z-index: 2; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .tabla-matriz th:first-child { position: sticky; left: 0; z-index: 3; background-color: #0f172a; min-width: 140px; text-align: left; padding-left: 15px; }
+        .tabla-matriz th:first-child { position: sticky; left: 0; z-index: 3; background-color: #0f172a; min-width: 100px; text-align: left; padding-left: 15px; }
         .tabla-matriz td:first-child { position: sticky; left: 0; z-index: 1; background-color: #f8fafc; font-weight: bold; color: #1e293b; text-align: left; padding-left: 15px; border-right: 2px solid #cbd5e1; }
         
         /* ESTILOS DE PÍLDORAS (CELDAS) */
@@ -235,8 +235,8 @@
             });
             let espaciosUnicos = Array.from(espaciosSet).sort();
 
-            // Dibujar Tabla
-            let tablaHTML = `<thead><tr><th>SUITE / MODELO</th>`;
+            // Dibujar Tabla (Cambiado de SUITE / MODELO a SUITE)
+            let tablaHTML = `<thead><tr><th>SUITE</th>`;
             espaciosUnicos.forEach(esp => { tablaHTML += `<th>${esp}</th>`; });
             tablaHTML += `</tr></thead><tbody>`;
 
