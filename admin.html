@@ -96,12 +96,13 @@
                 <button onclick="cerrarSesion()" style="background:transparent; border:1px solid #ef4444; color:#ef4444; padding:6px 12px; border-radius:6px; font-weight:bold; cursor:pointer;">Salir</button>
             </div>
 
-            <!-- NAVEGACIÓN DE PESTAÑAS -->
+            <!-- NAVEGACIÓN DE PESTAÑAS (Añadida la pestaña 5) -->
             <div class="tabs-container">
                 <button class="tab-btn active" onclick="cambiarPestana('tab-personal')">👥 Personal y Áreas</button>
                 <button class="tab-btn" onclick="cambiarPestana('tab-flujo')">🔄 Flujo de Estados</button>
                 <button class="tab-btn" onclick="cambiarPestana('tab-metas')">🎯 Metas (Dashboard)</button>
                 <button class="tab-btn" onclick="cambiarPestana('tab-proyectos')">📦 Catálogos</button>
+                <button class="tab-btn" onclick="cambiarPestana('tab-plantillas')">📋 Plantillas Matriz</button>
             </div>
 
             <!-- ==========================================
@@ -114,7 +115,6 @@
                         <input type="hidden" id="emp_id">
                         <div class="form-group">
                             <label>Correo Electrónico (Gmail)</label>
-                            <!-- Lista desplegable inteligente conectada al datalist -->
                             <input type="email" id="emp_email" placeholder="ejemplo@gmail.com" list="lista_emails" onchange="autoLlenarEmpleado()">
                             <datalist id="lista_emails"></datalist>
                         </div>
@@ -304,6 +304,50 @@
                 </div>
             </div>
 
+            <!-- ==========================================
+                 PESTAÑA 5: PLANTILLAS MATRIZ (NUEVA)
+                 ========================================== -->
+            <div id="tab-plantillas" class="tab-content">
+                <div class="card">
+                    <h3>Plantillas de Matriz (ADN de Producción)</h3>
+                    <p style="font-size:12px; color:#64748b; margin-top:-10px;">Define qué espacios lleva cada suite por proyecto y producto. Esto armará el Mapa de Producción.</p>
+                    
+                    <div class="form-grid">
+                        <input type="hidden" id="plan_id">
+                        <div class="form-group">
+                            <label>Proyecto</label>
+                            <select id="plan_proyecto"><option value="">Cargando...</option></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Producto</label>
+                            <select id="plan_producto"><option value="">Cargando...</option></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Nombre de la Suite/Modelo</label>
+                            <input type="text" id="plan_suite" placeholder="Ej: LONDRES A1" style="text-transform:uppercase;">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label style="font-size: 14px;">Selecciona los Espacios que lleva esta Suite:</label>
+                        <div id="contenedor_espacios_checkboxes" style="display:flex; flex-wrap:wrap; gap:15px; margin-top:10px; background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0;">
+                            <span style="color:#64748b; font-size:13px;">Cargando espacios del catálogo...</span>
+                        </div>
+                    </div>
+
+                    <button class="btn-accion" onclick="guardarPlantilla()" style="margin-bottom: 20px;">💾 Guardar Plantilla de Suite</button>
+                    
+                    <div style="overflow-x: auto;">
+                        <table>
+                            <thead>
+                                <tr><th>Proyecto</th><th>Producto</th><th>Suite / Modelo</th><th>Espacios Asignados</th><th>Acciones</th></tr>
+                            </thead>
+                            <tbody id="tabla-plantillas"><tr><td colspan="5" style="text-align:center;">Cargando...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -313,7 +357,7 @@
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
         let estadosCargados = [];
-        let empleadosCargados = []; // Variable para autocompletado
+        let empleadosCargados = []; 
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -333,6 +377,7 @@
             cargarProductos();
             cargarEspacios(); 
             cargarMetas();
+            cargarPlantillas(); // Se carga la nueva tabla de plantillas
         });
 
         async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; }
@@ -348,13 +393,12 @@
            1. GESTIÓN DE EMPLEADOS Y ÁREAS (CON AUTOCOMPLETADO)
            ========================================================================================= */
         async function cargarEmpleados() {
-            // Cambié el orden a 'email' para que no dé error si la columna 'nombre' aún no se ha creado
             const { data, error } = await supabaseClient.from('empleados_autorizados').select('*').order('email');
             const tabla = document.getElementById('tabla-empleados');
             const datalist = document.getElementById('lista_emails');
             
             if (error) { 
-                tabla.innerHTML = `<tr><td colspan="5" style="color:red;">Error de Base de Datos (Probablemente falte la columna 'nombre').<br>${error.message}</td></tr>`; 
+                tabla.innerHTML = `<tr><td colspan="5" style="color:red;">Error de Base de Datos.<br>${error.message}</td></tr>`; 
                 return; 
             }
             
@@ -363,9 +407,7 @@
             datalist.innerHTML = '';
             
             data.forEach(e => {
-                // Agregar al desplegable inteligente
                 datalist.innerHTML += `<option value="${e.email}">`;
-                
                 let areaBadge = e.area_asignada ? `<span style="background:#eff6ff; color:#2563eb; padding:2px 8px; border-radius:12px; font-size:12px; font-weight:bold;">${e.area_asignada}</span>` : '-';
                 tabla.innerHTML += `
                     <tr>
@@ -379,19 +421,16 @@
             });
         }
 
-        // Función Mágica que auto-llena el formulario si seleccionas un correo del desplegable
         function autoLlenarEmpleado() {
             const emailInput = document.getElementById('emp_email').value.trim();
             const empEncontrado = empleadosCargados.find(e => e.email === emailInput);
             
             if (empEncontrado) {
-                // Si el correo ya existe, llena los datos para editar
                 document.getElementById('emp_id').value = empEncontrado.id;
                 document.getElementById('emp_nombre').value = empEncontrado.nombre || '';
                 document.getElementById('emp_rol').value = empEncontrado.rol || 'Operador';
                 document.getElementById('emp_area').value = empEncontrado.area_asignada || 'Taller General';
             } else {
-                // Si es un correo nuevo, limpia el ID interno para crear uno nuevo
                 document.getElementById('emp_id').value = '';
             }
         }
@@ -437,7 +476,7 @@
         }
 
         /* =========================================================================================
-           2. GESTIÓN DE FLUJO DE ESTADOS (LIMPIA)
+           2. GESTIÓN DE FLUJO DE ESTADOS
            ========================================================================================= */
         function actualizarDropdownSiguiente() {
             const select = document.getElementById('est_siguiente');
@@ -571,12 +610,19 @@
             const { data, error } = await supabaseClient.from('catalogo_proyectos').select('*').order('nombre');
             const tabla = document.getElementById('tabla-proyectos');
             const selectMetas = document.getElementById('meta_proyecto');
+            const selectPlan = document.getElementById('plan_proyecto'); // Para Plantillas
+            
             if (error) return;
-            tabla.innerHTML = ''; selectMetas.innerHTML = '<option value="">Selecciona Proyecto...</option>';
+            
+            tabla.innerHTML = ''; 
+            selectMetas.innerHTML = '<option value="">Selecciona Proyecto...</option>';
+            if(selectPlan) selectPlan.innerHTML = '<option value="">Selecciona Proyecto...</option>';
+            
             data.forEach(p => {
                 let colorBox = `<span style="display:inline-block; width:15px; height:15px; background-color:${p.color||'#ccc'}; border-radius:3px;"></span>`;
                 tabla.innerHTML += `<tr><td>${colorBox} <strong>${p.nombre}</strong><br><small>Blq: ${p.bloques||'-'}</small></td><td style="text-align:right;"><button class="btn-icon delete" onclick="eliminarProyecto('${p.id}')">🗑️</button></td></tr>`;
                 selectMetas.innerHTML += `<option value="${p.nombre}">${p.nombre}</option>`;
+                if(selectPlan) selectPlan.innerHTML += `<option value="${p.nombre}">${p.nombre}</option>`;
             });
         }
 
@@ -596,11 +642,18 @@
             const { data, error } = await supabaseClient.from('catalogo_productos').select('*').order('sigla');
             const tabla = document.getElementById('tabla-productos');
             const selectMetas = document.getElementById('meta_producto');
+            const selectPlan = document.getElementById('plan_producto'); // Para Plantillas
+            
             if (error) return;
-            tabla.innerHTML = ''; selectMetas.innerHTML = '<option value="">Selecciona Producto...</option>';
+            
+            tabla.innerHTML = ''; 
+            selectMetas.innerHTML = '<option value="">Selecciona Producto...</option>';
+            if(selectPlan) selectPlan.innerHTML = '<option value="">Selecciona Producto...</option>';
+            
             data.forEach(p => {
                 tabla.innerHTML += `<tr><td><strong>${p.sigla}</strong> - ${p.nombre}</td><td style="text-align:right;"><button class="btn-icon delete" onclick="eliminarProducto('${p.id}')">🗑️</button></td></tr>`;
                 selectMetas.innerHTML += `<option value="${p.sigla}">${p.sigla}</option>`;
+                if(selectPlan) selectPlan.innerHTML += `<option value="${p.sigla}">${p.sigla}</option>`;
             });
         }
 
@@ -619,10 +672,19 @@
         async function cargarEspacios() {
             const { data, error } = await supabaseClient.from('catalogo_espacios').select('*').order('sigla');
             const tabla = document.getElementById('tabla-espacios');
+            const contCheckboxes = document.getElementById('contenedor_espacios_checkboxes'); // Para Plantillas
+            
             if (error) return;
+            
             tabla.innerHTML = '';
+            if(contCheckboxes) contCheckboxes.innerHTML = '';
+            
             data.forEach(e => {
                 tabla.innerHTML += `<tr><td><strong>${e.sigla}</strong> - ${e.nombre}</td><td style="text-align:right;"><button class="btn-icon delete" onclick="eliminarEspacio('${e.id}')">🗑️</button></td></tr>`;
+                // Generar los checkboxes de la Pestaña 5 dinámicamente
+                if(contCheckboxes) {
+                    contCheckboxes.innerHTML += `<label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" class="chk-espacio" value="${e.nombre}"> <b>${e.sigla}</b> <span style="font-size:11px; color:#64748b;">(${e.nombre})</span></label>`;
+                }
             });
         }
 
@@ -640,6 +702,74 @@
                 await supabaseClient.from('catalogo_espacios').delete().eq('id', id); 
                 cargarEspacios(); 
             } 
+        }
+
+        /* =========================================================================================
+           5. PLANTILLAS MATRIZ (NUEVO)
+           ========================================================================================= */
+        async function cargarPlantillas() {
+            const { data, error } = await supabaseClient.from('plantillas_matriz').select('*').order('proyecto').order('producto').order('suite');
+            const tabla = document.getElementById('tabla-plantillas');
+            
+            if (error) { tabla.innerHTML = `<tr><td colspan="5">Error al cargar.</td></tr>`; return; }
+            tabla.innerHTML = '';
+            
+            if (data.length === 0) { 
+                tabla.innerHTML = `<tr><td colspan="5" style="text-align:center;">No hay plantillas creadas.</td></tr>`; 
+                return; 
+            }
+            
+            data.forEach(p => {
+                // Formatear los espacios para que se vean como etiquetas visuales grises
+                let espaciosBadge = p.espacios.split(', ').map(e => `<span style="background:#f1f5f9; padding:4px 8px; border-radius:12px; font-size:11px; font-weight:bold; border:1px solid #cbd5e1; margin-right:4px; display:inline-block; margin-bottom:4px;">${e}</span>`).join('');
+                
+                tabla.innerHTML += `
+                    <tr>
+                        <td><strong>${p.proyecto}</strong></td>
+                        <td>${p.producto}</td>
+                        <td><b style="color:#2563eb;">${p.suite}</b></td>
+                        <td>${espaciosBadge}</td>
+                        <td style="text-align:right;">
+                            <button class="btn-icon delete" onclick="eliminarPlantilla('${p.id}')">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function guardarPlantilla() {
+            const proyecto = document.getElementById('plan_proyecto').value;
+            const producto = document.getElementById('plan_producto').value;
+            const suite = document.getElementById('plan_suite').value.trim().toUpperCase();
+            
+            // Recoger todos los checkboxes marcados
+            const checks = document.querySelectorAll('.chk-espacio:checked');
+            const espaciosArr = Array.from(checks).map(c => c.value);
+            
+            if (!proyecto || !producto || !suite || espaciosArr.length === 0) {
+                return Swal.fire('Faltan Datos', 'Asegúrate de seleccionar proyecto, producto, escribir el nombre de la suite y marcar al menos 1 espacio.', 'warning');
+            }
+            
+            const espaciosStr = espaciosArr.join(', ');
+            
+            Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
+            const { error } = await supabaseClient.from('plantillas_matriz').insert([{ proyecto, producto, suite, espacios: espaciosStr }]);
+            
+            if (error) {
+                Swal.fire('Error', error.message, 'error');
+            } else {
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Plantilla Guardada', showConfirmButton: false, timer: 1500 });
+                document.getElementById('plan_suite').value = '';
+                checks.forEach(c => c.checked = false); // Limpiar checkboxes
+                cargarPlantillas();
+            }
+        }
+
+        async function eliminarPlantilla(id) {
+            if(confirm("¿Eliminar esta plantilla? Desaparecerá de tu mapa de producción.")) {
+                await supabaseClient.from('plantillas_matriz').delete().eq('id', id);
+                cargarPlantillas();
+            }
         }
 
     </script>
