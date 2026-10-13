@@ -103,7 +103,7 @@
                 <button onclick="cerrarSesion()" style="background:transparent; border:1px solid #ef4444; color:#ef4444; padding:6px 12px; border-radius:6px; font-weight:bold; cursor:pointer;">Salir</button>
             </div>
 
-            <!-- FILTROS (SIN BOTÓN Y CON EVENTOS AUTO-GENERADORES) -->
+            <!-- FILTROS AUTO-GENERADORES -->
             <div class="filtros-card">
                 <div class="form-group">
                     <label>Proyecto</label>
@@ -145,7 +145,7 @@
 
         let estadosFinales = [];
         window.catalogoEspaciosGlobal = []; 
-        let temporizadorMapa = null; // Variable para el retraso inteligente
+        let temporizadorMapa = null;
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -179,7 +179,7 @@
 
         async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; }
 
-        // Motor de Limpieza de Texto (Quita acentos y espacios raros)
+        // Motor de Limpieza de Texto (Quita acentos y espacios)
         function normalizeText(text) {
             if (!text) return '';
             return String(text).normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
@@ -191,16 +191,13 @@
             const producto = document.getElementById('filtro_producto').value;
             const pisoInput = document.getElementById('filtro_piso').value.trim();
 
-            // Reinicia el contador de tiempo cada vez que tecleas algo
             clearTimeout(temporizadorMapa);
 
-            // Si falta algún dato, limpiamos la pantalla suavemente y no buscamos nada
             if (!proyecto || !producto || !pisoInput) {
                 document.getElementById('tabla_matriz').innerHTML = `<thead><tr><th style="text-align:center; padding: 40px; color:#64748b;">Llenando datos... esperando para generar el mapa.</th></tr></thead>`;
                 return;
             }
 
-            // Si los 3 campos están llenos, espera 500ms y dispara la búsqueda a la base de datos
             temporizadorMapa = setTimeout(() => {
                 generarMapa();
             }, 500); 
@@ -213,7 +210,6 @@
 
             Swal.fire({ title: 'Cargando Piso...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
-            // 1. Obtener las plantillas (Filas de Suites)
             const { data: plantillas, error: errPlan } = await supabaseClient.from('plantillas_matriz').select('*').eq('proyecto', proyecto).eq('producto', producto).order('suite');
             
             if (errPlan || !plantillas || plantillas.length === 0) {
@@ -221,18 +217,17 @@
                 return Swal.close();
             }
 
-            // 2. Obtener la realidad de la fábrica
             const { data: registros, error: errReg } = await supabaseClient.from('registros_produccion').select('id, codigo_proyecto, suite, piso, espacio, estado, producto').eq('proyecto', proyecto).eq('producto', producto);
             let mueblesReales = registros || [];
 
-            // 3. AISLAMIENTO POR PISO
+            // AISLAMIENTO POR PISO
             let filterPiso = normalizeText(pisoInput);
             mueblesReales = mueblesReales.filter(m => {
                 let p = normalizeText(m.piso);
                 return p === filterPiso || p === `PISO ${filterPiso}` || p === `P${filterPiso}`;
             });
 
-            // 4. Extraer columnas (Espacios únicos de la plantilla)
+            // Extraer columnas
             let espaciosSet = new Set();
             plantillas.forEach(p => {
                 let espaciosArr = p.espacios.split(',').map(e => e.trim());
@@ -240,12 +235,11 @@
             });
             let espaciosUnicos = Array.from(espaciosSet).sort();
 
-            // 5. Dibujar la Tabla
+            // Dibujar Tabla
             let tablaHTML = `<thead><tr><th>SUITE / MODELO</th>`;
             espaciosUnicos.forEach(esp => { tablaHTML += `<th>${esp}</th>`; });
             tablaHTML += `</tr></thead><tbody>`;
 
-            // Filas (Cada Suite)
             plantillas.forEach(plan => {
                 tablaHTML += `<tr><td>${plan.suite}</td>`;
                 
@@ -255,12 +249,9 @@
                 espaciosUnicos.forEach(esp => {
                     let espPlan = normalizeText(esp);
 
-                    // Si la plantilla NO lleva este espacio, dibujamos "---"
                     if (!espaciosDeEstaSuite.includes(espPlan)) {
                         tablaHTML += `<td class="celda-vacia"><span style="opacity:0.3;">---</span></td>`;
                     } else {
-                        // SI lleva este espacio, buscamos el mueble real
-                        
                         let cat = window.catalogoEspaciosGlobal.find(e => normalizeText(e.nombre) === espPlan || normalizeText(e.sigla) === espPlan);
                         let siglaEsperada = cat ? normalizeText(cat.sigla) : espPlan;
                         let nombreEsperado = cat ? normalizeText(cat.nombre) : espPlan;
@@ -272,7 +263,6 @@
                             let matchLugar = (strMuebleSuite === strPlanSuite);
                             let matchEspacio = (mEsp === siglaEsperada || mEsp === nombreEsperado);
 
-                            // Salvavidas para Puertas Principales (AC)
                             if (!mEsp && (siglaEsperada === 'AC' || nombreEsperado.includes('COMUN') || nombreEsperado.includes('COMÚN'))) {
                                 matchEspacio = true;
                             }
@@ -327,22 +317,30 @@
 
         async function verDetalles(piso, suite, espacio, idsStr) {
             if (!idsStr) return;
+            
+            // Limpieza estricta de IDs
+            let idsArrText = idsStr.split(',').map(id => id.trim());
+            let idsArrNum = idsArrText.map(id => Number(id)).filter(n => !isNaN(n));
+            
+            let usarNumeros = (idsArrNum.length === idsArrText.length && idsArrNum.length > 0);
+            let arrayFinal = usarNumeros ? idsArrNum : idsArrText;
+
             Swal.fire({ title: 'Cargando trazabilidad...', didOpen: () => Swal.showLoading() });
 
-            // CORRECCIÓN CLAVE: NO convertir a entero para no romper si es un UUID u otro formato.
-            let idsArr = idsStr.split(',');
-
-            const { data: muebles, error: errorMuebles } = await supabaseClient.from('registros_produccion').select('id, codigo_proyecto, producto, estado').in('id', idsArr);
-            const { data: historiales, error: errorHist } = await supabaseClient.from('historial_trazabilidad').select('*').in('id_mueble', idsArr).order('created_at', { ascending: true });
+            // Consultas
+            const { data: muebles, error: errorMuebles } = await supabaseClient.from('registros_produccion').select('id, codigo_proyecto, producto, estado').in('id', arrayFinal);
+            const { data: historiales, error: errorHist } = await supabaseClient.from('historial_trazabilidad').select('*').in('id_mueble', arrayFinal).order('created_at', { ascending: true });
 
             if (errorMuebles) {
-                console.error("Error cargando muebles:", errorMuebles);
-                return Swal.fire('Error', 'Detalle técnico: ' + errorMuebles.message, 'error');
-            }
-            if (!muebles || muebles.length === 0) {
-                return Swal.fire('Error', 'No se encontraron las piezas en la base de datos.', 'error');
+                console.error("Error BD:", errorMuebles);
+                return Swal.fire('Error de Supabase', `Mensaje: ${errorMuebles.message}`, 'error');
             }
 
+            if (!muebles || muebles.length === 0) {
+                return Swal.fire('No encontrado', `No se encontró información para esta pieza.`, 'warning');
+            }
+
+            // Construcción del Modal con Trazabilidad Completa y Operador
             let htmlModal = `<div class="modal-timeline">
                 <div style="margin-bottom:15px; background:#e0e7ff; padding:10px; border-radius:8px; color:#1e3a8a;">
                     <b>📍 Piso:</b> ${piso} <br><b>📍 Suite:</b> ${suite} <br> <b>📍 Espacio:</b> ${espacio}
@@ -362,15 +360,21 @@
                 let histMueble = (historiales || []).filter(h => String(h.id_mueble) === String(mueble.id));
                 
                 if (histMueble.length === 0) {
-                    htmlModal += `<div style="color:#94a3b8; font-style:italic; font-size:12px;">No hay movimientos registrados.</div>`;
+                    htmlModal += `<div style="color:#94a3b8; font-style:italic; font-size:12px;">No hay movimientos registrados en la bitácora para esta pieza.</div>`;
                 } else {
                     histMueble.forEach(h => {
                         let d = new Date(h.created_at);
                         let fechaStr = d.toLocaleString('es-ES', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit', hour12:true });
                         
+                        // EXTRAEMOS EL NOMBRE DEL OPERADOR (Si no existe, ponemos Sistema)
+                        let nombreOperador = h.operador ? h.operador : 'Sistema';
+                        
                         htmlModal += `
                             <div class="historial-item">
-                                <div class="hist-fecha">${fechaStr}</div>
+                                <div class="hist-fecha">
+                                    ${fechaStr} 
+                                    <span style="color:#2563eb; font-weight:bold; margin-left:8px;">👤 ${nombreOperador}</span>
+                                </div>
                                 <div class="hist-texto"><b>${h.tipo_registro}:</b> ${h.etapa} <br><i style="font-size:11px; color:#64748b;">${h.comentarios || ''}</i></div>
                             </div>
                         `;
