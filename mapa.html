@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mapa de Producción - VetaCucine</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        /* --- ESTILOS BASE Y SIDEBAR --- */
+        html, body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f8fafc; width: 100vw; overflow-x: hidden; color: #1e293b; }
+        .app-container { display: flex; height: 100vh; width: 100vw; overflow-x: hidden; }
+        
+        .sidebar { width: 250px; background-color: #1e293b; color: white; display: flex; flex-direction: column; transition: 0.3s; box-shadow: 2px 0 10px rgba(0,0,0,0.1); z-index: 10; flex-shrink: 0; }
+        .sidebar-header { padding: 25px 20px; font-size: 22px; font-weight: bold; border-bottom: 1px solid #334155; text-align: center; letter-spacing: 1px; color: white; }
+        .sidebar-header span { color: #3b82f6; }
+        
+        .nav-links { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; flex-grow: 1; margin-top: 15px; }
+        .nav-links li { margin: 0; }
+        .nav-links a { display: block; padding: 16px 25px; color: #cbd5e1; text-decoration: none; font-size: 15px; border-left: 4px solid transparent; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
+        .nav-links a:hover { background-color: #334155; color: white; }
+        .nav-links a.active { background-color: #0f172a; border-left-color: #3b82f6; color: white; font-weight: bold; }
+        
+        .main-content { flex: 1; padding: 25px; overflow-y: auto; overflow-x: hidden; box-sizing: border-box; display: flex; flex-direction: column; }
+        .header-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 20px; }
+        .header-title { margin: 0; font-size: 24px; color: #0f172a; }
+
+        /* --- FILTROS --- */
+        .filtros-card { background: white; padding: 15px 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; border-left: 5px solid #8b5cf6; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 200px; }
+        .form-group label { font-size: 12px; font-weight: bold; color: #475569; }
+        .form-group select { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; outline: none; transition: 0.2s; background: white; }
+        .btn-accion { background: #8b5cf6; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; height: 40px; margin-top: 17px; white-space: nowrap; }
+        .btn-accion:hover { background: #7c3aed; }
+
+        /* --- MATRIZ (TABLA) --- */
+        .matriz-container { background: white; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: hidden; flex: 1; display: flex; flex-direction: column; }
+        .matriz-scroll { overflow: auto; width: 100%; max-height: calc(100vh - 220px); }
+        
+        .tabla-matriz { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; }
+        .tabla-matriz th, .tabla-matriz td { border: 1px solid #e2e8f0; padding: 8px 5px; min-width: 90px; }
+        .tabla-matriz th { background-color: #1e293b; color: white; position: sticky; top: 0; z-index: 2; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .tabla-matriz th:first-child { position: sticky; left: 0; z-index: 3; background-color: #0f172a; min-width: 140px; text-align: left; padding-left: 15px; }
+        .tabla-matriz td:first-child { position: sticky; left: 0; z-index: 1; background-color: #f8fafc; font-weight: bold; color: #1e293b; text-align: left; padding-left: 15px; border-right: 2px solid #cbd5e1; }
+        
+        /* ESTILOS DE PÍLDORAS (CELDAS) */
+        .celda-vacia { background-color: #f8fafc; color: #cbd5e1; }
+        
+        .pildora { display: inline-flex; align-items: center; justify-content: center; padding: 6px 10px; border-radius: 6px; font-weight: bold; font-size: 11px; cursor: pointer; transition: 0.2s; width: 90%; box-sizing: border-box; text-transform: uppercase; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .pildora:hover { transform: scale(1.05); filter: brightness(1.1); }
+        
+        .estado-bloqueado { background-color: #ef4444; color: white; border: 1px solid #dc2626; }
+        .estado-digitalizar { background-color: #8b5cf6; color: white; border: 1px solid #7c3aed; }
+        .estado-proceso { background-color: #f59e0b; color: white; border: 1px solid #d97706; }
+        .estado-terminado { background-color: #10b981; color: white; border: 1px solid #059669; }
+        .estado-falta { background-color: #e2e8f0; color: #64748b; border: 1px dashed #94a3b8; }
+
+        /* LEYENDA */
+        .leyenda { display: flex; gap: 15px; padding: 15px; background: #f8fafc; border-top: 1px solid #e2e8f0; flex-wrap: wrap; font-size: 12px; font-weight: bold; color: #475569; justify-content: center; }
+        .ley-item { display: flex; align-items: center; gap: 6px; }
+        .ley-color { width: 14px; height: 14px; border-radius: 4px; }
+
+        /* MODAL DE TRAZABILIDAD */
+        .modal-timeline { text-align: left; font-size: 13px; max-height: 400px; overflow-y: auto; padding-right: 10px; }
+        .pieza-grupo { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 15px; }
+        .pieza-header { display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; color: #1e293b; margin-bottom: 10px; border-bottom: 1px solid #cbd5e1; padding-bottom: 5px; }
+        .historial-item { border-left: 2px solid #3b82f6; padding-left: 10px; margin-bottom: 10px; position: relative; }
+        .historial-item::before { content: ''; position: absolute; left: -5px; top: 3px; width: 8px; height: 8px; background: #3b82f6; border-radius: 50%; }
+        .hist-fecha { font-size: 11px; color: #64748b; margin-bottom: 2px; }
+        .hist-texto { color: #334155; }
+
+        @media (max-width: 768px) { 
+            .app-container { flex-direction: column; height: auto; width: 100%; overflow-x: hidden !important; }
+            .sidebar { width: 100%; z-index: 100; }
+            .nav-links { flex-direction: row; margin-top: 0; background-color: #0f172a; overflow-x: auto; white-space: nowrap; padding: 0 5px; }
+            .nav-links a { padding: 12px 15px; font-size: 13px; }
+            .main-content { padding: 15px; height: calc(100vh - 60px); }
+            .filtros-card { flex-direction: column; align-items: stretch; }
+            .btn-accion { margin-top: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- SIDEBAR -->
+        <nav class="sidebar">
+            <div class="sidebar-header">Veta<span>Cucine</span></div>
+            <ul class="nav-links">
+                <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <!-- NUEVO ENLACE AL MAPA -->
+                <li><a href="mapa.html" class="active">🗺️ Mapa de Producción</a></li>
+                <li><a href="taller.html?v=2.0">🏭 Panel Operador</a></li>
+                <li><a href="index.html">📝 Ingreso Muebles</a></li>
+                <li><a href="reportes.html">🔍 Buscar y Reportes</a></li>
+                <li><a href="admin.html">⚙️ Administrador</a></li>
+            </ul>
+        </nav>
+
+        <div class="main-content">
+            <div class="header-top">
+                <div>
+                    <h2 class="header-title">Matriz de Producción por Piso</h2>
+                    <p style="margin: 5px 0 0 0; font-size: 13px; color: #64748b;">Visión cruzada entre la plantilla de diseño y la realidad de la fábrica.</p>
+                </div>
+                <button onclick="cerrarSesion()" style="background:transparent; border:1px solid #ef4444; color:#ef4444; padding:6px 12px; border-radius:6px; font-weight:bold; cursor:pointer;">Salir</button>
+            </div>
+
+            <!-- FILTROS -->
+            <div class="filtros-card">
+                <div class="form-group">
+                    <label>Proyecto</label>
+                    <select id="filtro_proyecto"><option value="">Cargando...</option></select>
+                </div>
+                <div class="form-group">
+                    <label>Producto</label>
+                    <select id="filtro_producto"><option value="">Cargando...</option></select>
+                </div>
+                <button class="btn-accion" onclick="generarMapa()">🚀 Generar Mapa</button>
+            </div>
+
+            <!-- MATRIZ -->
+            <div class="matriz-container">
+                <div class="matriz-scroll">
+                    <table class="tabla-matriz" id="tabla_matriz">
+                        <!-- Se llena con JS -->
+                        <thead><tr><th style="text-align:center; padding: 40px;">Usa los filtros de arriba para generar el mapa</th></tr></thead>
+                    </table>
+                </div>
+                <div class="leyenda">
+                    <div class="ley-item"><div class="ley-color" style="background:#ef4444;"></div> Bloqueado</div>
+                    <div class="ley-item"><div class="ley-color" style="background:#8b5cf6;"></div> Por Digitalizar</div>
+                    <div class="ley-item"><div class="ley-color" style="background:#f59e0b;"></div> En Proceso (Corte, CNC...)</div>
+                    <div class="ley-item"><div class="ley-color" style="background:#10b981;"></div> Terminado (Enviado)</div>
+                    <div class="ley-item"><div class="ley-color" style="background:#e2e8f0; border:1px dashed #94a3b8;"></div> Falta Ingresar</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://pnrntmkcisgymyvmzson.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBucm50bWtjaXNneW15dm16c29uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNzAwODQsImV4cCI6MjEwNDc0NjA4NH0.fdW9mj9rkO0rxHXB8rBeJc6a32QSQxtvsNtu9_rL6yc';
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+        let estadosFinales = [];
+        let proyectosGlobal = [];
+        let productosGlobal = [];
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) { window.location.href = 'login.html'; return; }
+
+            // Cargar estados para saber cuáles son "terminados"
+            const { data: estadosCat } = await supabaseClient.from('catalogo_estados').select('*');
+            if (estadosCat) {
+                estadosFinales = estadosCat.filter(e => !e.estado_siguiente || e.estado_siguiente.trim() === '' || e.nombre.toLowerCase().includes('enviad') || e.nombre.toLowerCase().includes('instalad')).map(e => e.nombre);
+            }
+
+            // Cargar selectores
+            const { data: proy } = await supabaseClient.from('catalogo_proyectos').select('nombre').order('nombre');
+            if(proy) {
+                let selProy = document.getElementById('filtro_proyecto');
+                selProy.innerHTML = '<option value="">Seleccione Proyecto...</option>';
+                proy.forEach(p => selProy.innerHTML += `<option value="${p.nombre}">${p.nombre}</option>`);
+            }
+
+            const { data: prod } = await supabaseClient.from('catalogo_productos').select('sigla').order('sigla');
+            if(prod) {
+                let selProd = document.getElementById('filtro_producto');
+                selProd.innerHTML = '<option value="">Seleccione Producto...</option>';
+                prod.forEach(p => selProd.innerHTML += `<option value="${p.sigla}">${p.sigla}</option>`);
+            }
+        });
+
+        async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; }
+
+        async function generarMapa() {
+            const proyecto = document.getElementById('filtro_proyecto').value;
+            const producto = document.getElementById('filtro_producto').value;
+
+            if (!proyecto || !producto) {
+                return Swal.fire('Filtros incompletos', 'Selecciona un Proyecto y un Producto', 'warning');
+            }
+
+            Swal.fire({ title: 'Generando Mapa...', didOpen: () => Swal.showLoading() });
+
+            // 1. Obtener las plantillas para este proyecto y producto
+            const { data: plantillas, error: errPlan } = await supabaseClient.from('plantillas_matriz').select('*').eq('proyecto', proyecto).eq('producto', producto).order('suite');
+            
+            if (errPlan || !plantillas || plantillas.length === 0) {
+                document.getElementById('tabla_matriz').innerHTML = `<thead><tr><th style="padding:40px; color:#ef4444;">No hay plantillas creadas en el Administrador para esta combinación.</th></tr></thead>`;
+                return Swal.close();
+            }
+
+            // 2. Obtener los muebles reales de la fábrica
+            const { data: registros, error: errReg } = await supabaseClient.from('registros_produccion').select('id, codigo_proyecto, suite, espacio, estado').eq('proyecto', proyecto).eq('producto', producto);
+            let mueblesReales = registros || [];
+
+            // 3. Extraer todas las columnas (Espacios únicos) de las plantillas
+            let espaciosSet = new Set();
+            plantillas.forEach(p => {
+                let espaciosArr = p.espacios.split(',').map(e => e.trim());
+                espaciosArr.forEach(e => espaciosSet.add(e));
+            });
+            let espaciosUnicos = Array.from(espaciosSet).sort();
+
+            // 4. Dibujar la Tabla
+            let tablaHTML = `<thead><tr><th>SUITE / MODELO</th>`;
+            espaciosUnicos.forEach(esp => { tablaHTML += `<th>${esp}</th>`; });
+            tablaHTML += `</tr></thead><tbody>`;
+
+            // Filas (Cada Suite)
+            plantillas.forEach(plan => {
+                tablaHTML += `<tr><td>${plan.suite}</td>`;
+                
+                let espaciosDeEstaSuite = plan.espacios.split(',').map(e => e.trim());
+
+                espaciosUnicos.forEach(esp => {
+                    // ¿La plantilla dice que lleva este espacio?
+                    if (!espaciosDeEstaSuite.includes(esp)) {
+                        // No aplica (Cruce vacío)
+                        tablaHTML += `<td class="celda-vacia"><span style="opacity:0.3;">---</span></td>`;
+                    } else {
+                        // Sí aplica. Buscar en la realidad.
+                        // Ojo: Filtramos por la suite y el espacio exacto
+                        let piezasEncontradas = mueblesReales.filter(m => m.suite === plan.suite && m.espacio === esp);
+                        
+                        let celdaInfo = evaluarEstadoCelda(piezasEncontradas);
+                        
+                        if (celdaInfo.tipo === 'falta') {
+                            tablaHTML += `<td><div class="pildora estado-falta">Falta Ingreso</div></td>`;
+                        } else {
+                            // Enviar datos seguros al evento onclick
+                            let arrayIds = piezasEncontradas.map(p => p.id).join(',');
+                            tablaHTML += `<td><div class="pildora ${celdaInfo.clase_css}" onclick="verDetalles('${plan.suite}', '${esp}', '${arrayIds}')" title="Clic para ver detalles">${celdaInfo.texto}</div></td>`;
+                        }
+                    }
+                });
+                tablaHTML += `</tr>`;
+            });
+
+            tablaHTML += `</tbody>`;
+            document.getElementById('tabla_matriz').innerHTML = tablaHTML;
+            Swal.close();
+        }
+
+        // Lógica para determinar el color de la celda si hay 1 o varias piezas
+        function evaluarEstadoCelda(piezas) {
+            if (piezas.length === 0) return { tipo: 'falta' };
+
+            let tieneBloqueo = false;
+            let tieneDigitalizar = false;
+            let tieneProceso = false;
+            let todasTerminadas = true;
+
+            piezas.forEach(p => {
+                let est = (p.estado || '').toLowerCase();
+                
+                if (est.includes('bloque')) {
+                    tieneBloqueo = true; todasTerminadas = false;
+                } else if (est === 'por digitalizar') {
+                    tieneDigitalizar = true; todasTerminadas = false;
+                } else if (!estadosFinales.includes(p.estado)) {
+                    tieneProceso = true; todasTerminadas = false;
+                }
+            });
+
+            // Prioridades de visualización
+            if (tieneBloqueo) return { tipo: 'bloqueado', clase_css: 'estado-bloqueado', texto: 'Bloqueado' };
+            if (tieneDigitalizar) return { tipo: 'digitalizar', clase_css: 'estado-digitalizar', texto: 'Por Dig.' };
+            if (tieneProceso) return { tipo: 'proceso', clase_css: 'estado-proceso', texto: 'En Proceso' };
+            if (todasTerminadas) return { tipo: 'terminado', clase_css: 'estado-terminado', texto: 'Terminado' };
+            
+            return { tipo: 'proceso', clase_css: 'estado-proceso', texto: 'En Proceso' };
+        }
+
+        // Al hacer clic en una celda de color
+        async function verDetalles(suite, espacio, idsStr) {
+            if (!idsStr) return;
+            Swal.fire({ title: 'Cargando trazabilidad...', didOpen: () => Swal.showLoading() });
+
+            let idsArr = idsStr.split(',').map(id => parseInt(id));
+
+            // Traer info base de los muebles
+            const { data: muebles } = await supabaseClient.from('registros_produccion').select('id, codigo_proyecto, producto, estado').in('id', idsArr);
+            // Traer historial
+            const { data: historiales } = await supabaseClient.from('historial_trazabilidad').select('*').in('id_mueble', idsArr).order('created_at', { ascending: true });
+
+            if (!muebles) {
+                return Swal.fire('Error', 'No se pudo cargar la información.', 'error');
+            }
+
+            let htmlModal = `<div class="modal-timeline">
+                <div style="margin-bottom:15px; background:#e0e7ff; padding:10px; border-radius:8px; color:#1e3a8a;">
+                    <b>📍 Suite:</b> ${suite} <br> <b>📍 Espacio:</b> ${espacio}
+                </div>`;
+
+            muebles.forEach(mueble => {
+                let estadoColor = mueble.estado.toLowerCase().includes('bloque') ? 'color:#ef4444;' : 'color:#10b981;';
+                
+                htmlModal += `
+                    <div class="pieza-grupo">
+                        <div class="pieza-header">
+                            <span>Código: #${mueble.codigo_proyecto}</span>
+                            <span style="${estadoColor}">Estado: ${mueble.estado}</span>
+                        </div>
+                `;
+
+                let histMueble = (historiales || []).filter(h => h.id_mueble === mueble.id);
+                
+                if (histMueble.length === 0) {
+                    htmlModal += `<div style="color:#94a3b8; font-style:italic; font-size:12px;">No hay movimientos registrados.</div>`;
+                } else {
+                    histMueble.forEach(h => {
+                        let d = new Date(h.created_at);
+                        let fechaStr = d.toLocaleString('es-ES', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit', hour12:true });
+                        
+                        htmlModal += `
+                            <div class="historial-item">
+                                <div class="hist-fecha">${fechaStr}</div>
+                                <div class="hist-texto"><b>${h.tipo_registro}:</b> ${h.etapa} <br><i style="font-size:11px; color:#64748b;">${h.comentarios || ''}</i></div>
+                            </div>
+                        `;
+                    });
+                }
+                htmlModal += `</div>`;
+            });
+
+            htmlModal += `</div>`;
+
+            Swal.fire({
+                title: 'Detalle de Producción',
+                html: htmlModal,
+                width: 500,
+                confirmButtonColor: '#3b82f6',
+                confirmButtonText: 'Cerrar'
+            });
+        }
+    </script>
+</body>
+</html>
