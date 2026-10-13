@@ -28,9 +28,10 @@
 
         /* --- FILTROS --- */
         .filtros-card { background: white; padding: 15px 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; border-left: 5px solid #8b5cf6; }
-        .form-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 200px; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 150px; }
         .form-group label { font-size: 12px; font-weight: bold; color: #475569; }
-        .form-group select { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; outline: none; transition: 0.2s; background: white; }
+        .form-group select, .form-group input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; outline: none; transition: 0.2s; background: white; }
+        .form-group input:focus, .form-group select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
         .btn-accion { background: #8b5cf6; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; height: 40px; margin-top: 17px; white-space: nowrap; }
         .btn-accion:hover { background: #7c3aed; }
 
@@ -105,7 +106,7 @@
                 <button onclick="cerrarSesion()" style="background:transparent; border:1px solid #ef4444; color:#ef4444; padding:6px 12px; border-radius:6px; font-weight:bold; cursor:pointer;">Salir</button>
             </div>
 
-            <!-- FILTROS -->
+            <!-- FILTROS AHORA CON PISO OBLIGATORIO -->
             <div class="filtros-card">
                 <div class="form-group">
                     <label>Proyecto</label>
@@ -114,6 +115,10 @@
                 <div class="form-group">
                     <label>Producto</label>
                     <select id="filtro_producto"><option value="">Cargando...</option></select>
+                </div>
+                <div class="form-group" style="max-width: 150px;">
+                    <label>Piso</label>
+                    <input type="text" id="filtro_piso" placeholder="Ej: 4" style="text-transform:uppercase;">
                 </div>
                 <button class="btn-accion" onclick="generarMapa()">🚀 Generar Mapa</button>
             </div>
@@ -143,7 +148,7 @@
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
         let estadosFinales = [];
-        window.catalogoEspaciosGlobal = []; // Para traducir Nombres a Siglas
+        window.catalogoEspaciosGlobal = []; 
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -153,13 +158,13 @@
             const { data: espCat } = await supabaseClient.from('catalogo_espacios').select('*');
             if (espCat) window.catalogoEspaciosGlobal = espCat;
 
-            // Cargar estados para saber cuáles son "terminados"
+            // Cargar estados finales
             const { data: estadosCat } = await supabaseClient.from('catalogo_estados').select('*');
             if (estadosCat) {
                 estadosFinales = estadosCat.filter(e => !e.estado_siguiente || e.estado_siguiente.trim() === '' || e.nombre.toLowerCase().includes('enviad') || e.nombre.toLowerCase().includes('instalad')).map(e => e.nombre);
             }
 
-            // Cargar selectores
+            // Cargar selectores de filtros
             const { data: proy } = await supabaseClient.from('catalogo_proyectos').select('nombre').order('nombre');
             if(proy) {
                 let selProy = document.getElementById('filtro_proyecto');
@@ -177,17 +182,24 @@
 
         async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; }
 
+        // Motor de Limpieza de Texto (Quita acentos y espacios raros para igualar "Área" con "Area")
+        function normalizeText(text) {
+            if (!text) return '';
+            return String(text).normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+        }
+
         async function generarMapa() {
             const proyecto = document.getElementById('filtro_proyecto').value;
             const producto = document.getElementById('filtro_producto').value;
+            const pisoInput = document.getElementById('filtro_piso').value.trim();
 
-            if (!proyecto || !producto) {
-                return Swal.fire('Filtros incompletos', 'Selecciona un Proyecto y un Producto', 'warning');
+            if (!proyecto || !producto || !pisoInput) {
+                return Swal.fire('Filtros incompletos', 'Selecciona Proyecto, Producto y escribe el Piso.', 'warning');
             }
 
             Swal.fire({ title: 'Generando Mapa...', didOpen: () => Swal.showLoading() });
 
-            // 1. Obtener las plantillas para este proyecto y producto
+            // 1. Obtener las plantillas (Filas de Suites)
             const { data: plantillas, error: errPlan } = await supabaseClient.from('plantillas_matriz').select('*').eq('proyecto', proyecto).eq('producto', producto).order('suite');
             
             if (errPlan || !plantillas || plantillas.length === 0) {
@@ -195,11 +207,19 @@
                 return Swal.close();
             }
 
-            // 2. Obtener los muebles reales de la fábrica (AHORA INCLUYE LA COLUMNA PISO)
+            // 2. Obtener la realidad de la fábrica
             const { data: registros, error: errReg } = await supabaseClient.from('registros_produccion').select('id, codigo_proyecto, suite, piso, espacio, estado, producto').eq('proyecto', proyecto).eq('producto', producto);
             let mueblesReales = registros || [];
 
-            // 3. Extraer todas las columnas (Espacios únicos) de las plantillas
+            // 3. AISLAMIENTO POR PISO (El Filtro Crucial)
+            let filterPiso = normalizeText(pisoInput);
+            mueblesReales = mueblesReales.filter(m => {
+                let p = normalizeText(m.piso);
+                // Compara si la DB dice "4", "PISO 4", o "P4" para que encaje perfecto
+                return p === filterPiso || p === `PISO ${filterPiso}` || p === `P${filterPiso}`;
+            });
+
+            // 4. Extraer columnas (Espacios únicos de la plantilla)
             let espaciosSet = new Set();
             plantillas.forEach(p => {
                 let espaciosArr = p.espacios.split(',').map(e => e.trim());
@@ -207,42 +227,43 @@
             });
             let espaciosUnicos = Array.from(espaciosSet).sort();
 
-            // 4. Dibujar la Tabla
-            let tablaHTML = `<thead><tr><th>PISO / SUITE</th>`;
+            // 5. Dibujar la Tabla
+            let tablaHTML = `<thead><tr><th>SUITE / MODELO</th>`;
             espaciosUnicos.forEach(esp => { tablaHTML += `<th>${esp}</th>`; });
             tablaHTML += `</tr></thead><tbody>`;
 
-            // Filas (Cada Piso/Suite)
+            // Filas (Cada Suite)
             plantillas.forEach(plan => {
                 tablaHTML += `<tr><td>${plan.suite}</td>`;
                 
-                let espaciosDeEstaSuite = plan.espacios.split(',').map(e => e.trim());
-                let strPlanSuite = String(plan.suite || '').trim().toUpperCase();
+                let espaciosDeEstaSuite = plan.espacios.split(',').map(e => normalizeText(e));
+                let strPlanSuite = normalizeText(plan.suite);
 
                 espaciosUnicos.forEach(esp => {
-                    if (!espaciosDeEstaSuite.includes(esp)) {
-                        // No aplica (Cruce vacío)
+                    let espPlan = normalizeText(esp);
+
+                    // Si la plantilla NO lleva este espacio, dibujamos "---"
+                    if (!espaciosDeEstaSuite.includes(espPlan)) {
                         tablaHTML += `<td class="celda-vacia"><span style="opacity:0.3;">---</span></td>`;
                     } else {
-                        // LÓGICA DE BÚSQUEDA INTELIGENTE
-                        let espPlan = String(esp).trim().toUpperCase();
-                        let cat = window.catalogoEspaciosGlobal.find(e => e.nombre.toUpperCase() === espPlan || e.sigla.toUpperCase() === espPlan);
-                        let siglaEsperada = cat ? cat.sigla.toUpperCase() : espPlan;
-                        let nombreEsperado = cat ? cat.nombre.toUpperCase() : espPlan;
+                        // SI lleva este espacio, buscamos el mueble real
+                        
+                        // Traductor inteligente de Siglas a Nombres
+                        let cat = window.catalogoEspaciosGlobal.find(e => normalizeText(e.nombre) === espPlan || normalizeText(e.sigla) === espPlan);
+                        let siglaEsperada = cat ? normalizeText(cat.sigla) : espPlan;
+                        let nombreEsperado = cat ? normalizeText(cat.nombre) : espPlan;
 
                         let piezasEncontradas = mueblesReales.filter(m => {
-                            let strMuebleSuite = String(m.suite || '').trim().toUpperCase();
-                            let strMueblePiso = String(m.piso || '').trim().toUpperCase();
+                            let strMuebleSuite = normalizeText(m.suite);
+                            let mEsp = normalizeText(m.espacio);
                             
-                            // ¿Coincide el lugar? (Evalúa la columna suite Y la columna piso)
-                            let matchLugar = (strMuebleSuite === strPlanSuite || strMueblePiso === strPlanSuite);
+                            // ¿Es exactamente esta Suite?
+                            let matchLugar = (strMuebleSuite === strPlanSuite);
 
-                            // ¿Coincide el espacio? (Traduce nombre a sigla automáticamente)
-                            let mEsp = String(m.espacio || '').trim().toUpperCase();
+                            // ¿Es exactamente este Espacio?
                             let matchEspacio = (mEsp === siglaEsperada || mEsp === nombreEsperado);
 
-                            // Regla Salvavidas para Puertas Principales (PP) u otros vacíos
-                            // Si la pieza no tiene espacio, pero la plantilla pide Área Común (AC), lo enlazamos.
+                            // Salvavidas para Puertas Principales (A veces no le ponen espacio pero asumen que es AC)
                             if (!mEsp && (siglaEsperada === 'AC' || nombreEsperado.includes('COMUN') || nombreEsperado.includes('COMÚN'))) {
                                 matchEspacio = true;
                             }
@@ -253,11 +274,10 @@
                         let celdaInfo = evaluarEstadoCelda(piezasEncontradas);
                         
                         if (celdaInfo.tipo === 'falta') {
-                            tablaHTML += `<td><div class="pildora estado-falta">Falta Ingreso</div></td>`;
+                            tablaHTML += `<td><div class="pildora estado-falta">Falta Ingresar</div></td>`;
                         } else {
-                            // Enviar datos seguros al evento onclick
                             let arrayIds = piezasEncontradas.map(p => p.id).join(',');
-                            tablaHTML += `<td><div class="pildora ${celdaInfo.clase_css}" onclick="verDetalles('${plan.suite}', '${esp}', '${arrayIds}')" title="Clic para ver detalles">${celdaInfo.texto}</div></td>`;
+                            tablaHTML += `<td><div class="pildora ${celdaInfo.clase_css}" onclick="verDetalles('${pisoInput}', '${plan.suite}', '${esp}', '${arrayIds}')" title="Clic para ver detalles">${celdaInfo.texto}</div></td>`;
                         }
                     }
                 });
@@ -269,7 +289,6 @@
             Swal.close();
         }
 
-        // Lógica para determinar el color de la celda si hay 1 o varias piezas
         function evaluarEstadoCelda(piezas) {
             if (piezas.length === 0) return { tipo: 'falta' };
 
@@ -280,7 +299,6 @@
 
             piezas.forEach(p => {
                 let est = (p.estado || '').toLowerCase();
-                
                 if (est.includes('bloque')) {
                     tieneBloqueo = true; todasTerminadas = false;
                 } else if (est === 'por digitalizar') {
@@ -290,7 +308,6 @@
                 }
             });
 
-            // Prioridades de visualización
             if (tieneBloqueo) return { tipo: 'bloqueado', clase_css: 'estado-bloqueado', texto: 'Bloqueado' };
             if (tieneDigitalizar) return { tipo: 'digitalizar', clase_css: 'estado-digitalizar', texto: 'Por Dig.' };
             if (tieneProceso) return { tipo: 'proceso', clase_css: 'estado-proceso', texto: 'En Proceso' };
@@ -299,25 +316,20 @@
             return { tipo: 'proceso', clase_css: 'estado-proceso', texto: 'En Proceso' };
         }
 
-        // Al hacer clic en una celda de color
-        async function verDetalles(suite, espacio, idsStr) {
+        async function verDetalles(piso, suite, espacio, idsStr) {
             if (!idsStr) return;
             Swal.fire({ title: 'Cargando trazabilidad...', didOpen: () => Swal.showLoading() });
 
             let idsArr = idsStr.split(',').map(id => parseInt(id));
 
-            // Traer info base de los muebles
             const { data: muebles } = await supabaseClient.from('registros_produccion').select('id, codigo_proyecto, producto, estado').in('id', idsArr);
-            // Traer historial
             const { data: historiales } = await supabaseClient.from('historial_trazabilidad').select('*').in('id_mueble', idsArr).order('created_at', { ascending: true });
 
-            if (!muebles) {
-                return Swal.fire('Error', 'No se pudo cargar la información.', 'error');
-            }
+            if (!muebles) return Swal.fire('Error', 'No se pudo cargar la información.', 'error');
 
             let htmlModal = `<div class="modal-timeline">
                 <div style="margin-bottom:15px; background:#e0e7ff; padding:10px; border-radius:8px; color:#1e3a8a;">
-                    <b>📍 Ubicación:</b> ${suite} <br> <b>📍 Espacio:</b> ${espacio}
+                    <b>📍 Piso:</b> ${piso} <br><b>📍 Suite:</b> ${suite} <br> <b>📍 Espacio:</b> ${espacio}
                 </div>`;
 
             muebles.forEach(mueble => {
