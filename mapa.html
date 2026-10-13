@@ -88,7 +88,6 @@
             <div class="sidebar-header">Veta<span>Cucine</span></div>
             <ul class="nav-links">
                 <li><a href="dashboard.html">📊 Dashboard</a></li>
-                <!-- NUEVO ENLACE AL MAPA -->
                 <li><a href="mapa.html" class="active">🗺️ Mapa de Producción</a></li>
                 <li><a href="taller.html?v=2.0">🏭 Panel Operador</a></li>
                 <li><a href="index.html">📝 Ingreso Muebles</a></li>
@@ -100,7 +99,7 @@
         <div class="main-content">
             <div class="header-top">
                 <div>
-                    <h2 class="header-title">Matriz de Producción por Piso</h2>
+                    <h2 class="header-title">Matriz de Producción por Piso / Suite</h2>
                     <p style="margin: 5px 0 0 0; font-size: 13px; color: #64748b;">Visión cruzada entre la plantilla de diseño y la realidad de la fábrica.</p>
                 </div>
                 <button onclick="cerrarSesion()" style="background:transparent; border:1px solid #ef4444; color:#ef4444; padding:6px 12px; border-radius:6px; font-weight:bold; cursor:pointer;">Salir</button>
@@ -123,7 +122,6 @@
             <div class="matriz-container">
                 <div class="matriz-scroll">
                     <table class="tabla-matriz" id="tabla_matriz">
-                        <!-- Se llena con JS -->
                         <thead><tr><th style="text-align:center; padding: 40px;">Usa los filtros de arriba para generar el mapa</th></tr></thead>
                     </table>
                 </div>
@@ -145,12 +143,15 @@
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
         let estadosFinales = [];
-        let proyectosGlobal = [];
-        let productosGlobal = [];
+        window.catalogoEspaciosGlobal = []; // Para traducir Nombres a Siglas
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (!session) { window.location.href = 'login.html'; return; }
+
+            // Cargar Catálogo de Espacios
+            const { data: espCat } = await supabaseClient.from('catalogo_espacios').select('*');
+            if (espCat) window.catalogoEspaciosGlobal = espCat;
 
             // Cargar estados para saber cuáles son "terminados"
             const { data: estadosCat } = await supabaseClient.from('catalogo_estados').select('*');
@@ -194,8 +195,8 @@
                 return Swal.close();
             }
 
-            // 2. Obtener los muebles reales de la fábrica
-            const { data: registros, error: errReg } = await supabaseClient.from('registros_produccion').select('id, codigo_proyecto, suite, espacio, estado').eq('proyecto', proyecto).eq('producto', producto);
+            // 2. Obtener los muebles reales de la fábrica (AHORA INCLUYE LA COLUMNA PISO)
+            const { data: registros, error: errReg } = await supabaseClient.from('registros_produccion').select('id, codigo_proyecto, suite, piso, espacio, estado, producto').eq('proyecto', proyecto).eq('producto', producto);
             let mueblesReales = registros || [];
 
             // 3. Extraer todas las columnas (Espacios únicos) de las plantillas
@@ -207,25 +208,47 @@
             let espaciosUnicos = Array.from(espaciosSet).sort();
 
             // 4. Dibujar la Tabla
-            let tablaHTML = `<thead><tr><th>SUITE / MODELO</th>`;
+            let tablaHTML = `<thead><tr><th>PISO / SUITE</th>`;
             espaciosUnicos.forEach(esp => { tablaHTML += `<th>${esp}</th>`; });
             tablaHTML += `</tr></thead><tbody>`;
 
-            // Filas (Cada Suite)
+            // Filas (Cada Piso/Suite)
             plantillas.forEach(plan => {
                 tablaHTML += `<tr><td>${plan.suite}</td>`;
                 
                 let espaciosDeEstaSuite = plan.espacios.split(',').map(e => e.trim());
+                let strPlanSuite = String(plan.suite || '').trim().toUpperCase();
 
                 espaciosUnicos.forEach(esp => {
-                    // ¿La plantilla dice que lleva este espacio?
                     if (!espaciosDeEstaSuite.includes(esp)) {
                         // No aplica (Cruce vacío)
                         tablaHTML += `<td class="celda-vacia"><span style="opacity:0.3;">---</span></td>`;
                     } else {
-                        // Sí aplica. Buscar en la realidad.
-                        // Ojo: Filtramos por la suite y el espacio exacto
-                        let piezasEncontradas = mueblesReales.filter(m => m.suite === plan.suite && m.espacio === esp);
+                        // LÓGICA DE BÚSQUEDA INTELIGENTE
+                        let espPlan = String(esp).trim().toUpperCase();
+                        let cat = window.catalogoEspaciosGlobal.find(e => e.nombre.toUpperCase() === espPlan || e.sigla.toUpperCase() === espPlan);
+                        let siglaEsperada = cat ? cat.sigla.toUpperCase() : espPlan;
+                        let nombreEsperado = cat ? cat.nombre.toUpperCase() : espPlan;
+
+                        let piezasEncontradas = mueblesReales.filter(m => {
+                            let strMuebleSuite = String(m.suite || '').trim().toUpperCase();
+                            let strMueblePiso = String(m.piso || '').trim().toUpperCase();
+                            
+                            // ¿Coincide el lugar? (Evalúa la columna suite Y la columna piso)
+                            let matchLugar = (strMuebleSuite === strPlanSuite || strMueblePiso === strPlanSuite);
+
+                            // ¿Coincide el espacio? (Traduce nombre a sigla automáticamente)
+                            let mEsp = String(m.espacio || '').trim().toUpperCase();
+                            let matchEspacio = (mEsp === siglaEsperada || mEsp === nombreEsperado);
+
+                            // Regla Salvavidas para Puertas Principales (PP) u otros vacíos
+                            // Si la pieza no tiene espacio, pero la plantilla pide Área Común (AC), lo enlazamos.
+                            if (!mEsp && (siglaEsperada === 'AC' || nombreEsperado.includes('COMUN') || nombreEsperado.includes('COMÚN'))) {
+                                matchEspacio = true;
+                            }
+
+                            return matchLugar && matchEspacio;
+                        });
                         
                         let celdaInfo = evaluarEstadoCelda(piezasEncontradas);
                         
@@ -294,7 +317,7 @@
 
             let htmlModal = `<div class="modal-timeline">
                 <div style="margin-bottom:15px; background:#e0e7ff; padding:10px; border-radius:8px; color:#1e3a8a;">
-                    <b>📍 Suite:</b> ${suite} <br> <b>📍 Espacio:</b> ${espacio}
+                    <b>📍 Ubicación:</b> ${suite} <br> <b>📍 Espacio:</b> ${espacio}
                 </div>`;
 
             muebles.forEach(mueble => {
