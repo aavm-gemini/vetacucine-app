@@ -329,12 +329,19 @@
             if (!idsStr) return;
             Swal.fire({ title: 'Cargando trazabilidad...', didOpen: () => Swal.showLoading() });
 
-            let idsArr = idsStr.split(',').map(id => parseInt(id));
+            // CORRECCIÓN CLAVE: NO convertir a entero para no romper si es un UUID u otro formato.
+            let idsArr = idsStr.split(',');
 
-            const { data: muebles } = await supabaseClient.from('registros_produccion').select('id, codigo_proyecto, producto, estado').in('id', idsArr);
-            const { data: historiales } = await supabaseClient.from('historial_trazabilidad').select('*').in('id_mueble', idsArr).order('created_at', { ascending: true });
+            const { data: muebles, error: errorMuebles } = await supabaseClient.from('registros_produccion').select('id, codigo_proyecto, producto, estado').in('id', idsArr);
+            const { data: historiales, error: errorHist } = await supabaseClient.from('historial_trazabilidad').select('*').in('id_mueble', idsArr).order('created_at', { ascending: true });
 
-            if (!muebles) return Swal.fire('Error', 'No se pudo cargar la información.', 'error');
+            if (errorMuebles) {
+                console.error("Error cargando muebles:", errorMuebles);
+                return Swal.fire('Error', 'Detalle técnico: ' + errorMuebles.message, 'error');
+            }
+            if (!muebles || muebles.length === 0) {
+                return Swal.fire('Error', 'No se encontraron las piezas en la base de datos.', 'error');
+            }
 
             let htmlModal = `<div class="modal-timeline">
                 <div style="margin-bottom:15px; background:#e0e7ff; padding:10px; border-radius:8px; color:#1e3a8a;">
@@ -352,7 +359,7 @@
                         </div>
                 `;
 
-                let histMueble = (historiales || []).filter(h => h.id_mueble === mueble.id);
+                let histMueble = (historiales || []).filter(h => String(h.id_mueble) === String(mueble.id));
                 
                 if (histMueble.length === 0) {
                     htmlModal += `<div style="color:#94a3b8; font-style:italic; font-size:12px;">No hay movimientos registrados.</div>`;
