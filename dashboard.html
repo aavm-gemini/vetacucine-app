@@ -143,7 +143,7 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- SIDEBAR (AHORA SIN TABLERO KANBAN) -->
+        <!-- SIDEBAR -->
         <nav class="sidebar">
             <div class="sidebar-header">Veta<span>Cucine</span></div>
             <ul class="nav-links">
@@ -206,7 +206,6 @@
                     <h4>Por Digitalizar</h4>
                     <p class="numero" id="total_digitalizar">0</p>
                 </div>
-                <!-- TARJETA POR FABRICAR MODIFICADA -->
                 <div class="stat-card border-orange clickable-card" onclick="verListaModal('fabricar')">
                     <h4>Por Fabricar / Revisar</h4>
                     <p class="numero" id="total_fabricar">0</p>
@@ -225,7 +224,8 @@
                 <h3>🎯 Filtro Global y Progreso (Metas vs. Realidad)</h3>
                 <div class="filtros-progreso">
                     <select id="sel_proy" onchange="actualizarFiltrosMetas()"><option value="">Selecciona Proyecto...</option></select>
-                    <input type="text" id="sel_piso" placeholder="Piso (Vacío = TODOS)" onkeyup="calcularAvance()">
+                    <!-- OPTIMIZACIÓN: Se usa 'oninput' con un temporizador para no recalcular 100 veces por segundo al escribir -->
+                    <input type="text" id="sel_piso" placeholder="Piso (Vacío = TODOS)" oninput="autoCalcularAvance()">
                     <select id="sel_prod" onchange="calcularAvance()"><option value="">Selecciona Producto...</option></select>
                 </div>
                 <div class="barra-container">
@@ -262,6 +262,7 @@
 
         let myChartEstados = null;
         let myChartProyectos = null;
+        let debounceProgreso = null; // Para optimizar la barra de búsqueda
         
         window.mueblesCargados = [];
         window.metasCargadas = [];
@@ -270,6 +271,7 @@
         window.coloresProyectosGlobal = {}; 
         window.mueblesFiltradosGlobal = [];
         window.historialGlobal = []; 
+        window.mapaHistorial = new Map(); // Mapa de memoria O(1) para búsqueda rápida
         
         let USUARIO_ACTUAL_EMAIL = "";
         let USUARIO_ACTUAL_NOMBRE = "";
@@ -288,10 +290,13 @@
 
         document.addEventListener("DOMContentLoaded", async () => {
             try {
-                configurarBotonNotas();
-
-                const { data: { session } } = await supabaseClient.auth.getSession();
-                if (!session) { window.location.href = 'login.html'; return; }
+                // MOTOR AUTO-LIMPIADOR DE SESIONES CORRUPTAS
+                const { data: { session }, error } = await supabaseClient.auth.getSession();
+                if (error || !session) {
+                    for (let key in localStorage) { if (key.startsWith('sb-')) { localStorage.removeItem(key); } }
+                    window.location.href = 'login.html';
+                    return;
+                }
 
                 USUARIO_ACTUAL_EMAIL = session.user.email;
                 USUARIO_ACTUAL_NOMBRE = session.user.user_metadata.full_name || session.user.email.split('@')[0];
@@ -306,15 +311,18 @@
                 document.getElementById('nombreUsuario').innerText = USUARIO_ACTUAL_NOMBRE.split(' ')[0];
                 document.getElementById('fotoUsuario').src = session.user.user_metadata.avatar_url || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
 
+                configurarBotonNotas();
                 await cargarDatosDashboard();
                 cargarNotasEquipo();
                 setInterval(cargarNotasEquipo, 120000);
 
             } catch (error) {
-                console.error("Error iniciando Dashboard:", error);
+                for (let key in localStorage) { if (key.startsWith('sb-')) { localStorage.removeItem(key); } }
+                window.location.href = 'login.html';
             }
         });
 
+        // NOTAS (SIN CAMBIOS)
         function configurarBotonNotas() {
             const btnNotas = document.getElementById('btn-notas');
             const panelNotas = document.getElementById('panel-notas');
@@ -333,27 +341,19 @@
                 });
                 
                 document.addEventListener('click', (e) => {
-                    if (!document.querySelector('.widget-notas').contains(e.target)) {
-                        panelNotas.style.display = 'none';
-                    }
+                    if (!document.querySelector('.widget-notas').contains(e.target)) { panelNotas.style.display = 'none'; }
                 });
             }
 
             if(btnNuevaNota) {
                 btnNuevaNota.addEventListener('click', () => {
-                    idNotaEnEdicion = null;
-                    txtNota.value = '';
-                    chkUrgente.checked = false;
-                    cajaEdicion.style.display = 'block';
-                    txtNota.focus();
+                    idNotaEnEdicion = null; txtNota.value = ''; chkUrgente.checked = false;
+                    cajaEdicion.style.display = 'block'; txtNota.focus();
                 });
             }
 
             if(btnCancelarNota) {
-                btnCancelarNota.addEventListener('click', () => {
-                    cajaEdicion.style.display = 'none';
-                    idNotaEnEdicion = null;
-                });
+                btnCancelarNota.addEventListener('click', () => { cajaEdicion.style.display = 'none'; idNotaEnEdicion = null; });
             }
 
             if(btnGuardarNota) {
@@ -361,35 +361,24 @@
                     let texto = txtNota.value.trim();
                     if (!texto) return Swal.fire({ toast:true, position:'top-end', icon:'warning', title:'La nota está vacía', showConfirmButton:false, timer:2000 });
                     
-                    btnGuardarNota.disabled = true;
-                    btnGuardarNota.innerText = '...';
+                    btnGuardarNota.disabled = true; btnGuardarNota.innerText = '...';
 
                     let urgente = chkUrgente.checked;
-                    let payload = {
-                        autor_nombre: USUARIO_ACTUAL_NOMBRE.split(' ')[0],
-                        autor_email: USUARIO_ACTUAL_EMAIL,
-                        contenido: texto, 
-                        importante: urgente
-                    };
+                    let payload = { autor_nombre: USUARIO_ACTUAL_NOMBRE.split(' ')[0], autor_email: USUARIO_ACTUAL_EMAIL, contenido: texto, importante: urgente };
 
                     let err = null;
                     if (idNotaEnEdicion) {
-                        const { error } = await supabaseClient.from('notas_equipo').update(payload).eq('id', idNotaEnEdicion);
-                        err = error;
+                        const { error } = await supabaseClient.from('notas_equipo').update(payload).eq('id', idNotaEnEdicion); err = error;
                     } else {
-                        const { error } = await supabaseClient.from('notas_equipo').insert([payload]);
-                        err = error;
+                        const { error } = await supabaseClient.from('notas_equipo').insert([payload]); err = error;
                     }
 
-                    btnGuardarNota.disabled = false;
-                    btnGuardarNota.innerText = 'Publicar';
+                    btnGuardarNota.disabled = false; btnGuardarNota.innerText = 'Publicar';
 
                     if (err) {
-                        console.error(err);
                         Swal.fire({ toast:true, position:'top-end', icon:'error', title:'Error al guardar', showConfirmButton:false, timer:2000 });
                     } else {
-                        cajaEdicion.style.display = 'none';
-                        cargarNotasEquipo();
+                        cajaEdicion.style.display = 'none'; cargarNotasEquipo();
                     }
                 });
             }
@@ -400,16 +389,14 @@
             const lista = document.getElementById('lista-notas');
             const badge = document.getElementById('badge-notas');
 
-            if (error) { 
-                console.error(error);
-                lista.innerHTML = `<p style="text-align:center; font-size:12px; color:#ef4444; padding:20px;">Error al cargar notas.</p>`; return; 
-            }
+            if (error) { lista.innerHTML = `<p style="text-align:center; font-size:12px; color:#ef4444; padding:20px;">Error al cargar notas.</p>`; return; }
             if (!data || data.length === 0) { lista.innerHTML = `<p style="text-align:center; font-size:12px; color:#94a3b8; padding:20px;">No hay notas en el equipo.</p>`; return; }
 
-            lista.innerHTML = '';
             let notasNuevasParaMi = 0;
             let ultimaVezStr = localStorage.getItem(CACHE_NOTAS_KEY);
             let ultimaVez = ultimaVezStr ? new Date(ultimaVezStr) : new Date(0);
+            
+            let htmlNotas = []; // OPTIMIZACIÓN: Carga en memoria
 
             data.forEach(nota => {
                 let fCrea = new Date(nota.fecha_creacion);
@@ -427,7 +414,7 @@
                     </div>`;
                 }
 
-                lista.innerHTML += `
+                htmlNotas.push(`
                     <div class="nota-card ${claseUrgente}">
                         <div class="nota-header">
                             <span class="nota-autor">${insignia}${nota.autor_nombre}</span>
@@ -436,16 +423,15 @@
                         <div class="nota-contenido">${nota.contenido}</div>
                         ${htmlAcciones}
                     </div>
-                `;
+                `);
             });
 
+            lista.innerHTML = htmlNotas.join(''); // OPTIMIZACIÓN DOM
+
             if (notasNuevasParaMi > 0) {
-                badge.style.display = 'flex';
-                badge.innerText = notasNuevasParaMi > 9 ? '9+' : notasNuevasParaMi;
-                window.notasNoLeidas = notasNuevasParaMi;
+                badge.style.display = 'flex'; badge.innerText = notasNuevasParaMi > 9 ? '9+' : notasNuevasParaMi; window.notasNoLeidas = notasNuevasParaMi;
             } else {
-                badge.style.display = 'none';
-                window.notasNoLeidas = 0;
+                badge.style.display = 'none'; window.notasNoLeidas = 0;
             }
             actualizarBadgeSistemaOS();
         }
@@ -453,69 +439,79 @@
         function marcarNotasComoLeidas() {
             localStorage.setItem(CACHE_NOTAS_KEY, new Date().toISOString());
             document.getElementById('badge-notas').style.display = 'none';
-            window.notasNoLeidas = 0;
-            actualizarBadgeSistemaOS();
+            window.notasNoLeidas = 0; actualizarBadgeSistemaOS();
         }
 
         function editarNota(id, texto, importante) {
             document.getElementById('caja-edicion-nota').style.display = 'block';
             document.getElementById('texto-nota').value = texto;
             document.getElementById('chk-importante').checked = importante;
-            idNotaEnEdicion = id;
-            document.getElementById('texto-nota').focus();
+            idNotaEnEdicion = id; document.getElementById('texto-nota').focus();
         }
 
         async function borrarNota(id) {
             const conf = await Swal.fire({ title: '¿Borrar esta nota?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Sí, borrar' });
-            if (conf.isConfirmed) {
-                await supabaseClient.from('notas_equipo').delete().eq('id', id);
-                cargarNotasEquipo();
-            }
+            if (conf.isConfirmed) { await supabaseClient.from('notas_equipo').delete().eq('id', id); cargarNotasEquipo(); }
         }
 
         async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; }
 
+        // --- SISTEMA DE CARGA OPTIMIZADO ---
         async function cargarDatosDashboard() {
-            const { data: estadosCat } = await supabaseClient.from('catalogo_estados').select('*').order('orden', { ascending: true });
+            // INDICADOR DE CARGA (Evita que la PC se trabe mientras piensa)
+            Swal.fire({ title: 'Sincronizando planta...', text: 'Descargando datos actualizados', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+            const { data: estadosCat } = await supabaseClient.from('catalogo_estados').select('nombre, estado_siguiente');
             if (estadosCat && estadosCat.length > 0) {
                 window.estadosFinales = estadosCat.filter(e => !e.estado_siguiente || e.estado_siguiente.trim() === '' || e.nombre.toLowerCase().includes('enviad') || e.nombre.toLowerCase().includes('instalad')).map(e => e.nombre);
             }
 
-            const { data: muebles } = await supabaseClient.from('registros_produccion').select('*');
+            // OPTIMIZACIÓN 1: Descarga Ligera. Solo bajamos las columnas que de verdad se usan, evitando sobrecargar a Supabase.
+            const { data: muebles } = await supabaseClient.from('registros_produccion').select('id, codigo_proyecto, proyecto, bloque, piso, suite, producto, espacio, estado, observaciones, nivel_prioridad, movido_por');
             if (muebles) {
                 window.mueblesCargados = muebles;
                 window.mueblesFiltradosGlobal = muebles; 
             }
 
-            const { data: metas } = await supabaseClient.from('metas_produccion').select('*');
+            const { data: metas } = await supabaseClient.from('metas_produccion').select('proyecto, piso, producto, cantidad_esperada');
             if (metas) window.metasCargadas = metas;
 
-            const { data: prodCat } = await supabaseClient.from('catalogo_productos').select('*');
+            const { data: prodCat } = await supabaseClient.from('catalogo_productos').select('sigla, nombre').order('sigla');
             if (prodCat) {
                 window.productosCargadosGlobal = prodCat;
-                let prodSelect = document.getElementById('sel_prod');
-                prodSelect.innerHTML = '<option value="">Selecciona Producto...</option>';
-                prodCat.forEach(p => { prodSelect.innerHTML += `<option value="${p.sigla}">${p.sigla} - ${p.nombre}</option>`; });
+                let htmlProds = ['<option value="">Selecciona Producto...</option>'];
+                prodCat.forEach(p => { htmlProds.push(`<option value="${p.sigla}">${p.sigla} - ${p.nombre}</option>`); });
+                document.getElementById('sel_prod').innerHTML = htmlProds.join('');
             }
 
-            const { data: proyectosCat } = await supabaseClient.from('catalogo_proyectos').select('*').order('nombre');
-            let proySelect = document.getElementById('sel_proy');
+            const { data: proyectosCat } = await supabaseClient.from('catalogo_proyectos').select('nombre, color, bloques').order('nombre');
             
             if (proyectosCat) {
+                let htmlProys = ['<option value="">Selecciona Proyecto...</option>'];
                 proyectosCat.forEach(item => {
                     window.coloresProyectosGlobal[item.nombre] = item.color || '#3b82f6';
                     if (item.bloques && item.bloques.trim() !== "") {
                         let arrayBloques = item.bloques.split(',').map(b => b.trim()).filter(b => b !== "");
-                        arrayBloques.forEach(b => { proySelect.innerHTML += `<option value="${item.nombre} - Bloque ${b}">${item.nombre} - Bloque ${b}</option>`; });
+                        arrayBloques.forEach(b => { htmlProys.push(`<option value="${item.nombre} - Bloque ${b}">${item.nombre} - Bloque ${b}</option>`); });
                     } else {
-                        proySelect.innerHTML += `<option value="${item.nombre}">${item.nombre}</option>`;
+                        htmlProys.push(`<option value="${item.nombre}">${item.nombre}</option>`);
                     }
                 });
+                document.getElementById('sel_proy').innerHTML = htmlProys.join('');
             }
 
-            const { data: historialReciente } = await supabaseClient.from('historial_trazabilidad').select('*').order('id', { ascending: false }).limit(200);
+            // Historial (Solo los últimos 200 para el panel de notificaciones)
+            const { data: historialReciente } = await supabaseClient.from('historial_trazabilidad').select('id, id_mueble, tipo_registro, etapa, operador, comentarios, created_at').order('id', { ascending: false }).limit(200);
             if (historialReciente) {
                 window.historialGlobal = historialReciente;
+                
+                // OPTIMIZACIÓN 4: Diccionario Rápido (Hash Map) para búsquedas instantáneas
+                window.mapaHistorial.clear();
+                historialReciente.forEach(h => {
+                    if(!window.mapaHistorial.has(h.id_mueble)) window.mapaHistorial.set(h.id_mueble, []);
+                    window.mapaHistorial.get(h.id_mueble).push(h);
+                });
+
                 let ultimoIdLeido = parseInt(localStorage.getItem('ultimoIdNotifVeta') || '0');
                 let notifNuevas = historialReciente.filter(h => h.id > ultimoIdLeido).length;
                 let badge = document.getElementById('badge_notificaciones');
@@ -525,10 +521,11 @@
             }
 
             actualizarGraficasDinamicas();
+            Swal.close(); // Cierra el cartel de carga
         }
 
         // ===============================================
-        // FUNCIÓN PRINCIPAL DE LISTAS Y ORDENAMIENTO (ACTUALIZADA PARA 'POR REVISAR')
+        // FUNCIÓN PRINCIPAL DE LISTAS Y ORDENAMIENTO (OPTIMIZADA)
         // ===============================================
         function verListaModal(tipo) {
             let lista = []; let titulo = ""; let colorHex = "";
@@ -541,7 +538,6 @@
                 lista = window.mueblesFiltradosGlobal.filter(m => m.estado && m.estado.toLowerCase() === 'por digitalizar'); 
                 titulo = "📐 Pendientes por Digitalizar"; colorHex = "#8b5cf6"; 
             } else if (tipo === 'fabricar') { 
-                // AHORA ABSORBE "POR REVISAR" EN ESTA LISTA
                 lista = window.mueblesFiltradosGlobal.filter(m => m.estado && (m.estado.toLowerCase().includes('fabric') || m.estado.toLowerCase() === 'por revisar')); 
                 titulo = "🏭 Lotes en Área de Fabricación / Revisión"; colorHex = "#f59e0b"; 
                 permitirEstrella = false; 
@@ -558,17 +554,18 @@
 
             if(lista.length === 0) { Swal.fire({ icon: 'info', title: 'Lista vacía', text: 'No hay muebles en esta categoría.', confirmButtonColor: colorHex }); return; }
 
-            let htmlTabla = `<div style="max-height: 55vh; overflow-y: auto; text-align: left;"><div class="tabla-responsive-wrapper"><table class="tabla-alertas">`;
+            // OPTIMIZACIÓN 2: Renderizado en Lote con Array Push
+            let htmlFilas = [];
+            let htmlTablaFinal = `<div style="max-height: 55vh; overflow-y: auto; text-align: left;"><div class="tabla-responsive-wrapper"><table class="tabla-alertas">`;
 
             if (agruparPorLote) {
                 let grupos = {};
                 lista.forEach(m => {
                     let key = `${m.codigo_proyecto}_${m.proyecto}_${m.producto}`;
                     if (!grupos[key]) {
-                        
                         let nombreResponsable = "Sin firma";
-                        let histMueble = window.historialGlobal.filter(h => h.id_mueble === m.id);
-                        
+                        // Uso de Diccionario Rápido O(1) en vez de buscar en todo el historial
+                        let histMueble = window.mapaHistorial.get(m.id) || [];
                         let palabraClave = tipo === 'fabricar' ? 'Fabricar' : (m.estado || '');
                         let regCulpable = histMueble.find(h => h.etapa && h.etapa.includes(palabraClave));
                         
@@ -583,16 +580,15 @@
                 
                 let listaAgrupada = Object.values(grupos);
                 
-                // REGLA DE ORDENAMIENTO: Lo que esté "Por Revisar" pasa obligatoriamente de primero
+                // ORDENAMIENTO (Por Revisar primero)
                 listaAgrupada.sort((a,b) => {
                     let aRev = (a.estado && a.estado.toLowerCase() === 'por revisar') ? 1 : 0;
                     let bRev = (b.estado && b.estado.toLowerCase() === 'por revisar') ? 1 : 0;
-                    if (aRev !== bRev) return bRev - aRev; // 1 antes que 0
-                    
+                    if (aRev !== bRev) return bRev - aRev; 
                     return (parseInt(a.codigo_proyecto)||999999) - (parseInt(b.codigo_proyecto)||999999);
                 });
 
-                htmlTabla += `<thead><tr><th style="width:45px; text-align:center;" title="Firma Responsable">Resp.</th><th>Cód.</th><th>Lote (Proyecto - Producto - Espacios)</th><th>Estado General</th></tr></thead><tbody>`;
+                htmlTablaFinal += `<thead><tr><th style="width:45px; text-align:center;" title="Firma Responsable">Resp.</th><th>Cód.</th><th>Lote (Proyecto - Producto - Espacios)</th><th>Estado General</th></tr></thead><tbody>`;
 
                 listaAgrupada.forEach(g => {
                     let firmaTexto = `<div style="color:#cbd5e1; font-size:16px; text-align:center;" title="Sin firma">👤</div>`;
@@ -602,7 +598,6 @@
                     }
 
                     let isCommon = g.piezas.some(p => p.producto === 'PP' || p.espacio === 'AC');
-                    
                     let mapPisos = {};
                     g.piezas.forEach(p => {
                         let pisoNro = p.piso ? p.piso : 'S/P';
@@ -611,7 +606,6 @@
                     });
 
                     let arrSubItems = [];
-
                     for(let pisoNro in mapPisos) {
                         let pzasPiso = mapPisos[pisoNro];
                         let etiquetaPiso = pisoNro !== 'S/P' ? `P${pisoNro}` : '';
@@ -641,25 +635,24 @@
                     let txtSub = arrSubItems.join(' | ');
                     let descripcionLote = `<strong>${g.proyecto}</strong> - ${g.producto} ${txtSub ? '- ' + txtSub : ''}`;
 
-                    // DISEÑO "DORADO" ALERTA PARA LAS QUE ESTÁN "POR REVISAR"
                     let estiloFilaGroup = "";
                     let colorEstatus = colorHex;
                     if (g.estado && g.estado.toLowerCase() === 'por revisar') {
                         estiloFilaGroup = "background-color: #fef9c3; box-shadow: inset 4px 0 0 #eab308;";
-                        colorEstatus = "#d97706"; // Texto naranja oscuro para contrastar
+                        colorEstatus = "#d97706"; 
                     }
 
-                    htmlTabla += `<tr style="${estiloFilaGroup}">
+                    // Se inyecta al array en lugar de hacer += directo al HTML
+                    htmlFilas.push(`<tr style="${estiloFilaGroup}">
                         <td style="text-align:center; vertical-align:middle;">${firmaTexto}</td>
                         <td style="vertical-align:middle; white-space: nowrap;"><strong>${g.codigo_proyecto || 'S/N'}</strong></td>
                         <td style="vertical-align:middle;">${descripcionLote}</td>
                         <td style="vertical-align:middle;"><span style="font-weight:bold; color:${colorEstatus}">${g.estado}</span> <br><small style="color:#64748b;">📦 ${g.cantidad} piezas agrupadas</small></td>
-                    </tr>`;
+                    </tr>`);
                 });
 
             } else {
                 lista.sort((a, b) => {
-                    // Igual, asegurar que lo 'Por Revisar' suba arriba también en listas normales
                     let aRevisar = (a.estado && a.estado.toLowerCase() === 'por revisar') ? 1 : 0;
                     let bRevisar = (b.estado && b.estado.toLowerCase() === 'por revisar') ? 1 : 0;
                     if (aRevisar !== bRevisar) return bRevisar - aRevisar;
@@ -676,7 +669,7 @@
 
                 let colExtraCabecera = permitirEstrella ? '<th style="width: 35px; text-align:center;" title="Prioridad">⭐</th>' : '<th style="width:45px; text-align:center;" title="Responsable">Resp.</th>';
                 
-                htmlTabla += `<thead><tr>${colExtraCabecera}<th>Cód.</th><th>Ubicación</th><th>Producto</th><th>Estado/Obs.</th></tr></thead><tbody>`;
+                htmlTablaFinal += `<thead><tr>${colExtraCabecera}<th>Cód.</th><th>Ubicación</th><th>Producto</th><th>Estado/Obs.</th></tr></thead><tbody>`;
 
                 lista.forEach(m => {
                     let blqStr = m.bloque ? ` - Blq ${m.bloque}` : '';
@@ -687,7 +680,6 @@
                     
                     let colExtraContenido = ""; let estiloFila = "";
 
-                    // Aplicar dorado por defecto a los "Por Revisar"
                     if (m.estado && m.estado.toLowerCase() === 'por revisar') {
                         estiloFila = 'background-color: #fef9c3; box-shadow: inset 4px 0 0 #eab308;';
                     }
@@ -703,24 +695,27 @@
                             iconoUrgencia = '<span class="prio-2">★</span>'; 
                             estiloFila = 'background-color: #fff7ed; box-shadow: inset 4px 0 0 #f97316;';
                         }
-
                         colExtraContenido = `<td style="text-align:center; cursor:pointer; user-select:none; vertical-align:middle;" onclick="cambiarPrioridad('${m.id}', ${prio}, '${tipo}')" title="Clic para cambiar prioridad">${iconoUrgencia}</td>`;
                     } else {
                         colExtraContenido = `<td style="text-align:center; vertical-align:middle;"><span style="color:#94a3b8;">-</span></td>`;
                     }
 
-                    htmlTabla += `<tr style="${estiloFila}">
+                    // Se inyecta al array en lugar de hacer +=
+                    htmlFilas.push(`<tr style="${estiloFila}">
                         ${colExtraContenido}
                         <td style="vertical-align:middle; white-space: nowrap;"><strong>${m.codigo_proyecto || 'S/N'}</strong></td>
                         <td style="vertical-align:middle;">${ubi}<br><small>Suite ${m.suite}</small></td>
                         <td style="white-space: nowrap; vertical-align:middle;">${prodEspacio}</td>
                         <td style="vertical-align:middle;"><span style="font-weight:bold; color:${colorHex}">${m.estado}</span>${extra}</td>
-                    </tr>`;
+                    </tr>`);
                 });
             }
             
-            htmlTabla += `</tbody></table></div></div>`;
-            Swal.fire({ title: titulo, html: htmlTabla, width: '850px', confirmButtonText: 'Cerrar', confirmButtonColor: '#475569' });
+            // Juntamos todas las filas de un solo golpe (Ultra-rápido para el navegador)
+            htmlTablaFinal += htmlFilas.join('');
+            htmlTablaFinal += `</tbody></table></div></div>`;
+            
+            Swal.fire({ title: titulo, html: htmlTablaFinal, width: '850px', confirmButtonText: 'Cerrar', confirmButtonColor: '#475569' });
         }
 
         async function cambiarPrioridad(id_mueble, prioActual, tipoModal) {
@@ -756,16 +751,19 @@
 
             animarContador('total_muebles', mueblesFiltrados.length);
             animarContador('total_digitalizar', mueblesFiltrados.filter(m => m.estado && m.estado.toLowerCase() === 'por digitalizar').length);
-            
-            // AHORA EL CONTADOR INCLUYE LOS QUE ESTÁN "POR REVISAR"
             animarContador('total_fabricar', mueblesFiltrados.filter(m => m.estado && (m.estado.toLowerCase().includes('fabric') || m.estado.toLowerCase() === 'por revisar')).length);
-            
             animarContador('total_alertas', mueblesFiltrados.filter(m => m.estado && m.estado.toLowerCase().includes('bloque')).length);
             animarContador('total_completados', mueblesFiltrados.filter(m => window.estadosFinales.includes(m.estado)).length);
 
             let conteoEstados = {}; let conteoProyectos = {};
             mueblesFiltrados.forEach(m => { conteoEstados[m.estado || 'Sin Estado'] = (conteoEstados[m.estado || 'Sin Estado'] || 0) + 1; conteoProyectos[m.proyecto || 'Sin Proyecto'] = (conteoProyectos[m.proyecto || 'Sin Proyecto'] || 0) + 1; });
             dibujarGraficaEstados(conteoEstados); dibujarGraficaProyectos(conteoProyectos, window.coloresProyectosGlobal);
+        }
+
+        // OPTIMIZACIÓN 3: DEBOUNCE (Filtro inteligente que espera a que termines de teclear)
+        function autoCalcularAvance() {
+            clearTimeout(debounceProgreso);
+            debounceProgreso = setTimeout(calcularAvance, 400);
         }
 
         function calcularAvance() {
@@ -821,14 +819,16 @@
             if (!window.historialGlobal || window.historialGlobal.length === 0) return Swal.fire({ icon: 'info', title: 'Sin actividad', text: 'No hay registros recientes.' });
             localStorage.setItem('ultimoIdNotifVeta', window.historialGlobal[0].id);
             document.getElementById('badge_notificaciones').style.display = 'none'; window.alertasNoLeidas = 0; actualizarBadgeSistemaOS();
-            let html = '<div style="text-align: left; max-height: 450px; overflow-y: auto;">';
+            
+            let htmlFilasNotif = [];
             window.historialGlobal.forEach(h => {
                 let m = window.mueblesCargados.find(x => x.id === h.id_mueble);
                 let ubi = m ? `<b>${m.proyecto}</b> (P${m.piso}${m.bloque?'- Blq '+m.bloque:''}-S${m.suite})` : "Pieza desconocida";
                 let icono = h.tipo_registro.includes('Falla') ? '🛑' : (h.tipo_registro.includes('Edición') ? '✏️' : '✨');
-                html += `<div class="notif-item"><div class="notif-icon">${icono}</div><div class="notif-content"><span style="color:#3b82f6; font-weight:bold;">👤 ${h.operador || 'Operador'}</span> <span style="color:#334155;">registró: <b>${h.tipo_registro}</b> en ${ubi}</span><br><span style="color: #64748b; font-style: italic;">"${h.comentarios || h.etapa}"</span></div></div>`;
+                htmlFilasNotif.push(`<div class="notif-item"><div class="notif-icon">${icono}</div><div class="notif-content"><span style="color:#3b82f6; font-weight:bold;">👤 ${h.operador || 'Operador'}</span> <span style="color:#334155;">registró: <b>${h.tipo_registro}</b> en ${ubi}</span><br><span style="color: #64748b; font-style: italic;">"${h.comentarios || h.etapa}"</span></div></div>`);
             });
-            Swal.fire({ title: '🔔 Bitácora (Últimos 50)', html: html + '</div>', width: '650px' });
+            let htmlFinal = '<div style="text-align: left; max-height: 450px; overflow-y: auto;">' + htmlFilasNotif.join('') + '</div>';
+            Swal.fire({ title: '🔔 Bitácora (Últimos 50)', html: htmlFinal, width: '650px' });
         }
     </script>
 </body>
