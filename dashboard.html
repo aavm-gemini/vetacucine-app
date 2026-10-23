@@ -224,7 +224,7 @@
                 <h3>🎯 Filtro Global y Progreso (Metas vs. Realidad)</h3>
                 <div class="filtros-progreso">
                     <select id="sel_proy" onchange="actualizarFiltrosMetas()"><option value="">Selecciona Proyecto...</option></select>
-                    <!-- OPTIMIZACIÓN: Se usa 'oninput' con un temporizador para no recalcular 100 veces por segundo al escribir -->
+                    <!-- OPTIMIZACIÓN: Se usa 'oninput' con un temporizador -->
                     <input type="text" id="sel_piso" placeholder="Piso (Vacío = TODOS)" oninput="autoCalcularAvance()">
                     <select id="sel_prod" onchange="calcularAvance()"><option value="">Selecciona Producto...</option></select>
                 </div>
@@ -262,7 +262,7 @@
 
         let myChartEstados = null;
         let myChartProyectos = null;
-        let debounceProgreso = null; // Para optimizar la barra de búsqueda
+        let debounceProgreso = null; 
         
         window.mueblesCargados = [];
         window.metasCargadas = [];
@@ -271,7 +271,7 @@
         window.coloresProyectosGlobal = {}; 
         window.mueblesFiltradosGlobal = [];
         window.historialGlobal = []; 
-        window.mapaHistorial = new Map(); // Mapa de memoria O(1) para búsqueda rápida
+        window.mapaHistorial = new Map(); 
         
         let USUARIO_ACTUAL_EMAIL = "";
         let USUARIO_ACTUAL_NOMBRE = "";
@@ -290,7 +290,6 @@
 
         document.addEventListener("DOMContentLoaded", async () => {
             try {
-                // MOTOR AUTO-LIMPIADOR DE SESIONES CORRUPTAS
                 const { data: { session }, error } = await supabaseClient.auth.getSession();
                 if (error || !session) {
                     for (let key in localStorage) { if (key.startsWith('sb-')) { localStorage.removeItem(key); } }
@@ -322,7 +321,6 @@
             }
         });
 
-        // NOTAS (SIN CAMBIOS)
         function configurarBotonNotas() {
             const btnNotas = document.getElementById('btn-notas');
             const panelNotas = document.getElementById('panel-notas');
@@ -396,7 +394,7 @@
             let ultimaVezStr = localStorage.getItem(CACHE_NOTAS_KEY);
             let ultimaVez = ultimaVezStr ? new Date(ultimaVezStr) : new Date(0);
             
-            let htmlNotas = []; // OPTIMIZACIÓN: Carga en memoria
+            let htmlNotas = []; 
 
             data.forEach(nota => {
                 let fCrea = new Date(nota.fecha_creacion);
@@ -426,7 +424,7 @@
                 `);
             });
 
-            lista.innerHTML = htmlNotas.join(''); // OPTIMIZACIÓN DOM
+            lista.innerHTML = htmlNotas.join(''); 
 
             if (notasNuevasParaMi > 0) {
                 badge.style.display = 'flex'; badge.innerText = notasNuevasParaMi > 9 ? '9+' : notasNuevasParaMi; window.notasNoLeidas = notasNuevasParaMi;
@@ -456,27 +454,25 @@
 
         async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; }
 
-        // --- SISTEMA DE CARGA OPTIMIZADO ---
+        // --- SISTEMA DE CARGA (REVERTIDO A * PARA EVITAR ERRORES, PERO CON JS RÁPIDO) ---
         async function cargarDatosDashboard() {
-            // INDICADOR DE CARGA (Evita que la PC se trabe mientras piensa)
-            Swal.fire({ title: 'Sincronizando planta...', text: 'Descargando datos actualizados', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+            // Cartel eliminado como solicitaste
 
-            const { data: estadosCat } = await supabaseClient.from('catalogo_estados').select('nombre, estado_siguiente');
+            const { data: estadosCat } = await supabaseClient.from('catalogo_estados').select('*').order('orden', { ascending: true });
             if (estadosCat && estadosCat.length > 0) {
                 window.estadosFinales = estadosCat.filter(e => !e.estado_siguiente || e.estado_siguiente.trim() === '' || e.nombre.toLowerCase().includes('enviad') || e.nombre.toLowerCase().includes('instalad')).map(e => e.nombre);
             }
 
-            // OPTIMIZACIÓN 1: Descarga Ligera. Solo bajamos las columnas que de verdad se usan, evitando sobrecargar a Supabase.
-            const { data: muebles } = await supabaseClient.from('registros_produccion').select('id, codigo_proyecto, proyecto, bloque, piso, suite, producto, espacio, estado, observaciones, nivel_prioridad, movido_por');
+            const { data: muebles } = await supabaseClient.from('registros_produccion').select('*');
             if (muebles) {
                 window.mueblesCargados = muebles;
                 window.mueblesFiltradosGlobal = muebles; 
             }
 
-            const { data: metas } = await supabaseClient.from('metas_produccion').select('proyecto, piso, producto, cantidad_esperada');
+            const { data: metas } = await supabaseClient.from('metas_produccion').select('*');
             if (metas) window.metasCargadas = metas;
 
-            const { data: prodCat } = await supabaseClient.from('catalogo_productos').select('sigla, nombre').order('sigla');
+            const { data: prodCat } = await supabaseClient.from('catalogo_productos').select('*').order('sigla');
             if (prodCat) {
                 window.productosCargadosGlobal = prodCat;
                 let htmlProds = ['<option value="">Selecciona Producto...</option>'];
@@ -484,7 +480,7 @@
                 document.getElementById('sel_prod').innerHTML = htmlProds.join('');
             }
 
-            const { data: proyectosCat } = await supabaseClient.from('catalogo_proyectos').select('nombre, color, bloques').order('nombre');
+            const { data: proyectosCat } = await supabaseClient.from('catalogo_proyectos').select('*').order('nombre');
             
             if (proyectosCat) {
                 let htmlProys = ['<option value="">Selecciona Proyecto...</option>'];
@@ -500,12 +496,11 @@
                 document.getElementById('sel_proy').innerHTML = htmlProys.join('');
             }
 
-            // Historial (Solo los últimos 200 para el panel de notificaciones)
-            const { data: historialReciente } = await supabaseClient.from('historial_trazabilidad').select('id, id_mueble, tipo_registro, etapa, operador, comentarios, created_at').order('id', { ascending: false }).limit(200);
+            const { data: historialReciente } = await supabaseClient.from('historial_trazabilidad').select('*').order('id', { ascending: false }).limit(200);
             if (historialReciente) {
                 window.historialGlobal = historialReciente;
                 
-                // OPTIMIZACIÓN 4: Diccionario Rápido (Hash Map) para búsquedas instantáneas
+                // Mapeo Rápido en memoria
                 window.mapaHistorial.clear();
                 historialReciente.forEach(h => {
                     if(!window.mapaHistorial.has(h.id_mueble)) window.mapaHistorial.set(h.id_mueble, []);
@@ -521,11 +516,10 @@
             }
 
             actualizarGraficasDinamicas();
-            Swal.close(); // Cierra el cartel de carga
         }
 
         // ===============================================
-        // FUNCIÓN PRINCIPAL DE LISTAS Y ORDENAMIENTO (OPTIMIZADA)
+        // FUNCIÓN PRINCIPAL DE LISTAS Y ORDENAMIENTO (OPTIMIZADA EN DOM)
         // ===============================================
         function verListaModal(tipo) {
             let lista = []; let titulo = ""; let colorHex = "";
@@ -554,7 +548,6 @@
 
             if(lista.length === 0) { Swal.fire({ icon: 'info', title: 'Lista vacía', text: 'No hay muebles en esta categoría.', confirmButtonColor: colorHex }); return; }
 
-            // OPTIMIZACIÓN 2: Renderizado en Lote con Array Push
             let htmlFilas = [];
             let htmlTablaFinal = `<div style="max-height: 55vh; overflow-y: auto; text-align: left;"><div class="tabla-responsive-wrapper"><table class="tabla-alertas">`;
 
@@ -564,7 +557,6 @@
                     let key = `${m.codigo_proyecto}_${m.proyecto}_${m.producto}`;
                     if (!grupos[key]) {
                         let nombreResponsable = "Sin firma";
-                        // Uso de Diccionario Rápido O(1) en vez de buscar en todo el historial
                         let histMueble = window.mapaHistorial.get(m.id) || [];
                         let palabraClave = tipo === 'fabricar' ? 'Fabricar' : (m.estado || '');
                         let regCulpable = histMueble.find(h => h.etapa && h.etapa.includes(palabraClave));
@@ -580,7 +572,6 @@
                 
                 let listaAgrupada = Object.values(grupos);
                 
-                // ORDENAMIENTO (Por Revisar primero)
                 listaAgrupada.sort((a,b) => {
                     let aRev = (a.estado && a.estado.toLowerCase() === 'por revisar') ? 1 : 0;
                     let bRev = (b.estado && b.estado.toLowerCase() === 'por revisar') ? 1 : 0;
@@ -642,7 +633,6 @@
                         colorEstatus = "#d97706"; 
                     }
 
-                    // Se inyecta al array en lugar de hacer += directo al HTML
                     htmlFilas.push(`<tr style="${estiloFilaGroup}">
                         <td style="text-align:center; vertical-align:middle;">${firmaTexto}</td>
                         <td style="vertical-align:middle; white-space: nowrap;"><strong>${g.codigo_proyecto || 'S/N'}</strong></td>
@@ -700,7 +690,6 @@
                         colExtraContenido = `<td style="text-align:center; vertical-align:middle;"><span style="color:#94a3b8;">-</span></td>`;
                     }
 
-                    // Se inyecta al array en lugar de hacer +=
                     htmlFilas.push(`<tr style="${estiloFila}">
                         ${colExtraContenido}
                         <td style="vertical-align:middle; white-space: nowrap;"><strong>${m.codigo_proyecto || 'S/N'}</strong></td>
@@ -711,7 +700,6 @@
                 });
             }
             
-            // Juntamos todas las filas de un solo golpe (Ultra-rápido para el navegador)
             htmlTablaFinal += htmlFilas.join('');
             htmlTablaFinal += `</tbody></table></div></div>`;
             
@@ -760,7 +748,6 @@
             dibujarGraficaEstados(conteoEstados); dibujarGraficaProyectos(conteoProyectos, window.coloresProyectosGlobal);
         }
 
-        // OPTIMIZACIÓN 3: DEBOUNCE (Filtro inteligente que espera a que termines de teclear)
         function autoCalcularAvance() {
             clearTimeout(debounceProgreso);
             debounceProgreso = setTimeout(calcularAvance, 400);
