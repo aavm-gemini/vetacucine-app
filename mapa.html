@@ -234,7 +234,7 @@
 
             Swal.fire({ title: 'Dibujando Mapa...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
-            const { data: plantillasDB, error: errPlan } = await supabaseClient.from('plantillas_matriz').select('*').eq('proyecto', proyecto).eq('producto', producto).order('suite');
+            const { data: plantillasDB, error: errPlan } = await supabaseClient.from('plantillas_matriz').select('*').eq('proyecto', proyecto).eq('producto', producto);
             
             if (errPlan || !plantillasDB || plantillasDB.length === 0) {
                 document.getElementById('tabla_matriz').innerHTML = `<thead><tr><th style="padding:40px; color:#ef4444;">No hay plantillas creadas en el Administrador para esta combinación.</th></tr></thead>`;
@@ -252,6 +252,9 @@
                 document.getElementById('tabla_matriz').innerHTML = `<thead><tr><th style="padding:40px; color:#ef4444;">No hay plantillas diseñadas para este Bloque. Diséñalas en el Administrador.</th></tr></thead>`;
                 return Swal.close();
             }
+
+            // ORDENAMIENTO NATURAL: Obliga a Javascript a leer "10" como el número diez y no como un texto que empieza con "1"
+            plantillas.sort((a, b) => a.suite.localeCompare(b.suite, undefined, { numeric: true, sensitivity: 'base' }));
 
             const { data: registros, error: errReg } = await supabaseClient.from('registros_produccion').select('id, codigo_proyecto, suite, piso, bloque, espacio, estado, producto').eq('proyecto', proyecto).eq('producto', producto);
             let mueblesReales = registros || [];
