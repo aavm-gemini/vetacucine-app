@@ -80,16 +80,16 @@
     <div class="app-container">
         <!-- SIDEBAR -->
         <nav class="sidebar">
-    <div class="sidebar-header">Veta<span>Cucine</span></div>
-    <ul class="nav-links">
-        <li><a href="dashboard.html">📊 Dashboard</a></li>
-        <li><a href="mapa.html">🗺️ Mapa de Producción</a></li>
-        <li><a href="taller.html?v=2.0">🏭 Panel Operador</a></li>
-        <li><a href="index.html">📝 Ingreso Muebles</a></li>
-        <li><a href="reportes.html">🔍 Buscar y Reportes</a></li>
-        <li><a href="admin.html" id="link-admin" class="active">⚙️ Administrador</a></li>
-    </ul>
-</nav>
+            <div class="sidebar-header">Veta<span>Cucine</span></div>
+            <ul class="nav-links">
+                <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <li><a href="mapa.html">🗺️ Mapa de Producción</a></li>
+                <li><a href="taller.html?v=2.0">🏭 Panel Operador</a></li>
+                <li><a href="index.html">📝 Ingreso Muebles</a></li>
+                <li><a href="reportes.html">🔍 Buscar y Reportes</a></li>
+                <li><a href="admin.html" id="link-admin" class="active">⚙️ Administrador</a></li>
+            </ul>
+        </nav>
 
         <div class="main-content">
             <div class="header-top">
@@ -97,7 +97,7 @@
                 <button onclick="cerrarSesion()" style="background:transparent; border:1px solid #ef4444; color:#ef4444; padding:6px 12px; border-radius:6px; font-weight:bold; cursor:pointer;">Salir</button>
             </div>
 
-            <!-- NAVEGACIÓN DE PESTAÑAS (Añadida la pestaña 5) -->
+            <!-- NAVEGACIÓN DE PESTAÑAS -->
             <div class="tabs-container">
                 <button class="tab-btn active" onclick="cambiarPestana('tab-personal')">👥 Personal y Áreas</button>
                 <button class="tab-btn" onclick="cambiarPestana('tab-flujo')">🔄 Flujo de Estados</button>
@@ -306,7 +306,7 @@
             </div>
 
             <!-- ==========================================
-                 PESTAÑA 5: PLANTILLAS MATRIZ (NUEVA)
+                 PESTAÑA 5: PLANTILLAS MATRIZ 
                  ========================================== -->
             <div id="tab-plantillas" class="tab-content">
                 <div class="card">
@@ -315,10 +315,21 @@
                     
                     <div class="form-grid">
                         <input type="hidden" id="plan_id">
+                        
                         <div class="form-group">
                             <label>Proyecto</label>
-                            <select id="plan_proyecto"><option value="">Cargando...</option></select>
+                            <!-- OPTIMIZACIÓN: Al cambiar el proyecto, buscamos si tiene bloques -->
+                            <select id="plan_proyecto" onchange="actualizarBloquesPlantilla()"><option value="">Cargando...</option></select>
                         </div>
+                        
+                        <!-- NUEVO CAJÓN DE BLOQUE (Oculto por defecto) -->
+                        <div class="form-group" id="grupo_plan_bloque" style="display: none; max-width: 150px;">
+                            <label>Bloque / Torre</label>
+                            <select id="plan_bloque">
+                                <option value="">Seleccione...</option>
+                            </select>
+                        </div>
+
                         <div class="form-group">
                             <label>Producto</label>
                             <select id="plan_producto"><option value="">Cargando...</option></select>
@@ -359,26 +370,38 @@
 
         let estadosCargados = [];
         let empleadosCargados = []; 
+        let proyectosCatGlobal = []; // Array maestro de proyectos para usar en los bloques
 
         document.addEventListener("DOMContentLoaded", async () => {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (!session) { window.location.href = 'login.html'; return; }
+            // MOTOR AUTO-LIMPIADOR DE SESIONES CORRUPTAS
+            try {
+                const { data: { session }, error } = await supabaseClient.auth.getSession();
+                if (error || !session) {
+                    for (let key in localStorage) { if (key.startsWith('sb-')) { localStorage.removeItem(key); } }
+                    window.location.href = 'login.html';
+                    return;
+                }
 
-            const email = session.user.email;
-            const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol').eq('email', email).single();
-            if (!empleado || empleado.rol.trim() !== 'Administrador') {
-                Swal.fire({ icon: 'error', title: 'Acceso Denegado', text: 'Solo los administradores pueden ver esta página.', confirmButtonColor: '#1e293b' })
-                .then(() => { window.location.href = 'dashboard.html'; });
-                return;
+                const email = session.user.email;
+                const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol').eq('email', email).single();
+                if (!empleado || empleado.rol.trim() !== 'Administrador') {
+                    Swal.fire({ icon: 'error', title: 'Acceso Denegado', text: 'Solo los administradores pueden ver esta página.', confirmButtonColor: '#1e293b' })
+                    .then(() => { window.location.href = 'dashboard.html'; });
+                    return;
+                }
+
+                cargarEmpleados();
+                cargarEstados();
+                await cargarProyectos(); // Necesitamos que cargue antes para los bloques
+                cargarProductos();
+                cargarEspacios(); 
+                cargarMetas();
+                cargarPlantillas(); 
+
+            } catch (err) {
+                for (let key in localStorage) { if (key.startsWith('sb-')) { localStorage.removeItem(key); } }
+                window.location.href = 'login.html';
             }
-
-            cargarEmpleados();
-            cargarEstados();
-            cargarProyectos();
-            cargarProductos();
-            cargarEspacios(); 
-            cargarMetas();
-            cargarPlantillas(); // Se carga la nueva tabla de plantillas
         });
 
         async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; }
@@ -391,17 +414,14 @@
         }
 
         /* =========================================================================================
-           1. GESTIÓN DE EMPLEADOS Y ÁREAS (CON AUTOCOMPLETADO)
+           1. GESTIÓN DE EMPLEADOS Y ÁREAS 
            ========================================================================================= */
         async function cargarEmpleados() {
             const { data, error } = await supabaseClient.from('empleados_autorizados').select('*').order('email');
             const tabla = document.getElementById('tabla-empleados');
             const datalist = document.getElementById('lista_emails');
             
-            if (error) { 
-                tabla.innerHTML = `<tr><td colspan="5" style="color:red;">Error de Base de Datos.<br>${error.message}</td></tr>`; 
-                return; 
-            }
+            if (error) { tabla.innerHTML = `<tr><td colspan="5" style="color:red;">Error de Base de Datos.<br>${error.message}</td></tr>`; return; }
             
             empleadosCargados = data;
             tabla.innerHTML = '';
@@ -483,9 +503,7 @@
             const select = document.getElementById('est_siguiente');
             const valorActual = select.value;
             select.innerHTML = '<option value="">Ninguno (Fin del proceso)</option>';
-            estadosCargados.forEach(e => {
-                select.innerHTML += `<option value="${e.nombre}">${e.nombre}</option>`;
-            });
+            estadosCargados.forEach(e => { select.innerHTML += `<option value="${e.nombre}">${e.nombre}</option>`; });
             if(estadosCargados.find(e => e.nombre === valorActual)) select.value = valorActual;
         }
 
@@ -570,9 +588,7 @@
                         <td>${m.producto}</td>
                         <td>${m.piso === 'TODOS' ? '<span style="background:#dbeafe; color:#1e40af; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:bold;">Toda la torre</span>' : 'Piso ' + m.piso}</td>
                         <td style="font-size:18px; font-weight:bold; color:#10b981;">${m.cantidad_esperada}</td>
-                        <td>
-                            <button class="btn-icon delete" onclick="eliminarMeta('${m.id}')">🗑️</button>
-                        </td>
+                        <td><button class="btn-icon delete" onclick="eliminarMeta('${m.id}')">🗑️</button></td>
                     </tr>
                 `;
             });
@@ -611,10 +627,11 @@
             const { data, error } = await supabaseClient.from('catalogo_proyectos').select('*').order('nombre');
             const tabla = document.getElementById('tabla-proyectos');
             const selectMetas = document.getElementById('meta_proyecto');
-            const selectPlan = document.getElementById('plan_proyecto'); // Para Plantillas
+            const selectPlan = document.getElementById('plan_proyecto');
             
             if (error) return;
             
+            proyectosCatGlobal = data || []; // Guardar globalmente para los bloques
             tabla.innerHTML = ''; 
             selectMetas.innerHTML = '<option value="">Selecciona Proyecto...</option>';
             if(selectPlan) selectPlan.innerHTML = '<option value="">Selecciona Proyecto...</option>';
@@ -643,7 +660,7 @@
             const { data, error } = await supabaseClient.from('catalogo_productos').select('*').order('sigla');
             const tabla = document.getElementById('tabla-productos');
             const selectMetas = document.getElementById('meta_producto');
-            const selectPlan = document.getElementById('plan_producto'); // Para Plantillas
+            const selectPlan = document.getElementById('plan_producto'); 
             
             if (error) return;
             
@@ -669,11 +686,10 @@
 
         async function eliminarProducto(id) { if(confirm("¿Eliminar producto?")) { await supabaseClient.from('catalogo_productos').delete().eq('id', id); cargarProductos(); } }
 
-        // --- FUNCIONES DEL CATÁLOGO DE ESPACIOS ---
         async function cargarEspacios() {
             const { data, error } = await supabaseClient.from('catalogo_espacios').select('*').order('sigla');
             const tabla = document.getElementById('tabla-espacios');
-            const contCheckboxes = document.getElementById('contenedor_espacios_checkboxes'); // Para Plantillas
+            const contCheckboxes = document.getElementById('contenedor_espacios_checkboxes'); 
             
             if (error) return;
             
@@ -682,7 +698,6 @@
             
             data.forEach(e => {
                 tabla.innerHTML += `<tr><td><strong>${e.sigla}</strong> - ${e.nombre}</td><td style="text-align:right;"><button class="btn-icon delete" onclick="eliminarEspacio('${e.id}')">🗑️</button></td></tr>`;
-                // Generar los checkboxes de la Pestaña 5 dinámicamente
                 if(contCheckboxes) {
                     contCheckboxes.innerHTML += `<label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" class="chk-espacio" value="${e.nombre}"> <b>${e.sigla}</b> <span style="font-size:11px; color:#64748b;">(${e.nombre})</span></label>`;
                 }
@@ -706,10 +721,32 @@
         }
 
         /* =========================================================================================
-           5. PLANTILLAS MATRIZ (NUEVO)
+           5. PLANTILLAS MATRIZ (CON EDICIÓN Y BLOQUES)
            ========================================================================================= */
+        
+        // Muestra los bloques si el proyecto los tiene configurados
+        function actualizarBloquesPlantilla(bloqueASeleccionar = '') {
+            const nombreProy = document.getElementById('plan_proyecto').value;
+            const proyecto = proyectosCatGlobal.find(p => p.nombre === nombreProy);
+            const grupoBloque = document.getElementById('grupo_plan_bloque');
+            const selectBloque = document.getElementById('plan_bloque');
+
+            if (proyecto && proyecto.bloques && proyecto.bloques.trim() !== "") {
+                grupoBloque.style.display = 'flex';
+                let bloquesArr = proyecto.bloques.split(',').map(b => b.trim()).filter(b => b !== "");
+                selectBloque.innerHTML = '<option value="">Seleccione...</option>';
+                bloquesArr.forEach(b => {
+                    let sel = (b === bloqueASeleccionar) ? 'selected' : '';
+                    selectBloque.innerHTML += `<option value="${b}" ${sel}>Bloque ${b}</option>`;
+                });
+            } else {
+                grupoBloque.style.display = 'none';
+                selectBloque.innerHTML = '<option value="">NA</option>';
+            }
+        }
+
         async function cargarPlantillas() {
-            const { data, error } = await supabaseClient.from('plantillas_matriz').select('*').order('proyecto').order('producto').order('suite');
+            const { data, error } = await supabaseClient.from('plantillas_matriz').select('*').order('proyecto').order('bloque').order('producto').order('suite');
             const tabla = document.getElementById('tabla-plantillas');
             
             if (error) { tabla.innerHTML = `<tr><td colspan="5">Error al cargar.</td></tr>`; return; }
@@ -721,16 +758,19 @@
             }
             
             data.forEach(p => {
-                // Formatear los espacios para que se vean como etiquetas visuales grises
                 let espaciosBadge = p.espacios.split(', ').map(e => `<span style="background:#f1f5f9; padding:4px 8px; border-radius:12px; font-size:11px; font-weight:bold; border:1px solid #cbd5e1; margin-right:4px; display:inline-block; margin-bottom:4px;">${e}</span>`).join('');
                 
+                // Muestra el bloque debajo del proyecto si existe
+                let textoBloque = p.bloque ? `<br><small style="color:#64748b;">Bloque ${p.bloque}</small>` : '';
+
                 tabla.innerHTML += `
                     <tr>
-                        <td><strong>${p.proyecto}</strong></td>
+                        <td><strong>${p.proyecto}</strong>${textoBloque}</td>
                         <td>${p.producto}</td>
                         <td><b style="color:#2563eb;">${p.suite}</b></td>
                         <td>${espaciosBadge}</td>
                         <td style="text-align:right;">
+                            <button class="btn-icon edit" onclick="editarPlantilla('${p.id}', '${p.proyecto}', '${p.bloque || ''}', '${p.producto}', '${p.suite}', '${p.espacios}')">✏️</button>
                             <button class="btn-icon delete" onclick="eliminarPlantilla('${p.id}')">🗑️</button>
                         </td>
                     </tr>
@@ -738,30 +778,68 @@
             });
         }
 
+        function editarPlantilla(id, proyecto, bloque, producto, suite, espacios) {
+            document.getElementById('plan_id').value = id;
+            document.getElementById('plan_proyecto').value = proyecto;
+            
+            // Actualizamos los bloques visualmente y le pasamos el bloque actual para que se seleccione solo
+            actualizarBloquesPlantilla(bloque); 
+            
+            document.getElementById('plan_producto').value = producto;
+            document.getElementById('plan_suite').value = suite;
+
+            // Marcamos los checkboxes correspondientes
+            const checks = document.querySelectorAll('.chk-espacio');
+            let espaciosArr = espacios.split(', ');
+            checks.forEach(c => {
+                c.checked = espaciosArr.includes(c.value);
+            });
+
+            document.getElementById('plan_suite').focus();
+            window.scrollTo(0, document.getElementById('tab-plantillas').offsetTop);
+        }
+
         async function guardarPlantilla() {
+            const id = document.getElementById('plan_id').value;
             const proyecto = document.getElementById('plan_proyecto').value;
             const producto = document.getElementById('plan_producto').value;
             const suite = document.getElementById('plan_suite').value.trim().toUpperCase();
             
-            // Recoger todos los checkboxes marcados
+            // Verificamos si el bloque es requerido
+            const divBloqueVisible = document.getElementById('grupo_plan_bloque').style.display !== 'none';
+            const bloque = divBloqueVisible ? document.getElementById('plan_bloque').value : null;
+
             const checks = document.querySelectorAll('.chk-espacio:checked');
             const espaciosArr = Array.from(checks).map(c => c.value);
             
             if (!proyecto || !producto || !suite || espaciosArr.length === 0) {
-                return Swal.fire('Faltan Datos', 'Asegúrate de seleccionar proyecto, producto, escribir el nombre de la suite y marcar al menos 1 espacio.', 'warning');
+                return Swal.fire('Faltan Datos', 'Asegúrate de seleccionar proyecto, producto, suite y marcar al menos 1 espacio.', 'warning');
             }
-            
+            if (divBloqueVisible && !bloque) {
+                return Swal.fire('Falta el Bloque', 'Este proyecto requiere que selecciones un Bloque o Torre para la plantilla.', 'warning');
+            }
+
             const espaciosStr = espaciosArr.join(', ');
-            
             Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
-            const { error } = await supabaseClient.from('plantillas_matriz').insert([{ proyecto, producto, suite, espacios: espaciosStr }]);
             
+            let payload = { proyecto, producto, suite, espacios: espaciosStr, bloque: bloque };
+            let error;
+
+            if (id) {
+                const res = await supabaseClient.from('plantillas_matriz').update(payload).eq('id', id);
+                error = res.error;
+            } else {
+                const res = await supabaseClient.from('plantillas_matriz').insert([payload]);
+                error = res.error;
+            }
+
             if (error) {
                 Swal.fire('Error', error.message, 'error');
             } else {
                 Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Plantilla Guardada', showConfirmButton: false, timer: 1500 });
+                document.getElementById('plan_id').value = '';
                 document.getElementById('plan_suite').value = '';
-                checks.forEach(c => c.checked = false); // Limpiar checkboxes
+                checks.forEach(c => c.checked = false); 
                 cargarPlantillas();
             }
         }
@@ -772,7 +850,6 @@
                 cargarPlantillas();
             }
         }
-
     </script>
 </body>
 </html>
