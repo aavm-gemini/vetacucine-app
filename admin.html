@@ -87,6 +87,7 @@
                 <li><a href="taller.html?v=2.0">🏭 Panel Operador</a></li>
                 <li><a href="index.html">📝 Ingreso Muebles</a></li>
                 <li><a href="reportes.html">🔍 Buscar y Reportes</a></li>
+                <li><a href="calculo_produccion.html">⏱️ Cálculo Producción</a></li>
                 <li><a href="admin.html" id="link-admin" class="active">⚙️ Administrador</a></li>
             </ul>
         </nav>
@@ -306,23 +307,21 @@
             </div>
 
             <!-- ==========================================
-                 PESTAÑA 5: PLANTILLAS MATRIZ 
+                 PESTAÑA 5: PLANTILLAS MATRIZ (CON METROS DE CANTO)
                  ========================================== -->
             <div id="tab-plantillas" class="tab-content">
                 <div class="card">
                     <h3>Plantillas de Matriz (ADN de Producción)</h3>
-                    <p style="font-size:12px; color:#64748b; margin-top:-10px;">Define qué espacios lleva cada suite por proyecto y producto. Esto armará el Mapa de Producción.</p>
+                    <p style="font-size:12px; color:#64748b; margin-top:-10px;">Define qué espacios lleva cada suite por proyecto y producto. Activa los metros de canto para proyecciones.</p>
                     
                     <div class="form-grid">
                         <input type="hidden" id="plan_id">
                         
                         <div class="form-group">
                             <label>Proyecto</label>
-                            <!-- OPTIMIZACIÓN: Al cambiar el proyecto, buscamos si tiene bloques -->
                             <select id="plan_proyecto" onchange="actualizarBloquesPlantilla()"><option value="">Cargando...</option></select>
                         </div>
                         
-                        <!-- NUEVO CAJÓN DE BLOQUE (Oculto por defecto) -->
                         <div class="form-group" id="grupo_plan_bloque" style="display: none; max-width: 150px;">
                             <label>Bloque / Torre</label>
                             <select id="plan_bloque">
@@ -370,10 +369,12 @@
 
         let estadosCargados = [];
         let empleadosCargados = []; 
-        let proyectosCatGlobal = []; // Array maestro de proyectos para usar en los bloques
+        let proyectosCatGlobal = [];
+
+        // Función para limpiar los IDs de los inputs
+        function cleanId(str) { return str.replace(/[^a-zA-Z0-9]/g, '_'); }
 
         document.addEventListener("DOMContentLoaded", async () => {
-            // MOTOR AUTO-LIMPIADOR DE SESIONES CORRUPTAS
             try {
                 const { data: { session }, error } = await supabaseClient.auth.getSession();
                 if (error || !session) {
@@ -392,7 +393,7 @@
 
                 cargarEmpleados();
                 cargarEstados();
-                await cargarProyectos(); // Necesitamos que cargue antes para los bloques
+                await cargarProyectos();
                 cargarProductos();
                 cargarEspacios(); 
                 cargarMetas();
@@ -445,15 +446,12 @@
         function autoLlenarEmpleado() {
             const emailInput = document.getElementById('emp_email').value.trim();
             const empEncontrado = empleadosCargados.find(e => e.email === emailInput);
-            
             if (empEncontrado) {
                 document.getElementById('emp_id').value = empEncontrado.id;
                 document.getElementById('emp_nombre').value = empEncontrado.nombre || '';
                 document.getElementById('emp_rol').value = empEncontrado.rol || 'Operador';
                 document.getElementById('emp_area').value = empEncontrado.area_asignada || 'Taller General';
-            } else {
-                document.getElementById('emp_id').value = '';
-            }
+            } else { document.getElementById('emp_id').value = ''; }
         }
 
         async function guardarEmpleado() {
@@ -574,7 +572,7 @@
         }
 
         /* =========================================================================================
-           3. GESTIÓN DE METAS (DASHBOARD)
+           3. GESTIÓN DE METAS
            ========================================================================================= */
         async function cargarMetas() {
             const { data, error } = await supabaseClient.from('metas_produccion').select('*').order('proyecto');
@@ -631,7 +629,7 @@
             
             if (error) return;
             
-            proyectosCatGlobal = data || []; // Guardar globalmente para los bloques
+            proyectosCatGlobal = data || []; 
             tabla.innerHTML = ''; 
             selectMetas.innerHTML = '<option value="">Selecciona Proyecto...</option>';
             if(selectPlan) selectPlan.innerHTML = '<option value="">Selecciona Proyecto...</option>';
@@ -660,7 +658,7 @@
             const { data, error } = await supabaseClient.from('catalogo_productos').select('*').order('sigla');
             const tabla = document.getElementById('tabla-productos');
             const selectMetas = document.getElementById('meta_producto');
-            const selectPlan = document.getElementById('plan_producto'); 
+            const selectPlan = document.getElementById('plan_producto');
             
             if (error) return;
             
@@ -686,10 +684,22 @@
 
         async function eliminarProducto(id) { if(confirm("¿Eliminar producto?")) { await supabaseClient.from('catalogo_productos').delete().eq('id', id); cargarProductos(); } }
 
+        // --- FUNCIÓN PARA MOSTRAR/OCULTAR INPUT DE METROS ---
+        function toggleMetrosInput(checkbox, idElemento) {
+            const input = document.getElementById(`metros_${idElemento}`);
+            if(checkbox.checked) {
+                input.style.display = 'block';
+                input.focus();
+            } else {
+                input.style.display = 'none';
+                input.value = '';
+            }
+        }
+
         async function cargarEspacios() {
             const { data, error } = await supabaseClient.from('catalogo_espacios').select('*').order('sigla');
             const tabla = document.getElementById('tabla-espacios');
-            const contCheckboxes = document.getElementById('contenedor_espacios_checkboxes'); 
+            const contCheckboxes = document.getElementById('contenedor_espacios_checkboxes');
             
             if (error) return;
             
@@ -698,8 +708,19 @@
             
             data.forEach(e => {
                 tabla.innerHTML += `<tr><td><strong>${e.sigla}</strong> - ${e.nombre}</td><td style="text-align:right;"><button class="btn-icon delete" onclick="eliminarEspacio('${e.id}')">🗑️</button></td></tr>`;
+                
+                // Generamos los checkboxes con su input oculto para los metros de canto
                 if(contCheckboxes) {
-                    contCheckboxes.innerHTML += `<label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" class="chk-espacio" value="${e.nombre}"> <b>${e.sigla}</b> <span style="font-size:11px; color:#64748b;">(${e.nombre})</span></label>`;
+                    let cleanIdString = cleanId(e.nombre);
+                    contCheckboxes.innerHTML += `
+                        <div style="display:flex; flex-direction:column; gap:5px; padding:10px; background:white; border-radius:6px; border:1px solid #cbd5e1; width:150px; transition:0.2s;">
+                            <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-size:13px;">
+                                <input type="checkbox" class="chk-espacio" value="${e.nombre}" onchange="toggleMetrosInput(this, '${cleanIdString}')"> 
+                                <b>${e.sigla}</b> <span style="font-size:10px; color:#64748b;" title="${e.nombre}">(${e.nombre.substring(0,9)}...)</span>
+                            </label>
+                            <input type="number" step="0.1" class="input-metros" id="metros_${cleanIdString}" placeholder="Metros ej: 45.5" style="display:none; padding:6px; font-size:12px; border:1px solid #3b82f6; border-radius:4px; outline:none;">
+                        </div>
+                    `;
                 }
             });
         }
@@ -721,10 +742,8 @@
         }
 
         /* =========================================================================================
-           5. PLANTILLAS MATRIZ (CON EDICIÓN Y BLOQUES)
+           5. PLANTILLAS MATRIZ (CON METROS JSONB)
            ========================================================================================= */
-        
-        // Muestra los bloques si el proyecto los tiene configurados
         function actualizarBloquesPlantilla(bloqueASeleccionar = '') {
             const nombreProy = document.getElementById('plan_proyecto').value;
             const proyecto = proyectosCatGlobal.find(p => p.nombre === nombreProy);
@@ -746,7 +765,7 @@
         }
 
         async function cargarPlantillas() {
-            const { data, error } = await supabaseClient.from('plantillas_matriz').select('*').order('proyecto').order('bloque').order('producto').order('suite');
+            const { data, error } = await supabaseClient.from('plantillas_matriz').select('id, proyecto, bloque, producto, suite, espacios, metros_canto').order('proyecto').order('bloque').order('producto').order('suite');
             const tabla = document.getElementById('tabla-plantillas');
             
             if (error) { tabla.innerHTML = `<tr><td colspan="5">Error al cargar.</td></tr>`; return; }
@@ -758,10 +777,18 @@
             }
             
             data.forEach(p => {
-                let espaciosBadge = p.espacios.split(', ').map(e => `<span style="background:#f1f5f9; padding:4px 8px; border-radius:12px; font-size:11px; font-weight:bold; border:1px solid #cbd5e1; margin-right:4px; display:inline-block; margin-bottom:4px;">${e}</span>`).join('');
+                let espaciosArr = p.espacios.split(', ');
+                let jsonMetros = p.metros_canto || {}; 
                 
-                // Muestra el bloque debajo del proyecto si existe
+                // Mostrar los metros si existen
+                let espaciosBadge = espaciosArr.map(e => {
+                    let m = jsonMetros[e];
+                    let txtMetros = m ? ` <b style="color:#2563eb;">(${m}m)</b>` : '';
+                    return `<span style="background:#f1f5f9; padding:4px 8px; border-radius:12px; font-size:11px; font-weight:bold; border:1px solid #cbd5e1; margin-right:4px; display:inline-block; margin-bottom:4px;">${e}${txtMetros}</span>`;
+                }).join('');
+                
                 let textoBloque = p.bloque ? `<br><small style="color:#64748b;">Bloque ${p.bloque}</small>` : '';
+                let jsonEncoded = encodeURIComponent(JSON.stringify(jsonMetros)); 
 
                 tabla.innerHTML += `
                     <tr>
@@ -770,7 +797,7 @@
                         <td><b style="color:#2563eb;">${p.suite}</b></td>
                         <td>${espaciosBadge}</td>
                         <td style="text-align:right;">
-                            <button class="btn-icon edit" onclick="editarPlantilla('${p.id}', '${p.proyecto}', '${p.bloque || ''}', '${p.producto}', '${p.suite}', '${p.espacios}')">✏️</button>
+                            <button class="btn-icon edit" onclick="editarPlantilla('${p.id}', '${p.proyecto}', '${p.bloque || ''}', '${p.producto}', '${p.suite}', '${p.espacios}', '${jsonEncoded}')">✏️</button>
                             <button class="btn-icon delete" onclick="eliminarPlantilla('${p.id}')">🗑️</button>
                         </td>
                     </tr>
@@ -778,21 +805,32 @@
             });
         }
 
-        function editarPlantilla(id, proyecto, bloque, producto, suite, espacios) {
+        function editarPlantilla(id, proyecto, bloque, producto, suite, espacios, jsonMetrosEncoded) {
             document.getElementById('plan_id').value = id;
             document.getElementById('plan_proyecto').value = proyecto;
-            
-            // Actualizamos los bloques visualmente y le pasamos el bloque actual para que se seleccione solo
             actualizarBloquesPlantilla(bloque); 
-            
             document.getElementById('plan_producto').value = producto;
             document.getElementById('plan_suite').value = suite;
 
-            // Marcamos los checkboxes correspondientes
+            let metrosObj = {};
+            try { if(jsonMetrosEncoded && jsonMetrosEncoded !== 'undefined') { metrosObj = JSON.parse(decodeURIComponent(jsonMetrosEncoded)); } } catch(e){}
+
             const checks = document.querySelectorAll('.chk-espacio');
             let espaciosArr = espacios.split(', ');
+            
             checks.forEach(c => {
-                c.checked = espaciosArr.includes(c.value);
+                let idInputMetros = `metros_${cleanId(c.value)}`;
+                let inputM = document.getElementById(idInputMetros);
+                
+                if (espaciosArr.includes(c.value)) {
+                    c.checked = true;
+                    inputM.style.display = 'block';
+                    inputM.value = metrosObj[c.value] || '';
+                } else {
+                    c.checked = false;
+                    inputM.style.display = 'none';
+                    inputM.value = '';
+                }
             });
 
             document.getElementById('plan_suite').focus();
@@ -805,26 +843,44 @@
             const producto = document.getElementById('plan_producto').value;
             const suite = document.getElementById('plan_suite').value.trim().toUpperCase();
             
-            // Verificamos si el bloque es requerido
             const divBloqueVisible = document.getElementById('grupo_plan_bloque').style.display !== 'none';
             const bloque = divBloqueVisible ? document.getElementById('plan_bloque').value : null;
 
             const checks = document.querySelectorAll('.chk-espacio:checked');
-            const espaciosArr = Array.from(checks).map(c => c.value);
             
-            if (!proyecto || !producto || !suite || espaciosArr.length === 0) {
+            if (!proyecto || !producto || !suite || checks.length === 0) {
                 return Swal.fire('Faltan Datos', 'Asegúrate de seleccionar proyecto, producto, suite y marcar al menos 1 espacio.', 'warning');
             }
             if (divBloqueVisible && !bloque) {
-                return Swal.fire('Falta el Bloque', 'Este proyecto requiere que selecciones un Bloque o Torre para la plantilla.', 'warning');
+                return Swal.fire('Falta el Bloque', 'Este proyecto requiere que selecciones un Bloque o Torre.', 'warning');
             }
 
+            // Construir el Array de espacios (para el Mapa) y el JSON de Metros (para Proyecciones)
+            const espaciosArr = [];
+            const objMetros = {};
+            
+            checks.forEach(c => {
+                espaciosArr.push(c.value);
+                let valMetros = document.getElementById(`metros_${cleanId(c.value)}`).value;
+                if(valMetros && !isNaN(valMetros)) {
+                    objMetros[c.value] = parseFloat(valMetros);
+                }
+            });
+
             const espaciosStr = espaciosArr.join(', ');
+            
             Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
             
-            let payload = { proyecto, producto, suite, espacios: espaciosStr, bloque: bloque };
+            let payload = { 
+                proyecto, 
+                producto, 
+                suite, 
+                espacios: espaciosStr, 
+                bloque: bloque,
+                metros_canto: objMetros 
+            };
+            
             let error;
-
             if (id) {
                 const res = await supabaseClient.from('plantillas_matriz').update(payload).eq('id', id);
                 error = res.error;
@@ -839,7 +895,16 @@
                 Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Plantilla Guardada', showConfirmButton: false, timer: 1500 });
                 document.getElementById('plan_id').value = '';
                 document.getElementById('plan_suite').value = '';
-                checks.forEach(c => c.checked = false); 
+                
+                // Limpiar todo visualmente
+                const allChecks = document.querySelectorAll('.chk-espacio');
+                allChecks.forEach(c => { 
+                    c.checked = false; 
+                    let idInput = `metros_${cleanId(c.value)}`;
+                    document.getElementById(idInput).style.display = 'none';
+                    document.getElementById(idInput).value = '';
+                });
+                
                 cargarPlantillas();
             }
         }
