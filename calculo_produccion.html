@@ -26,6 +26,15 @@
         .header-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 20px; }
         .header-title { margin: 0; font-size: 24px; color: #0f172a; }
 
+        /* --- PESTAÑAS --- */
+        .tabs-container { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; overflow-x: auto; }
+        .tab-btn { background: transparent; border: none; padding: 10px 20px; font-size: 15px; font-weight: bold; color: #64748b; cursor: pointer; border-radius: 8px; transition: 0.2s; white-space: nowrap; }
+        .tab-btn:hover { background: #f1f5f9; color: #1e293b; }
+        .tab-btn.active { background: #3b82f6; color: white; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3); }
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
         /* --- PANELES --- */
         .panel { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .panel-titulo { margin-top: 0; font-size: 16px; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px; }
@@ -40,6 +49,8 @@
         .checkbox-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; }
         .chk-item { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; color: #334155; }
         
+        .btn-accion { background: #8b5cf6; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; height: 40px; }
+        .btn-accion:hover { background: #7c3aed; }
         .btn-calcular { background: #10b981; color: white; border: none; padding: 15px; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.2s; width: 100%; margin-top: 20px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3); }
         .btn-calcular:hover { background: #059669; transform: translateY(-2px); }
 
@@ -54,11 +65,14 @@
         .kpi-card.green { border-bottom-color: #10b981; } .kpi-card.green .kpi-numero { color: #059669; }
         .kpi-card.purple { border-bottom-color: #8b5cf6; } .kpi-card.purple .kpi-numero { color: #7c3aed; }
 
-        /* TABLA DE DESGLOSE */
+        /* TABLAS */
         table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
-        th { background-color: #f1f5f9; color: #475569; font-weight: bold; }
+        th { background-color: #f1f5f9; color: #475569; font-weight: bold; position: sticky; top: 0;}
         tr:hover { background-color: #f8fafc; }
+        
+        .input-tabla { padding: 6px; width: 100px; border: 1px solid #cbd5e1; border-radius: 4px; outline: none; }
+        .input-tabla:focus { border-color: #f59e0b; }
 
         @media (max-width: 768px) { 
             .app-container { flex-direction: column; height: auto; width: 100%; }
@@ -91,102 +105,124 @@
                 <button onclick="cerrarSesion()" style="background:transparent; border:1px solid #ef4444; color:#ef4444; padding:6px 12px; border-radius:6px; font-weight:bold; cursor:pointer;">Salir</button>
             </div>
 
-            <!-- PARÁMETROS DE MÁQUINA -->
-            <div class="panel" style="border-left: 5px solid #f59e0b;">
-                <h3 class="panel-titulo">⚙️ 1. Parámetros de Máquina (Canteadora)</h3>
-                <div class="grid-filtros">
-                    <div class="form-group">
-                        <label>Capacidad: Metros por Día</label>
-                        <input type="number" id="param_metros_dia" value="800" placeholder="Ej: 800">
-                    </div>
-                    <div class="form-group">
-                        <label>Horas de la Jornada Diaria</label>
-                        <input type="number" step="0.5" id="param_horas_dia" value="8.5" placeholder="Ej: 8.5">
-                    </div>
-                </div>
+            <!-- NAVEGACIÓN DE PESTAÑAS -->
+            <div class="tabs-container">
+                <button class="tab-btn active" onclick="cambiarPestana('tab-velocidades')">⚙️ Velocidades por Producto</button>
+                <button class="tab-btn" onclick="cambiarPestana('tab-proyeccion')">🚀 Generar Proyección</button>
             </div>
 
-            <!-- FILTROS DE PROYECCIÓN -->
-            <div class="panel" style="border-left: 5px solid #3b82f6;">
-                <h3 class="panel-titulo">🔍 2. Filtros de Proyección</h3>
-                <div class="grid-filtros">
+            <!-- ==========================================
+                 PESTAÑA 1: VELOCIDADES DE MÁQUINA
+                 ========================================== -->
+            <div id="tab-velocidades" class="tab-content active">
+                <div class="panel" style="border-left: 5px solid #f59e0b;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3 class="panel-titulo" style="border:none; margin:0;">⚙️ Calibración de Máquina por Producto</h3>
+                        <button class="btn-accion" style="background:#f59e0b;" onclick="guardarVelocidades()">💾 Guardar Cambios</button>
+                    </div>
+                    <p style="font-size:13px; color:#64748b; margin-bottom: 20px;">Define cuántos metros de canto procesa la máquina en un día y cuántas horas dura esa jornada laboral para cada tipo de producto. Esto hará que el cálculo de horas sea exacto.</p>
                     
-                    <div class="form-group">
-                        <label>Proyecto</label>
-                        <select id="filtro_proyecto" onchange="verificarBloques()"><option value="">Seleccione...</option></select>
-                    </div>
-                    
-                    <div class="form-group" id="grupo_bloque" style="display: none;">
-                        <label>Bloque / Torre</label>
-                        <select id="filtro_bloque"><option value="">Todos los Bloques</option></select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Rango de Pisos a Calcular</label>
-                        <div style="display:flex; gap:10px;">
-                            <input type="number" id="filtro_piso_desde" placeholder="Desde" style="width:100%;">
-                            <input type="number" id="filtro_piso_hasta" placeholder="Hasta" style="width:100%;">
-                        </div>
-                    </div>
-
-                    <!-- NUEVO CAMPO: EXCEPCIONES DE SUITES -->
-                    <div class="form-group">
-                        <label title="Escribe los números o nombres de las suites que NO quieres sumar, separadas por coma.">Omitir Suites (Excepciones)</label>
-                        <input type="text" id="filtro_excluir_suites" placeholder="Ej: 2, 5 (Separadas por coma)">
-                    </div>
-                </div>
-
-                <div class="grid-filtros" style="margin-top: 15px;">
-                    <div class="form-group">
-                        <label>Seleccionar Productos:</label>
-                        <div class="checkbox-grid" id="chk_productos">
-                            <span style="font-size:12px; color:#94a3b8;">Cargando...</span>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Estado de Producción a Calcular:</label>
-                        <div class="checkbox-grid">
-                            <label class="chk-item"><input type="checkbox" class="chk-estado" value="FALTA" checked> Falta Ingresar (Fantasmas)</label>
-                            <label class="chk-item"><input type="checkbox" class="chk-estado" value="DIGITALIZAR" checked> Por Digitalizar</label>
-                            <label class="chk-item"><input type="checkbox" class="chk-estado" value="PROCESO" checked> En Proceso (Corte, Ensamblaje...)</label>
-                            <label class="chk-item"><input type="checkbox" class="chk-estado" value="BLOQUEADO"> Bloqueados (Alertas)</label>
-                        </div>
-                    </div>
-                </div>
-
-                <button class="btn-calcular" onclick="calcularProyeccion()">Generar Cálculo de Producción 🚀</button>
-            </div>
-
-            <!-- RESULTADOS -->
-            <div id="panel_resultados" style="display: none; animation: fadeIn 0.5s ease;">
-                <h2 style="color:#1e293b; margin-bottom: 0;">Resultados de la Proyección</h2>
-                
-                <div class="kpi-grid">
-                    <div class="kpi-card blue">
-                        <h4>Metros Lineales Requeridos</h4>
-                        <p class="kpi-numero" id="res_metros">0m</p>
-                        <p class="kpi-sub">Total de Canto</p>
-                    </div>
-                    <div class="kpi-card green">
-                        <h4>Tiempo Estimado (Máquina)</h4>
-                        <p class="kpi-numero" id="res_tiempo">0d 0h</p>
-                        <p class="kpi-sub" id="res_velocidad">A 0m/hr</p>
-                    </div>
-                    <div class="kpi-card purple">
-                        <h4>Piezas Involucradas</h4>
-                        <p class="kpi-numero" id="res_piezas">0</p>
-                        <p class="kpi-sub">Puertas / Espacios</p>
-                    </div>
-                </div>
-
-                <div class="panel" style="margin-top: 25px;">
-                    <h3 class="panel-titulo">📋 Desglose por Piso y Producto</h3>
                     <div style="overflow-x: auto;">
-                        <table id="tabla_desglose">
-                            <thead><tr><th>Piso</th><th>Producto</th><th>Piezas Contadas</th><th>Metros Estimados</th></tr></thead>
-                            <tbody></tbody>
+                        <table id="tabla-velocidades">
+                            <thead>
+                                <tr>
+                                    <th>Sigla</th>
+                                    <th>Producto</th>
+                                    <th>Capacidad (Metros por Día)</th>
+                                    <th>Horas de la Jornada Diaria</th>
+                                    <th>Velocidad Resultante</th>
+                                </tr>
+                            </thead>
+                            <tbody><tr><td colspan="5" style="text-align:center;">Cargando...</td></tr></tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==========================================
+                 PESTAÑA 2: PROYECCIÓN (MRP)
+                 ========================================== -->
+            <div id="tab-proyeccion" class="tab-content">
+                <div class="panel" style="border-left: 5px solid #3b82f6;">
+                    <h3 class="panel-titulo">🔍 Filtros de Proyección</h3>
+                    <div class="grid-filtros">
+                        
+                        <div class="form-group">
+                            <label>Proyecto</label>
+                            <select id="filtro_proyecto" onchange="verificarBloques()"><option value="">Seleccione...</option></select>
+                        </div>
+                        
+                        <div class="form-group" id="grupo_bloque" style="display: none;">
+                            <label>Bloque / Torre</label>
+                            <select id="filtro_bloque"><option value="">Todos los Bloques</option></select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Rango de Pisos a Calcular</label>
+                            <div style="display:flex; gap:10px;">
+                                <input type="number" id="filtro_piso_desde" placeholder="Desde" style="width:100%;">
+                                <input type="number" id="filtro_piso_hasta" placeholder="Hasta" style="width:100%;">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label title="Escribe los números o nombres de las suites que NO quieres sumar, separadas por coma.">Omitir Suites (Excepciones)</label>
+                            <input type="text" id="filtro_excluir_suites" placeholder="Ej: 2, 5">
+                        </div>
+                    </div>
+
+                    <div class="grid-filtros" style="margin-top: 15px;">
+                        <div class="form-group">
+                            <label>Seleccionar Productos:</label>
+                            <div class="checkbox-grid" id="chk_productos">
+                                <span style="font-size:12px; color:#94a3b8;">Cargando...</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Estado de Producción a Calcular:</label>
+                            <div class="checkbox-grid">
+                                <label class="chk-item"><input type="checkbox" class="chk-estado" value="FALTA" checked> Falta Ingresar (Fantasmas)</label>
+                                <label class="chk-item"><input type="checkbox" class="chk-estado" value="DIGITALIZAR" checked> Por Digitalizar</label>
+                                <label class="chk-item"><input type="checkbox" class="chk-estado" value="PROCESO" checked> En Proceso (Corte, Ensamblaje...)</label>
+                                <label class="chk-item"><input type="checkbox" class="chk-estado" value="BLOQUEADO"> Bloqueados (Alertas)</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn-calcular" onclick="calcularProyeccion()">Generar Cálculo de Producción 🚀</button>
+                </div>
+
+                <!-- RESULTADOS -->
+                <div id="panel_resultados" style="display: none; animation: fadeIn 0.5s ease;">
+                    <h2 style="color:#1e293b; margin-bottom: 0;">Resultados de la Proyección</h2>
+                    
+                    <div class="kpi-grid">
+                        <div class="kpi-card blue">
+                            <h4>Metros Lineales Requeridos</h4>
+                            <p class="kpi-numero" id="res_metros">0m</p>
+                            <p class="kpi-sub">Total de Canto</p>
+                        </div>
+                        <div class="kpi-card green">
+                            <h4>Tiempo Estimado (Máquina)</h4>
+                            <p class="kpi-numero" id="res_tiempo">0 Horas</p>
+                            <p class="kpi-sub" id="res_velocidad">Según parámetros de cada producto</p>
+                        </div>
+                        <div class="kpi-card purple">
+                            <h4>Piezas Involucradas</h4>
+                            <p class="kpi-numero" id="res_piezas">0</p>
+                            <p class="kpi-sub">Puertas / Espacios</p>
+                        </div>
+                    </div>
+
+                    <div class="panel" style="margin-top: 25px;">
+                        <h3 class="panel-titulo">📋 Desglose por Piso y Producto</h3>
+                        <div style="overflow-x: auto;">
+                            <table id="tabla_desglose">
+                                <thead><tr><th>Piso</th><th>Producto</th><th>Piezas Contadas</th><th>Metros Estimados</th><th>Horas de Máquina</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -202,6 +238,7 @@
         let estadosFinales = [];
         window.proyectosGlobal = [];
         window.catalogoEspaciosGlobal = [];
+        window.catalogoProductosGlobal = [];
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -215,16 +252,23 @@
 
         async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; }
 
+        function cambiarPestana(idTab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(idTab).classList.add('active');
+        }
+
         async function cargarFiltrosBasicos() {
-            // Cargar Estados Finales para excluirlos del "En proceso"
+            // Estados Finales
             const { data: estadosCat } = await supabaseClient.from('catalogo_estados').select('*');
             if (estadosCat) { estadosFinales = estadosCat.filter(e => !e.estado_siguiente || e.estado_siguiente.trim() === '' || e.nombre.toLowerCase().includes('enviad') || e.nombre.toLowerCase().includes('instalad')).map(e => e.nombre); }
             
-            // Cargar Espacios para normalizar nombres
+            // Espacios
             const { data: espCat } = await supabaseClient.from('catalogo_espacios').select('*');
             if (espCat) window.catalogoEspaciosGlobal = espCat;
 
-            // Cargar Proyectos
+            // Proyectos
             const { data: proy } = await supabaseClient.from('catalogo_proyectos').select('*').order('nombre');
             if (proy) {
                 window.proyectosGlobal = proy;
@@ -233,15 +277,65 @@
                 proy.forEach(p => selProy.innerHTML += `<option value="${p.nombre}">${p.nombre}</option>`);
             }
 
-            // Cargar Productos (como checkboxes)
+            // Productos (Cargar tabla de velocidades y checkboxes)
+            await cargarProductos();
+        }
+
+        async function cargarProductos() {
             const { data: prod } = await supabaseClient.from('catalogo_productos').select('*').order('sigla');
             if (prod) {
-                let divProds = document.getElementById('chk_productos');
+                window.catalogoProductosGlobal = prod;
+                
+                // Pintar Tabla de Velocidades (Pestaña 1)
+                const tbodyVelocidades = document.querySelector('#tabla-velocidades tbody');
+                tbodyVelocidades.innerHTML = '';
+                
+                // Pintar Checkboxes (Pestaña 2)
+                const divProds = document.getElementById('chk_productos');
                 divProds.innerHTML = '';
+
                 prod.forEach(p => {
+                    // Checkbox
                     divProds.innerHTML += `<label class="chk-item"><input type="checkbox" class="chk-prod" value="${p.sigla}"> <b>${p.sigla}</b></label>`;
+                    
+                    // Fila de Tabla
+                    let mDia = p.metros_dia || 0;
+                    let hDia = p.horas_jornada || 0;
+                    let velocidad = (hDia > 0) ? (mDia / hDia).toFixed(1) : 0;
+                    
+                    tbodyVelocidades.innerHTML += `
+                        <tr data-id="${p.id}">
+                            <td><strong>${p.sigla}</strong></td>
+                            <td>${p.nombre}</td>
+                            <td><input type="number" class="input-tabla inpt-metros" value="${mDia}" step="0.1"></td>
+                            <td><input type="number" class="input-tabla inpt-horas" value="${hDia}" step="0.5"></td>
+                            <td style="color:#64748b;">${velocidad} m/h</td>
+                        </tr>
+                    `;
                 });
             }
+        }
+
+        async function guardarVelocidades() {
+            Swal.fire({ title: 'Guardando parámetros...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+            
+            const filas = document.querySelectorAll('#tabla-velocidades tbody tr');
+            let promesas = [];
+
+            filas.forEach(fila => {
+                let id = fila.getAttribute('data-id');
+                let mDia = parseFloat(fila.querySelector('.inpt-metros').value) || 0;
+                let hDia = parseFloat(fila.querySelector('.inpt-horas').value) || 0;
+                
+                promesas.push(
+                    supabaseClient.from('catalogo_productos').update({ metros_dia: mDia, horas_jornada: hDia }).eq('id', id)
+                );
+            });
+
+            await Promise.all(promesas);
+            await cargarProductos(); // Recargar para recalcular la velocidad visual
+            
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Velocidades guardadas', showConfirmButton: false, timer: 1500 });
         }
 
         function verificarBloques() {
@@ -267,37 +361,39 @@
             return String(text).normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
         }
 
-        // MOTOR FANTASMA: Lógica principal de cálculo
+        // MOTOR FANTASMA MEJORADO (Cálculo Multivelocidad)
         async function calcularProyeccion() {
             const proyecto = document.getElementById('filtro_proyecto').value;
             const bloque = document.getElementById('filtro_bloque').value;
             const pisoDesde = parseInt(document.getElementById('filtro_piso_desde').value);
             const pisoHasta = parseInt(document.getElementById('filtro_piso_hasta').value);
-            const metrosPorDia = parseFloat(document.getElementById('param_metros_dia').value);
-            const horasPorDia = parseFloat(document.getElementById('param_horas_dia').value);
-
-            // Obtener Suites a Excluir (NUEVO)
             const excluirStr = document.getElementById('filtro_excluir_suites').value.trim();
             const suitesExcluidas = excluirStr ? excluirStr.split(',').map(s => normalizeText(s)) : [];
-
-            // Obtener Checkboxes de Productos
             const chkProds = document.querySelectorAll('.chk-prod:checked');
             const productosSelec = Array.from(chkProds).map(c => c.value);
-
-            // Obtener Checkboxes de Estados
             const chkEstados = document.querySelectorAll('.chk-estado:checked');
             const estadosSelec = Array.from(chkEstados).map(c => c.value);
 
-            // Validaciones
             if (!proyecto) return Swal.fire('Falta Filtro', 'Seleccione un Proyecto.', 'warning');
             if (isNaN(pisoDesde) || isNaN(pisoHasta) || pisoDesde > pisoHasta) return Swal.fire('Error en Pisos', 'Defina un rango de pisos válido (Ej: 1 hasta 9).', 'warning');
             if (productosSelec.length === 0) return Swal.fire('Falta Filtro', 'Seleccione al menos un producto.', 'warning');
             if (estadosSelec.length === 0) return Swal.fire('Falta Filtro', 'Seleccione al menos un estado a calcular.', 'warning');
-            if (isNaN(metrosPorDia) || isNaN(horasPorDia) || horasPorDia <= 0) return Swal.fire('Parámetros de Máquina', 'Revise los metros y horas por día.', 'warning');
 
-            Swal.fire({ title: 'Procesando Algoritmo...', text: 'Cruzando Plantillas con Base de Datos', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+            // Validar que los productos seleccionados tengan velocidad configurada
+            let productosSinVelocidad = [];
+            productosSelec.forEach(sigla => {
+                let pCat = window.catalogoProductosGlobal.find(p => p.sigla === sigla);
+                if (!pCat || !pCat.metros_dia || !pCat.horas_jornada || pCat.metros_dia <= 0 || pCat.horas_jornada <= 0) {
+                    productosSinVelocidad.push(sigla);
+                }
+            });
 
-            // 1. Obtener Plantillas (ADN de los metros)
+            if (productosSinVelocidad.length > 0) {
+                return Swal.fire('Faltan Parámetros', `Los siguientes productos no tienen velocidad o jornada configurada en la pestaña de configuración: <b>${productosSinVelocidad.join(', ')}</b>`, 'warning');
+            }
+
+            Swal.fire({ title: 'Procesando Algoritmo...', text: 'Analizando matrices y parámetros hiperprecisos', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
             let qPlantillas = supabaseClient.from('plantillas_matriz').select('*').eq('proyecto', proyecto).in('producto', productosSelec);
             if (bloque) qPlantillas = qPlantillas.eq('bloque', bloque);
             const { data: plantillasDB, error: errP } = await qPlantillas;
@@ -306,20 +402,16 @@
                 return Swal.fire('Sin Plantillas', 'No hay plantillas de matriz registradas para este proyecto/productos.', 'error');
             }
 
-            // 2. Obtener la Realidad (Muebles ya registrados)
             let qReales = supabaseClient.from('registros_produccion').select('id, piso, suite, espacio, estado, producto, bloque').eq('proyecto', proyecto).in('producto', productosSelec);
             if (bloque) qReales = qReales.eq('bloque', bloque);
             const { data: mueblesReales, error: errR } = await qReales;
 
-            // 3. Variables Totales
             let totalMetros = 0;
+            let totalHoras = 0;
             let totalPiezas = 0;
             let desglose = {}; 
 
-            // 4. El Ciclo Fantasma: Recorrer Pisos -> Plantillas -> Espacios
             for (let p = pisoDesde; p <= pisoHasta; p++) {
-                
-                // Buscar piezas reales registradas para este piso exacto
                 let realesPiso = (mueblesReales || []).filter(m => {
                     let numPiso = normalizeText(m.piso).replace(/[^0-9]/g, ''); 
                     return numPiso == p;
@@ -328,17 +420,17 @@
                 plantillasDB.forEach(plantilla => {
                     let suiteNormalizada = normalizeText(plantilla.suite);
 
-                    // --- REGLA DE EXCEPCIÓN DE SUITES ---
-                    if (suitesExcluidas.includes(suiteNormalizada)) {
-                        return; // Si la suite está en la lista de ignoradas, salta y no la cuenta
-                    }
+                    if (suitesExcluidas.includes(suiteNormalizada)) return; 
 
                     let espaciosPlantilla = plantilla.espacios.split(',').map(e => e.trim());
                     let jsonMetros = plantilla.metros_canto || {};
+                    
+                    // Buscar los parámetros de máquina para ESTE producto en específico
+                    let pCat = window.catalogoProductosGlobal.find(pr => pr.sigla === plantilla.producto);
+                    let velocidadProdPorHora = pCat.metros_dia / pCat.horas_jornada;
 
                     espaciosPlantilla.forEach(espacio => {
                         let espacioNorm = normalizeText(espacio);
-                        
                         let cat = window.catalogoEspaciosGlobal.find(e => normalizeText(e.nombre) === espacioNorm || normalizeText(e.sigla) === espacioNorm);
                         let siglaCat = cat ? normalizeText(cat.sigla) : espacioNorm;
                         let nombreCat = cat ? normalizeText(cat.nombre) : espacioNorm;
@@ -353,9 +445,8 @@
                         });
 
                         let catEstado = "N/A";
-                        if (!piezaReal) {
-                            catEstado = "FALTA"; 
-                        } else {
+                        if (!piezaReal) catEstado = "FALTA"; 
+                        else {
                             let estadoTexto = (piezaReal.estado || '').toLowerCase();
                             if (estadoTexto.includes('bloque')) catEstado = "BLOQUEADO";
                             else if (estadoTexto === 'por digitalizar') catEstado = "DIGITALIZAR";
@@ -365,39 +456,32 @@
 
                         if (estadosSelec.includes(catEstado)) {
                             let m = parseFloat(jsonMetros[espacio]) || 0;
+                            let h = m / velocidadProdPorHora; // Horas precisas para esta pieza según su producto
                             
                             totalMetros += m;
+                            totalHoras += h;
                             totalPiezas += 1;
 
                             let key = `Piso ${p} - ${plantilla.producto}`;
-                            if (!desglose[key]) desglose[key] = { piso: p, prod: plantilla.producto, piezas: 0, metros: 0 };
+                            if (!desglose[key]) desglose[key] = { piso: p, prod: plantilla.producto, piezas: 0, metros: 0, horas: 0 };
                             desglose[key].piezas += 1;
                             desglose[key].metros += m;
+                            desglose[key].horas += h;
                         }
                     });
                 });
             }
 
-            // 5. Matemáticas de Tiempos
-            let velocidadMetrosPorHora = metrosPorDia / horasPorDia;
-            let horasTotalesNecesarias = totalMetros / velocidadMetrosPorHora;
-            
-            let diasEnteros = Math.floor(totalMetros / metrosPorDia);
-            let metrosSobrantes = totalMetros % metrosPorDia;
-            let horasRestantes = metrosSobrantes / velocidadMetrosPorHora;
-
             // 6. Pintar Resultados
             document.getElementById('res_metros').innerText = totalMetros.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " m";
             document.getElementById('res_piezas').innerText = totalPiezas;
-            document.getElementById('res_velocidad').innerText = `Velocidad: ${velocidadMetrosPorHora.toFixed(1)} m/h`;
             
-            let txtTiempo = "";
-            if (diasEnteros > 0) txtTiempo += `${diasEnteros} d `;
-            txtTiempo += `${horasRestantes.toFixed(1)} h`;
-            
-            if (totalMetros === 0) txtTiempo = "0 Horas";
-            
-            document.getElementById('res_tiempo').innerText = txtTiempo;
+            // Si todo da cero
+            if (totalMetros === 0) {
+                document.getElementById('res_tiempo').innerText = "0 Horas";
+            } else {
+                document.getElementById('res_tiempo').innerText = totalHoras.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " Horas";
+            }
 
             // 7. Pintar Tabla de Desglose
             let tbody = document.querySelector('#tabla_desglose tbody');
@@ -407,7 +491,7 @@
             desgloseArr.sort((a,b) => a.piso - b.piso);
 
             if (desgloseArr.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:30px; color:#94a3b8;">No se encontraron piezas que coincidan con los filtros (O no tienen metros asignados en la plantilla).</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:30px; color:#94a3b8;">No se encontraron piezas que coincidan con los filtros (O no tienen metros asignados).</td></tr>`;
             } else {
                 desgloseArr.forEach(item => {
                     tbody.innerHTML += `
@@ -416,13 +500,13 @@
                             <td>${item.prod}</td>
                             <td>${item.piezas} pzas</td>
                             <td><b style="color:#2563eb;">${item.metros.toFixed(1)} m</b></td>
+                            <td><b style="color:#10b981;">${item.horas.toFixed(1)} h</b></td>
                         </tr>
                     `;
                 });
             }
 
             document.getElementById('panel_resultados').style.display = 'block';
-            
             Swal.close();
             window.scrollTo({ top: document.getElementById('panel_resultados').offsetTop, behavior: 'smooth' });
         }
