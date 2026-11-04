@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cálculo de Producción - VetaCucine</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        /* --- ESTILOS BASE Y SIDEBAR --- */
+        html, body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f8fafc; width: 100vw; overflow-x: hidden; color: #1e293b; }
+        .app-container { display: flex; height: 100vh; width: 100vw; overflow-x: hidden; }
+        
+        .sidebar { width: 250px; background-color: #1e293b; color: white; display: flex; flex-direction: column; transition: 0.3s; box-shadow: 2px 0 10px rgba(0,0,0,0.1); z-index: 10; flex-shrink: 0; }
+        .sidebar-header { padding: 25px 20px; font-size: 22px; font-weight: bold; border-bottom: 1px solid #334155; text-align: center; letter-spacing: 1px; color: white; }
+        .sidebar-header span { color: #3b82f6; }
+        
+        .nav-links { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; flex-grow: 1; margin-top: 15px; }
+        .nav-links li { margin: 0; }
+        .nav-links a { display: block; padding: 16px 25px; color: #cbd5e1; text-decoration: none; font-size: 15px; border-left: 4px solid transparent; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
+        .nav-links a:hover { background-color: #334155; color: white; }
+        .nav-links a.active { background-color: #0f172a; border-left-color: #3b82f6; color: white; font-weight: bold; }
+        
+        .main-content { flex: 1; padding: 25px; overflow-y: auto; overflow-x: hidden; box-sizing: border-box; }
+        .header-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 20px; }
+        .header-title { margin: 0; font-size: 24px; color: #0f172a; }
+
+        /* --- PANELES --- */
+        .panel { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .panel-titulo { margin-top: 0; font-size: 16px; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px; }
+        
+        /* PARÁMETROS Y FILTROS */
+        .grid-filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; align-items: start; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        .form-group label { font-size: 12px; font-weight: bold; color: #475569; }
+        .form-group select, .form-group input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; outline: none; transition: 0.2s; }
+        .form-group select:focus, .form-group input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+        
+        .checkbox-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; }
+        .chk-item { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; color: #334155; }
+        
+        .btn-calcular { background: #10b981; color: white; border: none; padding: 15px; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.2s; width: 100%; margin-top: 20px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3); }
+        .btn-calcular:hover { background: #059669; transform: translateY(-2px); }
+
+        /* RESULTADOS Y KPIs */
+        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 25px; }
+        .kpi-card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center; border-bottom: 5px solid #ccc; }
+        .kpi-card h4 { margin: 0; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+        .kpi-numero { font-size: 36px; font-weight: bold; margin: 0; color: #1e293b; }
+        .kpi-sub { font-size: 13px; color: #94a3b8; margin-top: 5px; font-weight: bold; }
+        
+        .kpi-card.blue { border-bottom-color: #3b82f6; } .kpi-card.blue .kpi-numero { color: #2563eb; }
+        .kpi-card.green { border-bottom-color: #10b981; } .kpi-card.green .kpi-numero { color: #059669; }
+        .kpi-card.purple { border-bottom-color: #8b5cf6; } .kpi-card.purple .kpi-numero { color: #7c3aed; }
+
+        /* TABLA DE DESGLOSE */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background-color: #f1f5f9; color: #475569; font-weight: bold; }
+        tr:hover { background-color: #f8fafc; }
+
+        @media (max-width: 768px) { 
+            .app-container { flex-direction: column; height: auto; width: 100%; }
+            .sidebar { width: 100%; }
+            .nav-links { flex-direction: row; margin-top: 0; overflow-x: auto; white-space: nowrap; }
+            .nav-links a { padding: 12px 15px; }
+            .kpi-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- SIDEBAR -->
+        <nav class="sidebar">
+            <div class="sidebar-header">Veta<span>Cucine</span></div>
+            <ul class="nav-links">
+                <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <li><a href="mapa.html">🗺️ Mapa de Producción</a></li>
+                <li><a href="taller.html?v=2.0">🏭 Panel Operador</a></li>
+                <li><a href="index.html">📝 Ingreso Muebles</a></li>
+                <li><a href="reportes.html">🔍 Buscar y Reportes</a></li>
+                <li><a href="calculo_produccion.html" class="active">⏱️ Cálculo Producción</a></li>
+                <li><a href="admin.html" id="link-admin">⚙️ Administrador</a></li>
+            </ul>
+        </nav>
+
+        <div class="main-content">
+            <div class="header-top">
+                <h2 class="header-title">Planificación de Requerimientos (MRP)</h2>
+                <button onclick="cerrarSesion()" style="background:transparent; border:1px solid #ef4444; color:#ef4444; padding:6px 12px; border-radius:6px; font-weight:bold; cursor:pointer;">Salir</button>
+            </div>
+
+            <!-- PARÁMETROS DE MÁQUINA -->
+            <div class="panel" style="border-left: 5px solid #f59e0b;">
+                <h3 class="panel-titulo">⚙️ 1. Parámetros de Máquina (Canteadora)</h3>
+                <div class="grid-filtros">
+                    <div class="form-group">
+                        <label>Capacidad: Metros por Día</label>
+                        <input type="number" id="param_metros_dia" value="800" placeholder="Ej: 800">
+                    </div>
+                    <div class="form-group">
+                        <label>Horas de la Jornada Diaria</label>
+                        <input type="number" step="0.5" id="param_horas_dia" value="8.5" placeholder="Ej: 8.5">
+                    </div>
+                </div>
+            </div>
+
+            <!-- FILTROS DE PROYECCIÓN -->
+            <div class="panel" style="border-left: 5px solid #3b82f6;">
+                <h3 class="panel-titulo">🔍 2. Filtros de Proyección</h3>
+                <div class="grid-filtros">
+                    
+                    <div class="form-group">
+                        <label>Proyecto</label>
+                        <select id="filtro_proyecto" onchange="verificarBloques()"><option value="">Seleccione...</option></select>
+                    </div>
+                    
+                    <div class="form-group" id="grupo_bloque" style="display: none;">
+                        <label>Bloque / Torre</label>
+                        <select id="filtro_bloque"><option value="">Todos los Bloques</option></select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Rango de Pisos a Calcular</label>
+                        <div style="display:flex; gap:10px;">
+                            <input type="number" id="filtro_piso_desde" placeholder="Desde" style="width:100%;">
+                            <input type="number" id="filtro_piso_hasta" placeholder="Hasta" style="width:100%;">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid-filtros" style="margin-top: 15px;">
+                    <div class="form-group">
+                        <label>Seleccionar Productos:</label>
+                        <div class="checkbox-grid" id="chk_productos">
+                            <span style="font-size:12px; color:#94a3b8;">Cargando...</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Estado de Producción a Calcular:</label>
+                        <div class="checkbox-grid">
+                            <label class="chk-item"><input type="checkbox" class="chk-estado" value="FALTA" checked> Falta Ingresar (Fantasmas)</label>
+                            <label class="chk-item"><input type="checkbox" class="chk-estado" value="DIGITALIZAR" checked> Por Digitalizar</label>
+                            <label class="chk-item"><input type="checkbox" class="chk-estado" value="PROCESO" checked> En Proceso (Corte, Ensamblaje...)</label>
+                            <label class="chk-item"><input type="checkbox" class="chk-estado" value="BLOQUEADO"> Bloqueados (Alertas)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn-calcular" onclick="calcularProyeccion()">Generar Cálculo de Producción 🚀</button>
+            </div>
+
+            <!-- RESULTADOS -->
+            <div id="panel_resultados" style="display: none; animation: fadeIn 0.5s ease;">
+                <h2 style="color:#1e293b; margin-bottom: 0;">Resultados de la Proyección</h2>
+                
+                <div class="kpi-grid">
+                    <div class="kpi-card blue">
+                        <h4>Metros Lineales Requeridos</h4>
+                        <p class="kpi-numero" id="res_metros">0m</p>
+                        <p class="kpi-sub">Total de Canto</p>
+                    </div>
+                    <div class="kpi-card green">
+                        <h4>Tiempo Estimado (Máquina)</h4>
+                        <p class="kpi-numero" id="res_tiempo">0d 0h</p>
+                        <p class="kpi-sub" id="res_velocidad">A 0m/hr</p>
+                    </div>
+                    <div class="kpi-card purple">
+                        <h4>Piezas Involucradas</h4>
+                        <p class="kpi-numero" id="res_piezas">0</p>
+                        <p class="kpi-sub">Puertas / Espacios</p>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top: 25px;">
+                    <h3 class="panel-titulo">📋 Desglose por Piso y Producto</h3>
+                    <div style="overflow-x: auto;">
+                        <table id="tabla_desglose">
+                            <thead><tr><th>Piso</th><th>Producto</th><th>Piezas Contadas</th><th>Metros Estimados</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://pnrntmkcisgymyvmzson.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBucm50bWtjaXNneW15dm16c29uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNzAwODQsImV4cCI6MjEwNDc0NjA4NH0.fdW9mj9rkO0rxHXB8rBeJc6a32QSQxtvsNtu9_rL6yc';
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+        let estadosFinales = [];
+        window.proyectosGlobal = [];
+        window.catalogoEspaciosGlobal = [];
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) { window.location.href = 'login.html'; return; }
+
+            const { data: empleado } = await supabaseClient.from('empleados_autorizados').select('rol').eq('email', session.user.email).single();
+            if (empleado && empleado.rol !== 'Administrador') { document.getElementById('link-admin').parentElement.style.display = 'none'; }
+
+            cargarFiltrosBasicos();
+        });
+
+        async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; }
+
+        async function cargarFiltrosBasicos() {
+            // Cargar Estados Finales para excluirlos del "En proceso"
+            const { data: estadosCat } = await supabaseClient.from('catalogo_estados').select('*');
+            if (estadosCat) { estadosFinales = estadosCat.filter(e => !e.estado_siguiente || e.estado_siguiente.trim() === '' || e.nombre.toLowerCase().includes('enviad') || e.nombre.toLowerCase().includes('instalad')).map(e => e.nombre); }
+            
+            // Cargar Espacios para normalizar nombres
+            const { data: espCat } = await supabaseClient.from('catalogo_espacios').select('*');
+            if (espCat) window.catalogoEspaciosGlobal = espCat;
+
+            // Cargar Proyectos
+            const { data: proy } = await supabaseClient.from('catalogo_proyectos').select('*').order('nombre');
+            if (proy) {
+                window.proyectosGlobal = proy;
+                let selProy = document.getElementById('filtro_proyecto');
+                selProy.innerHTML = '<option value="">Seleccione Proyecto...</option>';
+                proy.forEach(p => selProy.innerHTML += `<option value="${p.nombre}">${p.nombre}</option>`);
+            }
+
+            // Cargar Productos (como checkboxes)
+            const { data: prod } = await supabaseClient.from('catalogo_productos').select('*').order('sigla');
+            if (prod) {
+                let divProds = document.getElementById('chk_productos');
+                divProds.innerHTML = '';
+                prod.forEach(p => {
+                    divProds.innerHTML += `<label class="chk-item"><input type="checkbox" class="chk-prod" value="${p.sigla}"> <b>${p.sigla}</b></label>`;
+                });
+            }
+        }
+
+        function verificarBloques() {
+            const nombreProy = document.getElementById('filtro_proyecto').value;
+            const proyectoSeleccionado = window.proyectosGlobal.find(p => p.nombre === nombreProy);
+            const grupoBloque = document.getElementById('grupo_bloque');
+            const selBloque = document.getElementById('filtro_bloque');
+
+            if (proyectoSeleccionado && proyectoSeleccionado.bloques && proyectoSeleccionado.bloques.trim() !== "") {
+                grupoBloque.style.display = 'flex';
+                let bloquesArr = proyectoSeleccionado.bloques.split(',').map(b => b.trim()).filter(b => b !== "");
+                selBloque.innerHTML = '<option value="">Todos los Bloques</option>';
+                bloquesArr.forEach(b => { selBloque.innerHTML += `<option value="${b}">Bloque ${b}</option>`; });
+            } else {
+                grupoBloque.style.display = 'none';
+                selBloque.innerHTML = '<option value="">NA</option>';
+                selBloque.value = "";
+            }
+        }
+
+        function normalizeText(text) {
+            if (!text) return '';
+            return String(text).normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+        }
+
+        // MOTOR FANTASMA: Lógica principal de cálculo
+        async function calcularProyeccion() {
+            const proyecto = document.getElementById('filtro_proyecto').value;
+            const bloque = document.getElementById('filtro_bloque').value;
+            const pisoDesde = parseInt(document.getElementById('filtro_piso_desde').value);
+            const pisoHasta = parseInt(document.getElementById('filtro_piso_hasta').value);
+            const metrosPorDia = parseFloat(document.getElementById('param_metros_dia').value);
+            const horasPorDia = parseFloat(document.getElementById('param_horas_dia').value);
+
+            // Obtener Checkboxes de Productos
+            const chkProds = document.querySelectorAll('.chk-prod:checked');
+            const productosSelec = Array.from(chkProds).map(c => c.value);
+
+            // Obtener Checkboxes de Estados
+            const chkEstados = document.querySelectorAll('.chk-estado:checked');
+            const estadosSelec = Array.from(chkEstados).map(c => c.value); // ["FALTA", "DIGITALIZAR", "PROCESO", "BLOQUEADO"]
+
+            // Validaciones
+            if (!proyecto) return Swal.fire('Falta Filtro', 'Seleccione un Proyecto.', 'warning');
+            if (isNaN(pisoDesde) || isNaN(pisoHasta) || pisoDesde > pisoHasta) return Swal.fire('Error en Pisos', 'Defina un rango de pisos válido (Ej: 1 hasta 9).', 'warning');
+            if (productosSelec.length === 0) return Swal.fire('Falta Filtro', 'Seleccione al menos un producto.', 'warning');
+            if (estadosSelec.length === 0) return Swal.fire('Falta Filtro', 'Seleccione al menos un estado a calcular.', 'warning');
+            if (isNaN(metrosPorDia) || isNaN(horasPorDia) || horasPorDia <= 0) return Swal.fire('Parámetros de Máquina', 'Revise los metros y horas por día.', 'warning');
+
+            Swal.fire({ title: 'Procesando Algoritmo...', text: 'Cruzando Plantillas con Base de Datos', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+            // 1. Obtener Plantillas (ADN de los metros)
+            let qPlantillas = supabaseClient.from('plantillas_matriz').select('*').eq('proyecto', proyecto).in('producto', productosSelec);
+            if (bloque) qPlantillas = qPlantillas.eq('bloque', bloque);
+            const { data: plantillasDB, error: errP } = await qPlantillas;
+
+            if (errP || !plantillasDB || plantillasDB.length === 0) {
+                return Swal.fire('Sin Plantillas', 'No hay plantillas de matriz registradas para este proyecto/productos.', 'error');
+            }
+
+            // 2. Obtener la Realidad (Muebles ya registrados)
+            let qReales = supabaseClient.from('registros_produccion').select('id, piso, suite, espacio, estado, producto, bloque').eq('proyecto', proyecto).in('producto', productosSelec);
+            if (bloque) qReales = qReales.eq('bloque', bloque);
+            const { data: mueblesReales, error: errR } = await qReales;
+
+            // 3. Variables Totales
+            let totalMetros = 0;
+            let totalPiezas = 0;
+            let desglose = {}; // Para la tabla inferior
+
+            // 4. El Ciclo Fantasma: Recorrer Pisos -> Plantillas -> Espacios
+            for (let p = pisoDesde; p <= pisoHasta; p++) {
+                
+                // Buscar piezas reales registradas para este piso exacto
+                let realesPiso = (mueblesReales || []).filter(m => {
+                    let numPiso = normalizeText(m.piso).replace(/[^0-9]/g, ''); // Extrae solo el número, "PISO 4" -> "4"
+                    return numPiso == p;
+                });
+
+                plantillasDB.forEach(plantilla => {
+                    let espaciosPlantilla = plantilla.espacios.split(',').map(e => e.trim());
+                    let jsonMetros = plantilla.metros_canto || {};
+                    let suiteNormalizada = normalizeText(plantilla.suite);
+
+                    espaciosPlantilla.forEach(espacio => {
+                        let espacioNorm = normalizeText(espacio);
+                        
+                        // Buscar el nombre o sigla real en el catálogo para hacer match seguro
+                        let cat = window.catalogoEspaciosGlobal.find(e => normalizeText(e.nombre) === espacioNorm || normalizeText(e.sigla) === espacioNorm);
+                        let siglaCat = cat ? normalizeText(cat.sigla) : espacioNorm;
+                        let nombreCat = cat ? normalizeText(cat.nombre) : espacioNorm;
+
+                        // ¿Existe esta pieza en la BD real?
+                        let piezaReal = realesPiso.find(m => {
+                            let mSuite = normalizeText(m.suite);
+                            let mEsp = normalizeText(m.espacio);
+                            let matchLugar = (mSuite === suiteNormalizada);
+                            let matchEspacio = (mEsp === siglaCat || mEsp === nombreCat);
+                            if (!mEsp && (siglaCat === 'AC' || nombreCat.includes('COMUN'))) { matchEspacio = true; } // Regla de Área Común
+                            
+                            // Asegurar que coincida el producto también
+                            return matchLugar && matchEspacio && m.producto === plantilla.producto;
+                        });
+
+                        // Determinar Estado Algorítmico
+                        let catEstado = "N/A";
+                        if (!piezaReal) {
+                            catEstado = "FALTA"; // El Fantasma (no existe en BD)
+                        } else {
+                            let estadoTexto = (piezaReal.estado || '').toLowerCase();
+                            if (estadoTexto.includes('bloque')) catEstado = "BLOQUEADO";
+                            else if (estadoTexto === 'por digitalizar') catEstado = "DIGITALIZAR";
+                            else if (estadosFinales.includes(piezaReal.estado)) catEstado = "TERMINADO";
+                            else catEstado = "PROCESO"; // Cualquier otra cosa es que está rodando en el taller
+                        }
+
+                        // Si el estado de la pieza entra en los filtros del usuario, sumamos
+                        if (estadosSelec.includes(catEstado)) {
+                            // Extraer los metros de la plantilla. Si el Admin no le puso metros, asume 0 para no romper el código.
+                            let m = parseFloat(jsonMetros[espacio]) || 0;
+                            
+                            totalMetros += m;
+                            totalPiezas += 1;
+
+                            // Agrupar para el desglose
+                            let key = `Piso ${p} - ${plantilla.producto}`;
+                            if (!desglose[key]) desglose[key] = { piso: p, prod: plantilla.producto, piezas: 0, metros: 0 };
+                            desglose[key].piezas += 1;
+                            desglose[key].metros += m;
+                        }
+                    });
+                });
+            }
+
+            // 5. Matemáticas de Tiempos
+            let velocidadMetrosPorHora = metrosPorDia / horasPorDia;
+            let horasTotalesNecesarias = totalMetros / velocidadMetrosPorHora;
+            
+            let diasEnteros = Math.floor(totalMetros / metrosPorDia);
+            // Las horas restantes equivalen al sobrante de metros dividido entre la velocidad horaria
+            let metrosSobrantes = totalMetros % metrosPorDia;
+            let horasRestantes = metrosSobrantes / velocidadMetrosPorHora;
+
+            // 6. Pintar Resultados
+            document.getElementById('res_metros').innerText = totalMetros.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " m";
+            document.getElementById('res_piezas').innerText = totalPiezas;
+            document.getElementById('res_velocidad').innerText = `Velocidad: ${velocidadMetrosPorHora.toFixed(1)} m/h`;
+            
+            let txtTiempo = "";
+            if (diasEnteros > 0) txtTiempo += `${diasEnteros} d `;
+            txtTiempo += `${horasRestantes.toFixed(1)} h`;
+            
+            // Si todo da cero, no poner "0d 0h" frío
+            if (totalMetros === 0) txtTiempo = "0 Horas";
+            
+            document.getElementById('res_tiempo').innerText = txtTiempo;
+
+            // 7. Pintar Tabla de Desglose
+            let tbody = document.querySelector('#tabla_desglose tbody');
+            tbody.innerHTML = '';
+            
+            // Convertir objeto desglose en Array para ordenarlo por Piso
+            let desgloseArr = Object.values(desglose);
+            desgloseArr.sort((a,b) => a.piso - b.piso);
+
+            if (desgloseArr.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:30px; color:#94a3b8;">No se encontraron piezas que coincidan con los filtros (O no tienen metros asignados en la plantilla).</td></tr>`;
+            } else {
+                desgloseArr.forEach(item => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>Piso ${item.piso}</strong></td>
+                            <td>${item.prod}</td>
+                            <td>${item.piezas} pzas</td>
+                            <td><b style="color:#2563eb;">${item.metros.toFixed(1)} m</b></td>
+                        </tr>
+                    `;
+                });
+            }
+
+            document.getElementById('panel_resultados').style.display = 'block';
+            
+            Swal.close();
+            // Desplazar la pantalla suavemente hacia los resultados
+            window.scrollTo({ top: document.getElementById('panel_resultados').offsetTop, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
