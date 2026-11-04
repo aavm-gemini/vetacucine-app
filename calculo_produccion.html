@@ -128,6 +128,12 @@
                             <input type="number" id="filtro_piso_hasta" placeholder="Hasta" style="width:100%;">
                         </div>
                     </div>
+
+                    <!-- NUEVO CAMPO: EXCEPCIONES DE SUITES -->
+                    <div class="form-group">
+                        <label title="Escribe los números o nombres de las suites que NO quieres sumar, separadas por coma.">Omitir Suites (Excepciones)</label>
+                        <input type="text" id="filtro_excluir_suites" placeholder="Ej: 2, 5 (Separadas por coma)">
+                    </div>
                 </div>
 
                 <div class="grid-filtros" style="margin-top: 15px;">
@@ -270,13 +276,17 @@
             const metrosPorDia = parseFloat(document.getElementById('param_metros_dia').value);
             const horasPorDia = parseFloat(document.getElementById('param_horas_dia').value);
 
+            // Obtener Suites a Excluir (NUEVO)
+            const excluirStr = document.getElementById('filtro_excluir_suites').value.trim();
+            const suitesExcluidas = excluirStr ? excluirStr.split(',').map(s => normalizeText(s)) : [];
+
             // Obtener Checkboxes de Productos
             const chkProds = document.querySelectorAll('.chk-prod:checked');
             const productosSelec = Array.from(chkProds).map(c => c.value);
 
             // Obtener Checkboxes de Estados
             const chkEstados = document.querySelectorAll('.chk-estado:checked');
-            const estadosSelec = Array.from(chkEstados).map(c => c.value); // ["FALTA", "DIGITALIZAR", "PROCESO", "BLOQUEADO"]
+            const estadosSelec = Array.from(chkEstados).map(c => c.value);
 
             // Validaciones
             if (!proyecto) return Swal.fire('Falta Filtro', 'Seleccione un Proyecto.', 'warning');
@@ -304,63 +314,61 @@
             // 3. Variables Totales
             let totalMetros = 0;
             let totalPiezas = 0;
-            let desglose = {}; // Para la tabla inferior
+            let desglose = {}; 
 
             // 4. El Ciclo Fantasma: Recorrer Pisos -> Plantillas -> Espacios
             for (let p = pisoDesde; p <= pisoHasta; p++) {
                 
                 // Buscar piezas reales registradas para este piso exacto
                 let realesPiso = (mueblesReales || []).filter(m => {
-                    let numPiso = normalizeText(m.piso).replace(/[^0-9]/g, ''); // Extrae solo el número, "PISO 4" -> "4"
+                    let numPiso = normalizeText(m.piso).replace(/[^0-9]/g, ''); 
                     return numPiso == p;
                 });
 
                 plantillasDB.forEach(plantilla => {
+                    let suiteNormalizada = normalizeText(plantilla.suite);
+
+                    // --- REGLA DE EXCEPCIÓN DE SUITES ---
+                    if (suitesExcluidas.includes(suiteNormalizada)) {
+                        return; // Si la suite está en la lista de ignoradas, salta y no la cuenta
+                    }
+
                     let espaciosPlantilla = plantilla.espacios.split(',').map(e => e.trim());
                     let jsonMetros = plantilla.metros_canto || {};
-                    let suiteNormalizada = normalizeText(plantilla.suite);
 
                     espaciosPlantilla.forEach(espacio => {
                         let espacioNorm = normalizeText(espacio);
                         
-                        // Buscar el nombre o sigla real en el catálogo para hacer match seguro
                         let cat = window.catalogoEspaciosGlobal.find(e => normalizeText(e.nombre) === espacioNorm || normalizeText(e.sigla) === espacioNorm);
                         let siglaCat = cat ? normalizeText(cat.sigla) : espacioNorm;
                         let nombreCat = cat ? normalizeText(cat.nombre) : espacioNorm;
 
-                        // ¿Existe esta pieza en la BD real?
                         let piezaReal = realesPiso.find(m => {
                             let mSuite = normalizeText(m.suite);
                             let mEsp = normalizeText(m.espacio);
                             let matchLugar = (mSuite === suiteNormalizada);
                             let matchEspacio = (mEsp === siglaCat || mEsp === nombreCat);
-                            if (!mEsp && (siglaCat === 'AC' || nombreCat.includes('COMUN'))) { matchEspacio = true; } // Regla de Área Común
-                            
-                            // Asegurar que coincida el producto también
+                            if (!mEsp && (siglaCat === 'AC' || nombreCat.includes('COMUN'))) { matchEspacio = true; } 
                             return matchLugar && matchEspacio && m.producto === plantilla.producto;
                         });
 
-                        // Determinar Estado Algorítmico
                         let catEstado = "N/A";
                         if (!piezaReal) {
-                            catEstado = "FALTA"; // El Fantasma (no existe en BD)
+                            catEstado = "FALTA"; 
                         } else {
                             let estadoTexto = (piezaReal.estado || '').toLowerCase();
                             if (estadoTexto.includes('bloque')) catEstado = "BLOQUEADO";
                             else if (estadoTexto === 'por digitalizar') catEstado = "DIGITALIZAR";
                             else if (estadosFinales.includes(piezaReal.estado)) catEstado = "TERMINADO";
-                            else catEstado = "PROCESO"; // Cualquier otra cosa es que está rodando en el taller
+                            else catEstado = "PROCESO"; 
                         }
 
-                        // Si el estado de la pieza entra en los filtros del usuario, sumamos
                         if (estadosSelec.includes(catEstado)) {
-                            // Extraer los metros de la plantilla. Si el Admin no le puso metros, asume 0 para no romper el código.
                             let m = parseFloat(jsonMetros[espacio]) || 0;
                             
                             totalMetros += m;
                             totalPiezas += 1;
 
-                            // Agrupar para el desglose
                             let key = `Piso ${p} - ${plantilla.producto}`;
                             if (!desglose[key]) desglose[key] = { piso: p, prod: plantilla.producto, piezas: 0, metros: 0 };
                             desglose[key].piezas += 1;
@@ -375,7 +383,6 @@
             let horasTotalesNecesarias = totalMetros / velocidadMetrosPorHora;
             
             let diasEnteros = Math.floor(totalMetros / metrosPorDia);
-            // Las horas restantes equivalen al sobrante de metros dividido entre la velocidad horaria
             let metrosSobrantes = totalMetros % metrosPorDia;
             let horasRestantes = metrosSobrantes / velocidadMetrosPorHora;
 
@@ -388,7 +395,6 @@
             if (diasEnteros > 0) txtTiempo += `${diasEnteros} d `;
             txtTiempo += `${horasRestantes.toFixed(1)} h`;
             
-            // Si todo da cero, no poner "0d 0h" frío
             if (totalMetros === 0) txtTiempo = "0 Horas";
             
             document.getElementById('res_tiempo').innerText = txtTiempo;
@@ -397,7 +403,6 @@
             let tbody = document.querySelector('#tabla_desglose tbody');
             tbody.innerHTML = '';
             
-            // Convertir objeto desglose en Array para ordenarlo por Piso
             let desgloseArr = Object.values(desglose);
             desgloseArr.sort((a,b) => a.piso - b.piso);
 
@@ -419,7 +424,6 @@
             document.getElementById('panel_resultados').style.display = 'block';
             
             Swal.close();
-            // Desplazar la pantalla suavemente hacia los resultados
             window.scrollTo({ top: document.getElementById('panel_resultados').offsetTop, behavior: 'smooth' });
         }
     </script>
