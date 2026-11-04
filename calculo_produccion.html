@@ -105,44 +105,16 @@
                 <button onclick="cerrarSesion()" style="background:transparent; border:1px solid #ef4444; color:#ef4444; padding:6px 12px; border-radius:6px; font-weight:bold; cursor:pointer;">Salir</button>
             </div>
 
-            <!-- NAVEGACIÓN DE PESTAÑAS -->
+            <!-- NAVEGACIÓN DE PESTAÑAS (Orden Invertido) -->
             <div class="tabs-container">
-                <button class="tab-btn active" onclick="cambiarPestana('tab-velocidades')">⚙️ Velocidades por Producto</button>
-                <button class="tab-btn" onclick="cambiarPestana('tab-proyeccion')">🚀 Generar Proyección</button>
+                <button class="tab-btn active" onclick="cambiarPestana('tab-proyeccion')">🚀 Generar Proyección</button>
+                <button class="tab-btn" onclick="cambiarPestana('tab-velocidades')">⚙️ Velocidades por Producto</button>
             </div>
 
             <!-- ==========================================
-                 PESTAÑA 1: VELOCIDADES DE MÁQUINA
+                 PESTAÑA 1: PROYECCIÓN (MRP) - AHORA ES LA ACTIVA POR DEFECTO
                  ========================================== -->
-            <div id="tab-velocidades" class="tab-content active">
-                <div class="panel" style="border-left: 5px solid #f59e0b;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <h3 class="panel-titulo" style="border:none; margin:0;">⚙️ Calibración de Máquina por Producto</h3>
-                        <button class="btn-accion" style="background:#f59e0b;" onclick="guardarVelocidades()">💾 Guardar Cambios</button>
-                    </div>
-                    <p style="font-size:13px; color:#64748b; margin-bottom: 20px;">Define cuántos metros de canto procesa la máquina en un día y cuántas horas dura esa jornada laboral para cada tipo de producto. Esto hará que el cálculo de horas sea exacto.</p>
-                    
-                    <div style="overflow-x: auto;">
-                        <table id="tabla-velocidades">
-                            <thead>
-                                <tr>
-                                    <th>Sigla</th>
-                                    <th>Producto</th>
-                                    <th>Capacidad (Metros por Día)</th>
-                                    <th>Horas de la Jornada Diaria</th>
-                                    <th>Velocidad Resultante</th>
-                                </tr>
-                            </thead>
-                            <tbody><tr><td colspan="5" style="text-align:center;">Cargando...</td></tr></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ==========================================
-                 PESTAÑA 2: PROYECCIÓN (MRP)
-                 ========================================== -->
-            <div id="tab-proyeccion" class="tab-content">
+            <div id="tab-proyeccion" class="tab-content active">
                 <div class="panel" style="border-left: 5px solid #3b82f6;">
                     <h3 class="panel-titulo">🔍 Filtros de Proyección</h3>
                     <div class="grid-filtros">
@@ -227,6 +199,34 @@
                 </div>
             </div>
 
+            <!-- ==========================================
+                 PESTAÑA 2: VELOCIDADES DE MÁQUINA (SECUNDARIA)
+                 ========================================== -->
+            <div id="tab-velocidades" class="tab-content">
+                <div class="panel" style="border-left: 5px solid #f59e0b;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3 class="panel-titulo" style="border:none; margin:0;">⚙️ Calibración de Máquina por Producto</h3>
+                        <button class="btn-accion" style="background:#f59e0b;" onclick="guardarVelocidades()">💾 Guardar Cambios</button>
+                    </div>
+                    <p style="font-size:13px; color:#64748b; margin-bottom: 20px;">Define cuántos metros de canto procesa la máquina en un día y cuántas horas dura esa jornada laboral para cada tipo de producto. Esto hará que el cálculo de horas sea exacto.</p>
+                    
+                    <div style="overflow-x: auto;">
+                        <table id="tabla-velocidades">
+                            <thead>
+                                <tr>
+                                    <th>Sigla</th>
+                                    <th>Producto</th>
+                                    <th>Capacidad (Metros por Día)</th>
+                                    <th>Horas de la Jornada Diaria</th>
+                                    <th>Velocidad Resultante</th>
+                                </tr>
+                            </thead>
+                            <tbody><tr><td colspan="5" style="text-align:center;">Cargando...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -286,11 +286,11 @@
             if (prod) {
                 window.catalogoProductosGlobal = prod;
                 
-                // Pintar Tabla de Velocidades (Pestaña 1)
+                // Pintar Tabla de Velocidades (Pestaña 2)
                 const tbodyVelocidades = document.querySelector('#tabla-velocidades tbody');
                 tbodyVelocidades.innerHTML = '';
                 
-                // Pintar Checkboxes (Pestaña 2)
+                // Pintar Checkboxes (Pestaña 1)
                 const divProds = document.getElementById('chk_productos');
                 divProds.innerHTML = '';
 
