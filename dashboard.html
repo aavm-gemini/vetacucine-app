@@ -59,11 +59,12 @@
         .nota-header { display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 6px; }
         .nota-autor { font-weight: bold; color: #1e293b; font-size: 12px; }
         .nota-contenido { font-size: 13px; color: #334155; margin-bottom: 8px; white-space: pre-wrap; line-height: 1.4; }
-        .nota-acciones { display: flex; gap: 12px; font-size: 12px; font-weight: bold; }
-        .nota-acciones span { cursor: pointer; color: #64748b; }
+        .nota-acciones { display: flex; gap: 12px; font-size: 12px; font-weight: bold; flex-wrap: wrap; }
+        .nota-acciones span { cursor: pointer; color: #64748b; transition: 0.2s; }
         .nota-acciones span:hover { color: #3b82f6; text-decoration: underline; }
         .nota-acciones .borrar:hover { color: #ef4444; }
-        .nota-acciones .resolver:hover { color: #10b981; }
+        .nota-acciones .resolver { color: #10b981; }
+        .nota-acciones .resolver:hover { color: #059669; }
 
         .mensaje-bienvenida { font-size: 14px; color: #475569; }
         .mensaje-bienvenida span { font-weight: bold; color: #1e293b; }
@@ -175,7 +176,7 @@
                                 <button id="btn-nuevo-pendiente" class="btn-redondo" style="background:#f59e0b;" title="Registrar Pendiente">+</button>
                             </div>
                             
-                            <!-- NUEVO FILTRO DESPLEGABLE DE AUTORES -->
+                            <!-- FILTRO DESPLEGABLE DE AUTORES -->
                             <div style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
                                 <select id="filtro-autor-pendientes" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 12px; outline: none; background: white;" onchange="renderizarListaPendientes()">
                                     <option value="ALL">🌍 Todos los pendientes</option>
@@ -318,8 +319,10 @@
         let USUARIO_ACTUAL_NOMBRE = "";
         const CACHE_NOTAS_KEY = 'ultima_revision_notas';
         let idNotaEnEdicion = null;
+        let idPendienteEnEdicion = null; // NUEVO: Control de edición de pendientes
         window.alertasNoLeidas = 0;
         window.notasNoLeidas = 0;
+        window.totalPendientesObras = 0;
 
         function actualizarBadgeSistemaOS() {
             if ('setAppBadge' in navigator) {
@@ -399,13 +402,14 @@
 
             if(btnNuevoP) {
                 btnNuevoP.addEventListener('click', () => {
+                    idPendienteEnEdicion = null; // Asegurarse de que es uno nuevo
                     inputCodigo.value = ''; txtPreview.innerText = 'Esperando código...'; txtPreview.style.color = '#94a3b8'; txtNota.value = '';
                     cajaEdicion.style.display = 'block'; inputCodigo.focus();
                 });
             }
 
             if(btnCancelarP) {
-                btnCancelarP.addEventListener('click', () => { cajaEdicion.style.display = 'none'; });
+                btnCancelarP.addEventListener('click', () => { cajaEdicion.style.display = 'none'; idPendienteEnEdicion = null; });
             }
 
             inputCodigo.addEventListener('input', () => {
@@ -434,22 +438,33 @@
 
                     btnGuardarP.disabled = true; btnGuardarP.innerText = '...';
 
-                    let payload = { 
-                        codigo_proyecto: cod, 
-                        descripcion_lote: descLote,
-                        nota_pendiente: nota, 
-                        autor_nombre: USUARIO_ACTUAL_NOMBRE.split(' ')[0], 
-                        autor_email: USUARIO_ACTUAL_EMAIL 
-                    };
+                    let err = null;
 
-                    const { error } = await supabaseClient.from('pendientes_obra').insert([payload]);
+                    if (idPendienteEnEdicion) {
+                        const { error } = await supabaseClient.from('pendientes_obra').update({
+                            codigo_proyecto: cod,
+                            descripcion_lote: descLote,
+                            nota_pendiente: nota
+                        }).eq('id', idPendienteEnEdicion);
+                        err = error;
+                    } else {
+                        let payload = { 
+                            codigo_proyecto: cod, 
+                            descripcion_lote: descLote,
+                            nota_pendiente: nota, 
+                            autor_nombre: USUARIO_ACTUAL_NOMBRE.split(' ')[0], 
+                            autor_email: USUARIO_ACTUAL_EMAIL 
+                        };
+                        const { error } = await supabaseClient.from('pendientes_obra').insert([payload]);
+                        err = error;
+                    }
                     
                     btnGuardarP.disabled = false; btnGuardarP.innerText = 'Registrar';
 
-                    if (error) {
+                    if (err) {
                         Swal.fire({ toast:true, position:'top-end', icon:'error', title:'Error al guardar', showConfirmButton:false, timer:2000 });
                     } else {
-                        cajaEdicion.style.display = 'none'; cargarPendientesObras();
+                        cajaEdicion.style.display = 'none'; idPendienteEnEdicion = null; cargarPendientesObras();
                     }
                 });
             }
@@ -528,6 +543,11 @@
                 let fCrea = new Date(p.fecha_creacion);
                 let horaFormateada = fCrea.toLocaleString('es-ES', { day: '2-digit', month: 'short' });
                 
+                let btnEditar = '';
+                if (p.autor_email === USUARIO_ACTUAL_EMAIL) {
+                    btnEditar = `<span style="margin-left: 15px;" onclick="editarPendienteObra('${p.id}', '${p.codigo_proyecto}', '${p.nota_pendiente.replace(/'/g, "\\'")}')">✏️ Editar</span>`;
+                }
+
                 htmlHTML.push(`
                     <div class="nota-card pendiente">
                         <div class="nota-header">
@@ -538,11 +558,23 @@
                         <div class="nota-contenido" style="color:#b45309;">👉 ${p.nota_pendiente}</div>
                         <div class="nota-acciones">
                             <span class="resolver" onclick="resolverPendienteObra('${p.id}')">✅ Marcar como Enviado / Resuelto</span>
+                            ${btnEditar}
                         </div>
                     </div>
                 `);
             });
             lista.innerHTML = htmlHTML.join(''); 
+        }
+
+        function editarPendienteObra(id, cod, nota) {
+            document.getElementById('caja-edicion-pendiente').style.display = 'block';
+            document.getElementById('input-codigo-pendiente').value = cod;
+            document.getElementById('texto-pendiente').value = nota;
+            idPendienteEnEdicion = id;
+            
+            // Forzar actualización del preview visualmente
+            document.getElementById('input-codigo-pendiente').dispatchEvent(new Event('input'));
+            document.getElementById('texto-pendiente').focus();
         }
 
         async function resolverPendienteObra(id) {
