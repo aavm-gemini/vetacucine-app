@@ -55,6 +55,7 @@
         .nota-card { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; position: relative; }
         .nota-card:hover { background: #f8fafc; }
         .nota-card.urgente { border-left: 4px solid #ef4444; background: #fef2f2; }
+        .nota-card.pendiente { border-left: 4px solid #f59e0b; background: #fffbeb; }
         .nota-header { display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 6px; }
         .nota-autor { font-weight: bold; color: #1e293b; font-size: 12px; }
         .nota-contenido { font-size: 13px; color: #334155; margin-bottom: 8px; white-space: pre-wrap; line-height: 1.4; }
@@ -62,6 +63,7 @@
         .nota-acciones span { cursor: pointer; color: #64748b; }
         .nota-acciones span:hover { color: #3b82f6; text-decoration: underline; }
         .nota-acciones .borrar:hover { color: #ef4444; }
+        .nota-acciones .resolver:hover { color: #10b981; }
 
         .mensaje-bienvenida { font-size: 14px; color: #475569; }
         .mensaje-bienvenida span { font-weight: bold; color: #1e293b; }
@@ -161,7 +163,35 @@
             <div class="header-top">
                 <h2 class="header-title">Tablero de Producción</h2>
                 <div class="perfil-usuario">
-                    <!-- WIDGET DE NOTAS -->
+                    
+                    <!-- WIDGET DE PENDIENTES DE OBRA (NUEVO) -->
+                    <div class="widget-notas">
+                        <button id="btn-pendientes" class="btn-icono" title="Pendientes de Obra (Backorders)">
+                            ⏳<span id="badge-pendientes" class="badge-notas-urgente" style="display: none; background:#f59e0b; border-color:white;">0</span>
+                        </button>
+                        <div id="panel-pendientes" class="panel-desplegable" style="width: 360px;">
+                            <div class="panel-header">
+                                <h4>Pendientes de Obra</h4>
+                                <button id="btn-nuevo-pendiente" class="btn-redondo" style="background:#f59e0b;" title="Registrar Pendiente">+</button>
+                            </div>
+                            <div id="caja-edicion-pendiente" style="display: none; padding: 15px; border-bottom: 1px solid #e2e8f0; background: #fff;">
+                                <input type="number" id="input-codigo-pendiente" placeholder="Código de Lote (Ej: 508)" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:4px; margin-bottom:8px; box-sizing:border-box; outline:none;">
+                                <div id="preview-lote-pendiente" style="font-size:11px; color:#3b82f6; margin-bottom:10px; font-weight:bold; min-height:15px;">Esperando código...</div>
+                                <textarea id="texto-pendiente" placeholder="Ej: Falta enviar 2 bisagras rectas del Baño Principal" rows="3" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:4px; margin-bottom:8px; box-sizing:border-box; resize:vertical; font-family:inherit; font-size:13px; outline:none;"></textarea>
+                                <div class="controles-edicion" style="justify-content:flex-end;">
+                                    <div>
+                                        <button id="btn-cancelar-pendiente" class="btn-secundario">Cancelar</button>
+                                        <button id="btn-guardar-pendiente" class="btn-primario" style="background:#f59e0b;">Registrar</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="lista-pendientes" class="lista-scroll">
+                                <p style="text-align:center; font-size:12px; color:#94a3b8; padding:20px;">Cargando pendientes...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- WIDGET DE NOTAS (EXISTENTE) -->
                     <div class="widget-notas">
                         <button id="btn-notas" class="btn-icono" title="Notas del Equipo">
                             📝<span id="badge-notas" class="badge-notas-urgente" style="display: none;">0</span>
@@ -187,6 +217,7 @@
                         </div>
                     </div>
 
+                    <!-- WIDGET DE BITÁCORA -->
                     <div class="campana-notificaciones" onclick="verNotificacionesGlobales()" title="Ver actividad reciente de la planta">
                         🔔<span class="badge-campana" id="badge_notificaciones">0</span>
                     </div>
@@ -225,7 +256,6 @@
                 <h3>🎯 Filtro Global y Progreso (Metas vs. Realidad)</h3>
                 <div class="filtros-progreso">
                     <select id="sel_proy" onchange="actualizarFiltrosMetas()"><option value="">Selecciona Proyecto...</option></select>
-                    <!-- OPTIMIZACIÓN: Se usa 'oninput' con un temporizador -->
                     <input type="text" id="sel_piso" placeholder="Piso (Vacío = TODOS)" oninput="autoCalcularAvance()">
                     <select id="sel_prod" onchange="calcularAvance()"><option value="">Selecciona Producto...</option></select>
                 </div>
@@ -280,10 +310,11 @@
         let idNotaEnEdicion = null;
         window.alertasNoLeidas = 0;
         window.notasNoLeidas = 0;
+        window.totalPendientesObras = 0; // Para la burbuja de PENDIENTES
 
         function actualizarBadgeSistemaOS() {
             if ('setAppBadge' in navigator) {
-                let total = window.alertasNoLeidas + window.notasNoLeidas;
+                let total = window.alertasNoLeidas + window.notasNoLeidas + window.totalPendientesObras;
                 if (total > 0) navigator.setAppBadge(total).catch(e => console.log(e));
                 else navigator.clearAppBadge().catch(e => console.log(e));
             }
@@ -313,9 +344,15 @@
                 document.getElementById('fotoUsuario').src = session.user.user_metadata.avatar_url || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
 
                 configurarBotonNotas();
+                configurarBotonPendientes(); // NUEVO WIDGET
                 await cargarDatosDashboard();
                 cargarNotasEquipo();
-                setInterval(cargarNotasEquipo, 120000);
+                cargarPendientesObras(); // NUEVO WIDGET
+                
+                setInterval(() => {
+                    cargarNotasEquipo();
+                    cargarPendientesObras();
+                }, 120000);
 
             } catch (error) {
                 for (let key in localStorage) { if (key.startsWith('sb-')) { localStorage.removeItem(key); } }
@@ -323,6 +360,189 @@
             }
         });
 
+        // ===============================================
+        // WIDGET: PENDIENTES DE OBRA (BACKORDERS)
+        // ===============================================
+        function configurarBotonPendientes() {
+            const btnPendientes = document.getElementById('btn-pendientes');
+            const panelPendientes = document.getElementById('panel-pendientes');
+            const btnNuevoP = document.getElementById('btn-nuevo-pendiente');
+            const btnCancelarP = document.getElementById('btn-cancelar-pendiente');
+            const btnGuardarP = document.getElementById('btn-guardar-pendiente');
+            const cajaEdicion = document.getElementById('caja-edicion-pendiente');
+            const inputCodigo = document.getElementById('input-codigo-pendiente');
+            const txtPreview = document.getElementById('preview-lote-pendiente');
+            const txtNota = document.getElementById('texto-pendiente');
+
+            if(btnPendientes && panelPendientes) {
+                btnPendientes.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    panelPendientes.style.display = (panelPendientes.style.display === 'block') ? 'none' : 'block';
+                    document.getElementById('panel-notas').style.display = 'none'; // Ocultar notas si estaban abiertas
+                });
+                
+                document.addEventListener('click', (e) => {
+                    let widgetContenedor = document.querySelectorAll('.widget-notas')[0]; 
+                    if (!widgetContenedor.contains(e.target)) { panelPendientes.style.display = 'none'; }
+                });
+            }
+
+            if(btnNuevoP) {
+                btnNuevoP.addEventListener('click', () => {
+                    inputCodigo.value = ''; txtPreview.innerText = 'Esperando código...'; txtPreview.style.color = '#94a3b8'; txtNota.value = '';
+                    cajaEdicion.style.display = 'block'; inputCodigo.focus();
+                });
+            }
+
+            if(btnCancelarP) {
+                btnCancelarP.addEventListener('click', () => { cajaEdicion.style.display = 'none'; });
+            }
+
+            // MOTOR DE AUTOCOMPLETADO INTELIGENTE
+            inputCodigo.addEventListener('input', () => {
+                let codBusqueda = inputCodigo.value.trim();
+                if (!codBusqueda) { txtPreview.innerText = 'Esperando código...'; txtPreview.style.color = '#94a3b8'; return; }
+                
+                // Buscar las piezas de ese lote
+                let piezasEncontradas = window.mueblesCargados.filter(m => String(m.codigo_proyecto) === codBusqueda);
+                if(piezasEncontradas.length === 0) {
+                    txtPreview.innerText = '❌ Código no encontrado en el sistema.';
+                    txtPreview.style.color = '#ef4444';
+                } else {
+                    let nomenclatura = generarNomenclaturaLote(piezasEncontradas);
+                    txtPreview.innerHTML = `✅ <b>Lote Encontrado:</b><br>${nomenclatura}`;
+                    txtPreview.style.color = '#10b981';
+                }
+            });
+
+            if(btnGuardarP) {
+                btnGuardarP.addEventListener('click', async () => {
+                    let cod = inputCodigo.value.trim();
+                    let nota = txtNota.value.trim();
+                    if (!cod || !nota) return Swal.fire({ toast:true, position:'top-end', icon:'warning', title:'Faltan datos', showConfirmButton:false, timer:2000 });
+                    
+                    let piezas = window.mueblesCargados.filter(m => String(m.codigo_proyecto) === cod);
+                    let descLote = piezas.length > 0 ? generarNomenclaturaLote(piezas) : 'Lote Desconocido ('+cod+')';
+
+                    btnGuardarP.disabled = true; btnGuardarP.innerText = '...';
+
+                    let payload = { 
+                        codigo_proyecto: cod, 
+                        descripcion_lote: descLote,
+                        nota_pendiente: nota, 
+                        autor_nombre: USUARIO_ACTUAL_NOMBRE.split(' ')[0], 
+                        autor_email: USUARIO_ACTUAL_EMAIL 
+                    };
+
+                    const { error } = await supabaseClient.from('pendientes_obra').insert([payload]);
+                    
+                    btnGuardarP.disabled = false; btnGuardarP.innerText = 'Registrar';
+
+                    if (error) {
+                        Swal.fire({ toast:true, position:'top-end', icon:'error', title:'Error al guardar', showConfirmButton:false, timer:2000 });
+                    } else {
+                        cajaEdicion.style.display = 'none'; cargarPendientesObras();
+                    }
+                });
+            }
+        }
+
+        async function cargarPendientesObras() {
+            // Cargar solo los pendientes activos
+            const { data, error } = await supabaseClient.from('pendientes_obra').select('*').eq('estado', 'Activo').order('fecha_creacion', { ascending: false });
+            const lista = document.getElementById('lista-pendientes');
+            const badge = document.getElementById('badge-pendientes');
+
+            if (error) { lista.innerHTML = `<p style="text-align:center; font-size:12px; color:#ef4444; padding:20px;">Error de red.</p>`; return; }
+            if (!data || data.length === 0) { 
+                lista.innerHTML = `<p style="text-align:center; font-size:12px; color:#94a3b8; padding:20px;">No hay pendientes de obra activos. 🎉</p>`; 
+                badge.style.display = 'none';
+                window.totalPendientesObras = 0;
+                actualizarBadgeSistemaOS();
+                return; 
+            }
+
+            window.totalPendientesObras = data.length;
+            badge.style.display = 'flex';
+            badge.innerText = data.length > 9 ? '9+' : data.length;
+            actualizarBadgeSistemaOS();
+            
+            let htmlHTML = []; 
+            data.forEach(p => {
+                let fCrea = new Date(p.fecha_creacion);
+                let horaFormateada = fCrea.toLocaleString('es-ES', { day: '2-digit', month: 'short' });
+                
+                htmlHTML.push(`
+                    <div class="nota-card pendiente">
+                        <div class="nota-header">
+                            <span class="nota-autor" style="color:#b45309;">${p.autor_nombre}</span>
+                            <span>${horaFormateada}</span>
+                        </div>
+                        <div style="font-size:12px; color:#1e293b; margin-bottom:5px;"><b>Cód. ${p.codigo_proyecto}:</b> ${p.descripcion_lote}</div>
+                        <div class="nota-contenido" style="color:#b45309;">👉 ${p.nota_pendiente}</div>
+                        <div class="nota-acciones">
+                            <span class="resolver" onclick="resolverPendienteObra('${p.id}')">✅ Marcar como Enviado / Resuelto</span>
+                        </div>
+                    </div>
+                `);
+            });
+            lista.innerHTML = htmlHTML.join(''); 
+        }
+
+        async function resolverPendienteObra(id) {
+            const conf = await Swal.fire({ title: '¿Marcar como resuelto?', text:'Esto quitará el pendiente de la lista activa.', icon: 'question', showCancelButton: true, confirmButtonColor: '#10b981', confirmButtonText: 'Sí, resuelto' });
+            if (conf.isConfirmed) { 
+                await supabaseClient.from('pendientes_obra').update({ estado: 'Resuelto' }).eq('id', id); 
+                cargarPendientesObras(); 
+            }
+        }
+
+        // FUNCIÓN AUXILIAR PARA GENERAR LA NOMENCLATURA EXACTA DE UN LOTE
+        function generarNomenclaturaLote(piezas) {
+            if (!piezas || piezas.length === 0) return "";
+            let p1 = piezas[0];
+            let isCommon = piezas.some(p => p.producto === 'PP' || p.espacio === 'AC');
+            let mapPisos = {};
+            piezas.forEach(p => {
+                let pisoNro = p.piso ? p.piso : 'S/P';
+                if(!mapPisos[pisoNro]) mapPisos[pisoNro] = [];
+                mapPisos[pisoNro].push(p);
+            });
+
+            let arrSubItems = [];
+            for(let pisoNro in mapPisos) {
+                let pzasPiso = mapPisos[pisoNro];
+                let etiquetaPiso = pisoNro !== 'S/P' ? `P${pisoNro}` : '';
+
+                if (isCommon) {
+                    let suitesUnicas = [...new Set(pzasPiso.map(p => p.suite))].filter(Boolean);
+                    suitesUnicas.sort((a,b) => parseInt(a) - parseInt(b));
+                    if (suitesUnicas.length > 0) arrSubItems.push(`${etiquetaPiso}(${suitesUnicas.join(', ')})`);
+                    else if(etiquetaPiso) arrSubItems.push(etiquetaPiso);
+                } else {
+                    let mapSuites = {};
+                    pzasPiso.forEach(p => {
+                        let s = p.suite || 'S/N'; let e = p.espacio || '';
+                        if (!mapSuites[s]) mapSuites[s] = new Set();
+                        if (e) mapSuites[s].add(e);
+                    });
+                    let arrSuites = [];
+                    for (let suite in mapSuites) {
+                        let espacios = [...mapSuites[suite]];
+                        if (espacios.length > 0) arrSuites.push(`(${suite}: ${espacios.join(' - ')})`);
+                        else arrSuites.push(`(${suite})`);
+                    }
+                    arrSubItems.push(`${etiquetaPiso} ${arrSuites.join(' ')}`.trim());
+                }
+            }
+            
+            let txtSub = arrSubItems.join(' | ');
+            return `${p1.proyecto} - ${p1.producto} ${txtSub ? '- ' + txtSub : ''}`;
+        }
+
+        // ===============================================
+        // WIDGET: NOTAS DEL EQUIPO
+        // ===============================================
         function configurarBotonNotas() {
             const btnNotas = document.getElementById('btn-notas');
             const panelNotas = document.getElementById('panel-notas');
@@ -338,10 +558,12 @@
                     e.stopPropagation();
                     panelNotas.style.display = (panelNotas.style.display === 'block') ? 'none' : 'block';
                     if (panelNotas.style.display === 'block') marcarNotasComoLeidas();
+                    document.getElementById('panel-pendientes').style.display = 'none'; // Ocultar pendientes si estaban abiertas
                 });
                 
                 document.addEventListener('click', (e) => {
-                    if (!document.querySelector('.widget-notas').contains(e.target)) { panelNotas.style.display = 'none'; }
+                    let widgetContenedor = document.querySelectorAll('.widget-notas')[1]; 
+                    if (!widgetContenedor.contains(e.target)) { panelNotas.style.display = 'none'; }
                 });
             }
 
@@ -360,26 +582,18 @@
                 btnGuardarNota.addEventListener('click', async () => {
                     let texto = txtNota.value.trim();
                     if (!texto) return Swal.fire({ toast:true, position:'top-end', icon:'warning', title:'La nota está vacía', showConfirmButton:false, timer:2000 });
-                    
                     btnGuardarNota.disabled = true; btnGuardarNota.innerText = '...';
-
                     let urgente = chkUrgente.checked;
                     let payload = { autor_nombre: USUARIO_ACTUAL_NOMBRE.split(' ')[0], autor_email: USUARIO_ACTUAL_EMAIL, contenido: texto, importante: urgente };
 
                     let err = null;
-                    if (idNotaEnEdicion) {
-                        const { error } = await supabaseClient.from('notas_equipo').update(payload).eq('id', idNotaEnEdicion); err = error;
-                    } else {
-                        const { error } = await supabaseClient.from('notas_equipo').insert([payload]); err = error;
-                    }
+                    if (idNotaEnEdicion) { const { error } = await supabaseClient.from('notas_equipo').update(payload).eq('id', idNotaEnEdicion); err = error; } 
+                    else { const { error } = await supabaseClient.from('notas_equipo').insert([payload]); err = error; }
 
                     btnGuardarNota.disabled = false; btnGuardarNota.innerText = 'Publicar';
 
-                    if (err) {
-                        Swal.fire({ toast:true, position:'top-end', icon:'error', title:'Error al guardar', showConfirmButton:false, timer:2000 });
-                    } else {
-                        cajaEdicion.style.display = 'none'; cargarNotasEquipo();
-                    }
+                    if (err) Swal.fire({ toast:true, position:'top-end', icon:'error', title:'Error al guardar', showConfirmButton:false, timer:2000 });
+                    else { cajaEdicion.style.display = 'none'; cargarNotasEquipo(); }
                 });
             }
         }
@@ -395,7 +609,6 @@
             let notasNuevasParaMi = 0;
             let ultimaVezStr = localStorage.getItem(CACHE_NOTAS_KEY);
             let ultimaVez = ultimaVezStr ? new Date(ultimaVezStr) : new Date(0);
-            
             let htmlNotas = []; 
 
             data.forEach(nota => {
@@ -454,9 +667,9 @@
             if (conf.isConfirmed) { await supabaseClient.from('notas_equipo').delete().eq('id', id); cargarNotasEquipo(); }
         }
 
-        async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; }
-
-        // --- SISTEMA DE CARGA (REVERTIDO A * PARA EVITAR ERRORES, PERO CON JS RÁPIDO) ---
+        // ===============================================
+        // SISTEMA DE CARGA DASHBOARD
+        // ===============================================
         async function cargarDatosDashboard() {
             const { data: estadosCat } = await supabaseClient.from('catalogo_estados').select('*').order('orden', { ascending: true });
             if (estadosCat && estadosCat.length > 0) {
@@ -499,8 +712,6 @@
             const { data: historialReciente } = await supabaseClient.from('historial_trazabilidad').select('*').order('id', { ascending: false }).limit(200);
             if (historialReciente) {
                 window.historialGlobal = historialReciente;
-                
-                // Mapeo Rápido en memoria
                 window.mapaHistorial.clear();
                 historialReciente.forEach(h => {
                     if(!window.mapaHistorial.has(h.id_mueble)) window.mapaHistorial.set(h.id_mueble, []);
@@ -518,9 +729,6 @@
             actualizarGraficasDinamicas();
         }
 
-        // ===============================================
-        // FUNCIÓN PRINCIPAL DE LISTAS Y ORDENAMIENTO (OPTIMIZADA EN DOM)
-        // ===============================================
         function verListaModal(tipo) {
             let lista = []; let titulo = ""; let colorHex = "";
             let permitirEstrella = true;
@@ -532,7 +740,7 @@
                 lista = window.mueblesFiltradosGlobal.filter(m => m.estado && m.estado.toLowerCase() === 'por digitalizar'); 
                 titulo = "📐 Pendientes por Digitalizar"; colorHex = "#8b5cf6"; 
                 permitirEstrella = true;
-                agruparPorLote = true; // Se activa la agrupación
+                agruparPorLote = true;
             } else if (tipo === 'fabricar') { 
                 lista = window.mueblesFiltradosGlobal.filter(m => m.estado && (m.estado.toLowerCase().includes('fabric') || m.estado.toLowerCase() === 'por revisar')); 
                 titulo = "🏭 Lotes en Área de Fabricación / Revisión"; colorHex = "#f59e0b"; 
@@ -557,12 +765,8 @@
                 let grupos = {};
                 lista.forEach(m => {
                     let key;
-                    // Lógica para aislar productos 000 y que no se agrupen con otros 000
-                    if (!m.codigo_proyecto || m.codigo_proyecto === '000') {
-                        key = 'indiv_' + m.id;
-                    } else {
-                        key = `${m.codigo_proyecto}_${m.proyecto}_${m.producto}`;
-                    }
+                    if (!m.codigo_proyecto || m.codigo_proyecto === '000') { key = 'indiv_' + m.id; } 
+                    else { key = `${m.codigo_proyecto}_${m.proyecto}_${m.producto}`; }
 
                     if (!grupos[key]) {
                         let nombreResponsable = "Sin firma";
@@ -580,7 +784,6 @@
                 });
                 
                 let listaAgrupada = Object.values(grupos);
-                
                 listaAgrupada.sort((a,b) => {
                     let aRev = (a.estado && a.estado.toLowerCase() === 'por revisar') ? 1 : 0;
                     let bRev = (b.estado && b.estado.toLowerCase() === 'por revisar') ? 1 : 0;
@@ -604,15 +807,8 @@
                     if (permitirEstrella) {
                         let prio = g.piezas[0].nivel_prioridad || 0;
                         let iconoUrgencia = '<span class="prio-0">☆</span>';
-                        
-                        if (prio === 1) { 
-                            iconoUrgencia = '<span class="prio-1">★</span>'; 
-                            estiloFilaGroup = 'background-color: #fef9c3; box-shadow: inset 4px 0 0 #eab308;'; 
-                        } else if (prio === 2) { 
-                            iconoUrgencia = '<span class="prio-2">★</span>'; 
-                            estiloFilaGroup = 'background-color: #fff7ed; box-shadow: inset 4px 0 0 #f97316;'; 
-                        }
-                        
+                        if (prio === 1) { iconoUrgencia = '<span class="prio-1">★</span>'; estiloFilaGroup = 'background-color: #fef9c3; box-shadow: inset 4px 0 0 #eab308;'; } 
+                        else if (prio === 2) { iconoUrgencia = '<span class="prio-2">★</span>'; estiloFilaGroup = 'background-color: #fff7ed; box-shadow: inset 4px 0 0 #f97316;'; }
                         let idsStr = g.piezas.map(p => p.id).join(',');
                         colExtraContenido = `<td style="text-align:center; cursor:pointer; user-select:none; vertical-align:middle;" onclick="cambiarPrioridad('${idsStr}', ${prio}, '${tipo}')" title="Clic para cambiar prioridad de todo el lote">${iconoUrgencia}</td>`;
                     } else {
@@ -624,50 +820,9 @@
                         colExtraContenido = `<td style="text-align:center; vertical-align:middle;">${firmaTexto}</td>`;
                     }
 
-                    let isCommon = g.piezas.some(p => p.producto === 'PP' || p.espacio === 'AC');
-                    let mapPisos = {};
-                    g.piezas.forEach(p => {
-                        let pisoNro = p.piso ? p.piso : 'S/P';
-                        if(!mapPisos[pisoNro]) mapPisos[pisoNro] = [];
-                        mapPisos[pisoNro].push(p);
-                    });
-
-                    let arrSubItems = [];
-                    for(let pisoNro in mapPisos) {
-                        let pzasPiso = mapPisos[pisoNro];
-                        let etiquetaPiso = pisoNro !== 'S/P' ? `P${pisoNro}` : '';
-
-                        if (isCommon) {
-                            let suitesUnicas = [...new Set(pzasPiso.map(p => p.suite))].filter(Boolean);
-                            suitesUnicas.sort((a,b) => parseInt(a) - parseInt(b));
-                            if (suitesUnicas.length > 0) arrSubItems.push(`${etiquetaPiso}(${suitesUnicas.join(', ')})`);
-                            else if(etiquetaPiso) arrSubItems.push(etiquetaPiso);
-                        } else {
-                            let mapSuites = {};
-                            pzasPiso.forEach(p => {
-                                let s = p.suite || 'S/N'; let e = p.espacio || '';
-                                if (!mapSuites[s]) mapSuites[s] = new Set();
-                                if (e) mapSuites[s].add(e);
-                            });
-                            let arrSuites = [];
-                            for (let suite in mapSuites) {
-                                let espacios = [...mapSuites[suite]];
-                                if (espacios.length > 0) arrSuites.push(`(${suite}: ${espacios.join(' - ')})`);
-                                else arrSuites.push(`(${suite})`);
-                            }
-                            arrSubItems.push(`${etiquetaPiso} ${arrSuites.join(' ')}`.trim());
-                        }
-                    }
-                    
-                    let txtSub = arrSubItems.join(' | ');
-                    let descripcionLote = `<strong>${g.proyecto}</strong> - ${g.producto} ${txtSub ? '- ' + txtSub : ''}`;
-
+                    let descripcionLote = generarNomenclaturaLote(g.piezas);
                     let colorEstatus = colorHex;
-                    if (g.estado && g.estado.toLowerCase() === 'por revisar') {
-                        estiloFilaGroup = "background-color: #fef9c3; box-shadow: inset 4px 0 0 #eab308;";
-                        colorEstatus = "#d97706"; 
-                    }
-                    
+                    if (g.estado && g.estado.toLowerCase() === 'por revisar') { estiloFilaGroup = "background-color: #fef9c3; box-shadow: inset 4px 0 0 #eab308;"; colorEstatus = "#d97706"; }
                     let textoCantidad = g.cantidad > 1 ? `<br><small style="color:#64748b;">📦 ${g.cantidad} piezas agrupadas</small>` : '';
 
                     htmlFilas.push(`<tr style="${estiloFilaGroup}">
@@ -695,7 +850,6 @@
                 });
 
                 let colExtraCabecera = permitirEstrella ? '<th style="width: 35px; text-align:center;" title="Prioridad">⭐</th>' : '<th style="width:45px; text-align:center;" title="Responsable">Resp.</th>';
-                
                 htmlTablaFinal += `<thead><tr>${colExtraCabecera}<th>Cód.</th><th>Ubicación</th><th>Producto</th><th>Estado/Obs.</th></tr></thead><tbody>`;
 
                 lista.forEach(m => {
@@ -707,25 +861,15 @@
                     
                     let colExtraContenido = ""; let estiloFila = "";
 
-                    if (m.estado && m.estado.toLowerCase() === 'por revisar') {
-                        estiloFila = 'background-color: #fef9c3; box-shadow: inset 4px 0 0 #eab308;';
-                    }
+                    if (m.estado && m.estado.toLowerCase() === 'por revisar') { estiloFila = 'background-color: #fef9c3; box-shadow: inset 4px 0 0 #eab308;'; }
 
                     if (permitirEstrella) {
                         let prio = m.nivel_prioridad || 0;
                         let iconoUrgencia = '<span class="prio-0">☆</span>';
-                        
-                        if (prio === 1) { 
-                            iconoUrgencia = '<span class="prio-1">★</span>'; 
-                            estiloFila = 'background-color: #fef9c3; box-shadow: inset 4px 0 0 #eab308;';
-                        } else if (prio === 2) { 
-                            iconoUrgencia = '<span class="prio-2">★</span>'; 
-                            estiloFila = 'background-color: #fff7ed; box-shadow: inset 4px 0 0 #f97316;';
-                        }
+                        if (prio === 1) { iconoUrgencia = '<span class="prio-1">★</span>'; estiloFila = 'background-color: #fef9c3; box-shadow: inset 4px 0 0 #eab308;'; } 
+                        else if (prio === 2) { iconoUrgencia = '<span class="prio-2">★</span>'; estiloFila = 'background-color: #fff7ed; box-shadow: inset 4px 0 0 #f97316;'; }
                         colExtraContenido = `<td style="text-align:center; cursor:pointer; user-select:none; vertical-align:middle;" onclick="cambiarPrioridad('${m.id}', ${prio}, '${tipo}')" title="Clic para cambiar prioridad">${iconoUrgencia}</td>`;
-                    } else {
-                        colExtraContenido = `<td style="text-align:center; vertical-align:middle;"><span style="color:#94a3b8;">-</span></td>`;
-                    }
+                    } else { colExtraContenido = `<td style="text-align:center; vertical-align:middle;"><span style="color:#94a3b8;">-</span></td>`; }
 
                     htmlFilas.push(`<tr style="${estiloFila}">
                         ${colExtraContenido}
@@ -739,7 +883,6 @@
             
             htmlTablaFinal += htmlFilas.join('');
             htmlTablaFinal += `</tbody></table></div></div>`;
-            
             Swal.fire({ title: titulo, html: htmlTablaFinal, width: '850px', confirmButtonText: 'Cerrar', confirmButtonColor: '#475569' });
         }
 
@@ -750,8 +893,6 @@
             else nuevaPrio = 0;
             
             let arrayIds = ids.split(',');
-            
-            // Actualización local rápida para reflejar en el DOM
             arrayIds.forEach(id_mueble => {
                 let mueble = window.mueblesCargados.find(m => String(m.id) === String(id_mueble));
                 if(mueble) mueble.nivel_prioridad = nuevaPrio;
@@ -762,7 +903,6 @@
             const { error } = await supabaseClient.from('registros_produccion').update({ nivel_prioridad: nuevaPrio }).in('id', arrayIds);
             
             if(error) {
-                // Revertir en caso de error
                 arrayIds.forEach(id_mueble => {
                     let mueble = window.mueblesCargados.find(m => String(m.id) === String(id_mueble));
                     if(mueble) mueble.nivel_prioridad = prioActual;
@@ -795,10 +935,7 @@
             dibujarGraficaEstados(conteoEstados); dibujarGraficaProyectos(conteoProyectos, window.coloresProyectosGlobal);
         }
 
-        function autoCalcularAvance() {
-            clearTimeout(debounceProgreso);
-            debounceProgreso = setTimeout(calcularAvance, 400);
-        }
+        function autoCalcularAvance() { clearTimeout(debounceProgreso); debounceProgreso = setTimeout(calcularAvance, 400); }
 
         function calcularAvance() {
             actualizarGraficasDinamicas();
@@ -844,11 +981,8 @@
         }
 
         function resetearBarra() { document.getElementById('bar_verde').style.width = `0%`; document.getElementById('bar_verde').innerHTML = ''; document.getElementById('bar_amarillo').style.width = `0%`; document.getElementById('bar_amarillo').innerHTML = ''; document.getElementById('bar_rojo').style.width = `0%`; document.getElementById('bar_rojo').innerHTML = ''; }
-        
         function animarContador(idElemento, valorFinal) { let actual = 0; const elemento = document.getElementById(idElemento); const incremento = Math.max(1, Math.floor(valorFinal / 20)); const intervalo = setInterval(() => { actual += incremento; if (actual >= valorFinal) { actual = valorFinal; clearInterval(intervalo); } elemento.innerText = actual; }, 30); }
-        
         function dibujarGraficaEstados(datos) { const ctx = document.getElementById('chartEstados').getContext('2d'); if (myChartEstados) myChartEstados.destroy(); const etiquetas = Object.keys(datos); const valores = Object.values(datos); const colores = ['#94a3b8', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#14b8a6']; myChartEstados = new Chart(ctx, { type: 'doughnut', data: { labels: etiquetas, datasets: [{ data: valores, backgroundColor: colores.slice(0, etiquetas.length), borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { boxWidth: 15, font: { size: 11 } } } }, cutout: '60%' } }); }
-        
         function dibujarGraficaProyectos(datos, diccionarioColores) { const ctx = document.getElementById('chartProyectos').getContext('2d'); if (myChartProyectos) myChartProyectos.destroy(); const etiquetas = Object.keys(datos); const valores = Object.values(datos); const coloresBarra = etiquetas.map(lbl => diccionarioColores[lbl] || '#3b82f6'); myChartProyectos = new Chart(ctx, { type: 'bar', data: { labels: etiquetas, datasets: [{ label: 'Cant. de Muebles', data: valores, backgroundColor: coloresBarra, borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } }, x: { grid: { display: false } } } } }); }
         
         function verNotificacionesGlobales() {
@@ -861,11 +995,8 @@
             let htmlFilasNotif = [];
             window.historialGlobal.forEach(h => {
                 let m = window.mueblesCargados.find(x => x.id === h.id_mueble);
-                // Aquí se agregó el nombre del producto de forma clara junto a la suite
                 let ubi = m ? `<b>${m.proyecto}</b> (P${m.piso}${m.bloque?'- Blq '+m.bloque:''}-S${m.suite}) | <b>${m.producto}</b>` : "Pieza desconocida";
                 let icono = h.tipo_registro.includes('Falla') ? '🛑' : (h.tipo_registro.includes('Edición') ? '✏️' : '✨');
-                
-                // Formateamos la fecha directamente del registro de la base de datos
                 let fechaFormateada = new Date(h.created_at).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute:'2-digit' });
                 
                 htmlFilasNotif.push(`<div class="notif-item"><div class="notif-icon">${icono}</div><div class="notif-content"><span style="color:#3b82f6; font-weight:bold;">👤 ${h.operador || 'Operador'}</span> <span style="color:#334155;">registró: <b>${h.tipo_registro}</b> en ${ubi}</span><br><span style="color: #64748b; font-style: italic;">"${h.comentarios || h.etapa}"</span><div class="notif-time">${fechaFormateada}</div></div></div>`);
