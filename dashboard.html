@@ -164,7 +164,7 @@
                 <h2 class="header-title">Tablero de Producción</h2>
                 <div class="perfil-usuario">
                     
-                    <!-- WIDGET DE PENDIENTES DE OBRA (NUEVO) -->
+                    <!-- WIDGET DE PENDIENTES DE OBRA (BACKORDERS) -->
                     <div class="widget-notas">
                         <button id="btn-pendientes" class="btn-icono" title="Pendientes de Obra (Backorders)">
                             ⏳<span id="badge-pendientes" class="badge-notas-urgente" style="display: none; background:#f59e0b; border-color:white;">0</span>
@@ -174,6 +174,14 @@
                                 <h4>Pendientes de Obra</h4>
                                 <button id="btn-nuevo-pendiente" class="btn-redondo" style="background:#f59e0b;" title="Registrar Pendiente">+</button>
                             </div>
+                            
+                            <!-- NUEVO FILTRO DESPLEGABLE DE AUTORES -->
+                            <div style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
+                                <select id="filtro-autor-pendientes" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 12px; outline: none; background: white;" onchange="renderizarListaPendientes()">
+                                    <option value="ALL">🌍 Todos los pendientes</option>
+                                </select>
+                            </div>
+
                             <div id="caja-edicion-pendiente" style="display: none; padding: 15px; border-bottom: 1px solid #e2e8f0; background: #fff;">
                                 <input type="number" id="input-codigo-pendiente" placeholder="Código de Lote (Ej: 508)" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:4px; margin-bottom:8px; box-sizing:border-box; outline:none;">
                                 <div id="preview-lote-pendiente" style="font-size:11px; color:#3b82f6; margin-bottom:10px; font-weight:bold; min-height:15px;">Esperando código...</div>
@@ -191,7 +199,7 @@
                         </div>
                     </div>
 
-                    <!-- WIDGET DE NOTAS (EXISTENTE) -->
+                    <!-- WIDGET DE NOTAS DEL EQUIPO -->
                     <div class="widget-notas">
                         <button id="btn-notas" class="btn-icono" title="Notas del Equipo">
                             📝<span id="badge-notas" class="badge-notas-urgente" style="display: none;">0</span>
@@ -304,17 +312,19 @@
         window.historialGlobal = []; 
         window.mapaHistorial = new Map(); 
         
+        window.pendientesDataGlobal = []; // Array en memoria para filtrar pendientes rápido
+        
         let USUARIO_ACTUAL_EMAIL = "";
         let USUARIO_ACTUAL_NOMBRE = "";
         const CACHE_NOTAS_KEY = 'ultima_revision_notas';
         let idNotaEnEdicion = null;
         window.alertasNoLeidas = 0;
         window.notasNoLeidas = 0;
-        window.totalPendientesObras = 0; // Para la burbuja de PENDIENTES
 
         function actualizarBadgeSistemaOS() {
             if ('setAppBadge' in navigator) {
-                let total = window.alertasNoLeidas + window.notasNoLeidas + window.totalPendientesObras;
+                // NOTA: Aquí quitamos los pendientes para no molestar el ícono externo
+                let total = window.alertasNoLeidas + window.notasNoLeidas;
                 if (total > 0) navigator.setAppBadge(total).catch(e => console.log(e));
                 else navigator.clearAppBadge().catch(e => console.log(e));
             }
@@ -344,10 +354,10 @@
                 document.getElementById('fotoUsuario').src = session.user.user_metadata.avatar_url || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
 
                 configurarBotonNotas();
-                configurarBotonPendientes(); // NUEVO WIDGET
+                configurarBotonPendientes(); 
                 await cargarDatosDashboard();
                 cargarNotasEquipo();
-                cargarPendientesObras(); // NUEVO WIDGET
+                cargarPendientesObras(); 
                 
                 setInterval(() => {
                     cargarNotasEquipo();
@@ -378,7 +388,7 @@
                 btnPendientes.addEventListener('click', (e) => {
                     e.stopPropagation();
                     panelPendientes.style.display = (panelPendientes.style.display === 'block') ? 'none' : 'block';
-                    document.getElementById('panel-notas').style.display = 'none'; // Ocultar notas si estaban abiertas
+                    document.getElementById('panel-notas').style.display = 'none'; 
                 });
                 
                 document.addEventListener('click', (e) => {
@@ -398,12 +408,10 @@
                 btnCancelarP.addEventListener('click', () => { cajaEdicion.style.display = 'none'; });
             }
 
-            // MOTOR DE AUTOCOMPLETADO INTELIGENTE
             inputCodigo.addEventListener('input', () => {
                 let codBusqueda = inputCodigo.value.trim();
                 if (!codBusqueda) { txtPreview.innerText = 'Esperando código...'; txtPreview.style.color = '#94a3b8'; return; }
                 
-                // Buscar las piezas de ese lote
                 let piezasEncontradas = window.mueblesCargados.filter(m => String(m.codigo_proyecto) === codBusqueda);
                 if(piezasEncontradas.length === 0) {
                     txtPreview.innerText = '❌ Código no encontrado en el sistema.';
@@ -448,27 +456,75 @@
         }
 
         async function cargarPendientesObras() {
-            // Cargar solo los pendientes activos
             const { data, error } = await supabaseClient.from('pendientes_obra').select('*').eq('estado', 'Activo').order('fecha_creacion', { ascending: false });
-            const lista = document.getElementById('lista-pendientes');
+            
+            if (error) return;
+            
+            window.pendientesDataGlobal = data || [];
+            let total = window.pendientesDataGlobal.length;
+            
+            // Actualizar badge solo en la interfaz, no en OS
             const badge = document.getElementById('badge-pendientes');
-
-            if (error) { lista.innerHTML = `<p style="text-align:center; font-size:12px; color:#ef4444; padding:20px;">Error de red.</p>`; return; }
-            if (!data || data.length === 0) { 
-                lista.innerHTML = `<p style="text-align:center; font-size:12px; color:#94a3b8; padding:20px;">No hay pendientes de obra activos. 🎉</p>`; 
-                badge.style.display = 'none';
-                window.totalPendientesObras = 0;
-                actualizarBadgeSistemaOS();
-                return; 
+            if (total > 0) { 
+                badge.style.display = 'flex'; 
+                badge.innerText = total > 9 ? '9+' : total; 
+            } else { 
+                badge.style.display = 'none'; 
             }
+            
+            actualizarSelectAutores();
+            renderizarListaPendientes();
+        }
 
-            window.totalPendientesObras = data.length;
-            badge.style.display = 'flex';
-            badge.innerText = data.length > 9 ? '9+' : data.length;
-            actualizarBadgeSistemaOS();
+        function actualizarSelectAutores() {
+            const select = document.getElementById('filtro-autor-pendientes');
+            const valorActual = select.value; 
+            
+            let htmlOptions = '<option value="ALL">🌍 Todos los pendientes</option>';
+            
+            const autores = [...new Set(window.pendientesDataGlobal.map(p => p.autor_nombre))];
+            const miNombre = USUARIO_ACTUAL_NOMBRE.split(' ')[0];
+            
+            if (autores.includes(miNombre)) {
+                htmlOptions += `<option value="${miNombre}">🙋‍♂️ Mis pendientes (${miNombre})</option>`;
+            }
+            
+            autores.forEach(autor => {
+                if (autor !== miNombre && autor) {
+                    htmlOptions += `<option value="${autor}">👤 ${autor}</option>`;
+                }
+            });
+            
+            select.innerHTML = htmlOptions;
+            
+            if (select.querySelector(`option[value="${valorActual}"]`)) {
+                select.value = valorActual;
+            } else {
+                select.value = 'ALL';
+            }
+        }
+
+        function renderizarListaPendientes() {
+            const lista = document.getElementById('lista-pendientes');
+            const filtro = document.getElementById('filtro-autor-pendientes').value;
+            
+            if (window.pendientesDataGlobal.length === 0) {
+                lista.innerHTML = `<p style="text-align:center; font-size:12px; color:#94a3b8; padding:20px;">No hay pendientes de obra activos. 🎉</p>`;
+                return;
+            }
+            
+            let pendientesFiltrados = window.pendientesDataGlobal;
+            if (filtro !== 'ALL') {
+                pendientesFiltrados = window.pendientesDataGlobal.filter(p => p.autor_nombre === filtro);
+            }
+            
+            if (pendientesFiltrados.length === 0) {
+                lista.innerHTML = `<p style="text-align:center; font-size:12px; color:#94a3b8; padding:20px;">No hay pendientes para este filtro.</p>`;
+                return;
+            }
             
             let htmlHTML = []; 
-            data.forEach(p => {
+            pendientesFiltrados.forEach(p => {
                 let fCrea = new Date(p.fecha_creacion);
                 let horaFormateada = fCrea.toLocaleString('es-ES', { day: '2-digit', month: 'short' });
                 
@@ -497,7 +553,6 @@
             }
         }
 
-        // FUNCIÓN AUXILIAR PARA GENERAR LA NOMENCLATURA EXACTA DE UN LOTE
         function generarNomenclaturaLote(piezas) {
             if (!piezas || piezas.length === 0) return "";
             let p1 = piezas[0];
@@ -558,7 +613,7 @@
                     e.stopPropagation();
                     panelNotas.style.display = (panelNotas.style.display === 'block') ? 'none' : 'block';
                     if (panelNotas.style.display === 'block') marcarNotasComoLeidas();
-                    document.getElementById('panel-pendientes').style.display = 'none'; // Ocultar pendientes si estaban abiertas
+                    document.getElementById('panel-pendientes').style.display = 'none'; 
                 });
                 
                 document.addEventListener('click', (e) => {
