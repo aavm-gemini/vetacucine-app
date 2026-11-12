@@ -88,17 +88,16 @@
         .clickable-card::after { content: "👆 Ver lista"; position: absolute; top: 15px; right: 15px; font-size: 9px; color: #64748b; font-weight: bold; background: #f1f5f9; padding: 3px 8px; border-radius: 10px; opacity: 0; transition: 0.2s; }
         .clickable-card:hover::after { opacity: 1; }
 
+        /* NUEVO: ESTILOS DE ANÁLISIS DE PROYECTO (UNIVERSO) */
         .progreso-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-bottom: 25px; border-top: 5px solid #ec4899; width: 100%; box-sizing: border-box; }
         .progreso-card h3 { margin-top: 0; font-size: 16px; color: #334155; margin-bottom: 15px; }
-        .filtros-progreso { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; }
-        .filtros-progreso select, .filtros-progreso input { flex: 1; min-width: 150px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px; outline: none; box-sizing: border-box; }
-        .filtros-progreso input { text-transform: uppercase; }
         
-        .barra-container { background: #e2e8f0; border-radius: 10px; height: 25px; width: 100%; display: flex; overflow: hidden; margin-bottom: 10px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); }
-        .segmento-verde { background: #10b981; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: bold; transition: width 0.5s ease; white-space: nowrap; overflow: hidden;}
-        .segmento-amarillo { background: #f59e0b; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: bold; transition: width 0.5s ease; white-space: nowrap; overflow: hidden;}
-        .segmento-rojo { background: #ef4444; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: bold; transition: width 0.5s ease; white-space: nowrap; overflow: hidden;}
-        .leyenda-progreso { display: flex; justify-content: space-between; font-size: 13px; color: #475569; font-weight: bold; flex-wrap: wrap; gap: 10px; }
+        .filtros-universo { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .filtros-universo select, .filtros-universo input { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; outline: none; box-sizing: border-box; background: white; }
+        
+        .universo-container { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .universo-chart-wrapper { width: 180px; height: 180px; position: relative; margin: 0 auto; flex-shrink: 0; }
+        .universo-leyenda { flex: 1; min-width: 250px; font-size: 13px; color: #475569; display: flex; flex-direction: column; justify-content: center; }
 
         .charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 40px; width: 100%; box-sizing: border-box; }
         .chart-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); width: 100%; box-sizing: border-box; overflow: hidden; }
@@ -138,8 +137,8 @@
             .main-content { padding: 15px; height: auto; width: 100%; box-sizing: border-box; overflow-x: hidden !important; }
             .header-top { flex-direction: column; align-items: center; text-align: center; gap: 15px; margin-bottom: 20px; padding-bottom: 15px; width: 100%; box-sizing: border-box; }
             .stats-grid, .charts-grid { grid-template-columns: 1fr; width: 100%; }
-            .filtros-progreso { flex-direction: column; }
-            .filtros-progreso select, .filtros-progreso input { width: 100%; margin-bottom: 8px; }
+            .filtros-universo { grid-template-columns: 1fr; } /* APILAR EN MÓVIL */
+            .universo-container { flex-direction: column; text-align: center; }
             .panel-desplegable { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 350px; z-index: 2000; box-shadow: 0 0 0 1000px rgba(0,0,0,0.5); }
         }
     </style>
@@ -261,20 +260,24 @@
                 </div>
             </div>
 
+            <!-- NUEVO PANEL DE ANÁLISIS DE PROYECTO (UNIVERSO TOTAL) -->
             <div class="progreso-card">
-                <h3>🎯 Filtro Global y Progreso (Metas vs. Realidad)</h3>
-                <div class="filtros-progreso">
-                    <select id="sel_proy" onchange="actualizarFiltrosMetas()"><option value="">Selecciona Proyecto...</option></select>
-                    <input type="text" id="sel_piso" placeholder="Piso (Vacío = TODOS)" oninput="autoCalcularAvance()">
+                <h3>🎯 Análisis de Proyecto (Real vs. Proyección)</h3>
+                
+                <div class="filtros-universo">
+                    <select id="sel_proy" onchange="calcularAvance()"><option value="">Selecciona Proyecto...</option></select>
                     <select id="sel_prod" onchange="calcularAvance()"><option value="">Selecciona Producto...</option></select>
+                    <input type="number" id="sel_piso_desde" placeholder="Desde Piso... (Vacío = Todos)" oninput="autoCalcularAvance()">
+                    <input type="number" id="sel_piso_hasta" placeholder="Hasta Piso... (Opcional)" oninput="autoCalcularAvance()">
                 </div>
-                <div class="barra-container">
-                    <div id="bar_verde" class="segmento-verde" style="width: 0%;"></div>
-                    <div id="bar_amarillo" class="segmento-amarillo" style="width: 0%;"></div>
-                    <div id="bar_rojo" class="segmento-rojo" style="width: 0%;"></div>
-                </div>
-                <div class="leyenda-progreso" id="texto_progreso">
-                    Selecciona un proyecto y producto para ver el progreso real.
+                
+                <div class="universo-container">
+                    <div class="universo-chart-wrapper">
+                        <canvas id="chartUniverso"></canvas>
+                    </div>
+                    <div class="universo-leyenda" id="texto_progreso">
+                        <span style="text-align:center; color:#94a3b8;">Selecciona un proyecto y producto para analizar el universo de obra.</span>
+                    </div>
                 </div>
             </div>
 
@@ -302,6 +305,7 @@
 
         let myChartEstados = null;
         let myChartProyectos = null;
+        let myChartUniverso = null; // Nuevo Chart Universo
         let debounceProgreso = null; 
         
         window.mueblesCargados = [];
@@ -319,14 +323,13 @@
         let USUARIO_ACTUAL_NOMBRE = "";
         const CACHE_NOTAS_KEY = 'ultima_revision_notas';
         let idNotaEnEdicion = null;
-        let idPendienteEnEdicion = null; // NUEVO: Control de edición de pendientes
+        let idPendienteEnEdicion = null;
         window.alertasNoLeidas = 0;
         window.notasNoLeidas = 0;
         window.totalPendientesObras = 0;
 
         function actualizarBadgeSistemaOS() {
             if ('setAppBadge' in navigator) {
-                // NOTA: Aquí quitamos los pendientes para no molestar el ícono externo
                 let total = window.alertasNoLeidas + window.notasNoLeidas;
                 if (total > 0) navigator.setAppBadge(total).catch(e => console.log(e));
                 else navigator.clearAppBadge().catch(e => console.log(e));
@@ -358,6 +361,7 @@
 
                 configurarBotonNotas();
                 configurarBotonPendientes(); 
+                dibujarGraficaUniverso([]); // Inicia dona vacía
                 await cargarDatosDashboard();
                 cargarNotasEquipo();
                 cargarPendientesObras(); 
@@ -402,7 +406,7 @@
 
             if(btnNuevoP) {
                 btnNuevoP.addEventListener('click', () => {
-                    idPendienteEnEdicion = null; // Asegurarse de que es uno nuevo
+                    idPendienteEnEdicion = null;
                     inputCodigo.value = ''; txtPreview.innerText = 'Esperando código...'; txtPreview.style.color = '#94a3b8'; txtNota.value = '';
                     cajaEdicion.style.display = 'block'; inputCodigo.focus();
                 });
@@ -439,7 +443,6 @@
                     btnGuardarP.disabled = true; btnGuardarP.innerText = '...';
 
                     let err = null;
-
                     if (idPendienteEnEdicion) {
                         const { error } = await supabaseClient.from('pendientes_obra').update({
                             codigo_proyecto: cod,
@@ -472,13 +475,11 @@
 
         async function cargarPendientesObras() {
             const { data, error } = await supabaseClient.from('pendientes_obra').select('*').eq('estado', 'Activo').order('fecha_creacion', { ascending: false });
-            
             if (error) return;
             
             window.pendientesDataGlobal = data || [];
             let total = window.pendientesDataGlobal.length;
             
-            // Actualizar badge solo en la interfaz, no en OS
             const badge = document.getElementById('badge-pendientes');
             if (total > 0) { 
                 badge.style.display = 'flex'; 
@@ -496,27 +497,15 @@
             const valorActual = select.value; 
             
             let htmlOptions = '<option value="ALL">🌍 Todos los pendientes</option>';
-            
             const autores = [...new Set(window.pendientesDataGlobal.map(p => p.autor_nombre))];
             const miNombre = USUARIO_ACTUAL_NOMBRE.split(' ')[0];
             
-            if (autores.includes(miNombre)) {
-                htmlOptions += `<option value="${miNombre}">🙋‍♂️ Mis pendientes (${miNombre})</option>`;
-            }
-            
+            if (autores.includes(miNombre)) { htmlOptions += `<option value="${miNombre}">🙋‍♂️ Mis pendientes (${miNombre})</option>`; }
             autores.forEach(autor => {
-                if (autor !== miNombre && autor) {
-                    htmlOptions += `<option value="${autor}">👤 ${autor}</option>`;
-                }
+                if (autor !== miNombre && autor) { htmlOptions += `<option value="${autor}">👤 ${autor}</option>`; }
             });
-            
             select.innerHTML = htmlOptions;
-            
-            if (select.querySelector(`option[value="${valorActual}"]`)) {
-                select.value = valorActual;
-            } else {
-                select.value = 'ALL';
-            }
+            if (select.querySelector(`option[value="${valorActual}"]`)) { select.value = valorActual; } else { select.value = 'ALL'; }
         }
 
         function renderizarListaPendientes() {
@@ -529,9 +518,7 @@
             }
             
             let pendientesFiltrados = window.pendientesDataGlobal;
-            if (filtro !== 'ALL') {
-                pendientesFiltrados = window.pendientesDataGlobal.filter(p => p.autor_nombre === filtro);
-            }
+            if (filtro !== 'ALL') pendientesFiltrados = window.pendientesDataGlobal.filter(p => p.autor_nombre === filtro);
             
             if (pendientesFiltrados.length === 0) {
                 lista.innerHTML = `<p style="text-align:center; font-size:12px; color:#94a3b8; padding:20px;">No hay pendientes para este filtro.</p>`;
@@ -571,18 +558,13 @@
             document.getElementById('input-codigo-pendiente').value = cod;
             document.getElementById('texto-pendiente').value = nota;
             idPendienteEnEdicion = id;
-            
-            // Forzar actualización del preview visualmente
             document.getElementById('input-codigo-pendiente').dispatchEvent(new Event('input'));
             document.getElementById('texto-pendiente').focus();
         }
 
         async function resolverPendienteObra(id) {
             const conf = await Swal.fire({ title: '¿Marcar como resuelto?', text:'Esto quitará el pendiente de la lista activa.', icon: 'question', showCancelButton: true, confirmButtonColor: '#10b981', confirmButtonText: 'Sí, resuelto' });
-            if (conf.isConfirmed) { 
-                await supabaseClient.from('pendientes_obra').update({ estado: 'Resuelto' }).eq('id', id); 
-                cargarPendientesObras(); 
-            }
+            if (conf.isConfirmed) { await supabaseClient.from('pendientes_obra').update({ estado: 'Resuelto' }).eq('id', id); cargarPendientesObras(); }
         }
 
         function generarNomenclaturaLote(piezas) {
@@ -690,7 +672,7 @@
             const lista = document.getElementById('lista-notas');
             const badge = document.getElementById('badge-notas');
 
-            if (error) { lista.innerHTML = `<p style="text-align:center; font-size:12px; color:#ef4444; padding:20px;">Error al cargar notas.</p>`; return; }
+            if (error) return;
             if (!data || data.length === 0) { lista.innerHTML = `<p style="text-align:center; font-size:12px; color:#94a3b8; padding:20px;">No hay notas en el equipo.</p>`; return; }
 
             let notasNuevasParaMi = 0;
@@ -727,7 +709,6 @@
             });
 
             lista.innerHTML = htmlNotas.join(''); 
-
             if (notasNuevasParaMi > 0) {
                 badge.style.display = 'flex'; badge.innerText = notasNuevasParaMi > 9 ? '9+' : notasNuevasParaMi; window.notasNoLeidas = notasNuevasParaMi;
             } else {
@@ -755,7 +736,7 @@
         }
 
         // ===============================================
-        // SISTEMA DE CARGA DASHBOARD
+        // SISTEMA DE CARGA DASHBOARD Y NUEVO UNIVERSO
         // ===============================================
         async function cargarDatosDashboard() {
             const { data: estadosCat } = await supabaseClient.from('catalogo_estados').select('*').order('orden', { ascending: true });
@@ -780,8 +761,7 @@
                 document.getElementById('sel_prod').innerHTML = htmlProds.join('');
             }
 
-            const { data: proyectosCat } = await supabaseClient.from('catalogo_proyectos').select('*').order('nombre');
-            
+            const { data: proyectosCat } = await supabaseClient.from('catalogo_proyectos').select('*').order('nombre');                        
             if (proyectosCat) {
                 let htmlProys = ['<option value="">Selecciona Proyecto...</option>'];
                 proyectosCat.forEach(item => {
@@ -999,15 +979,170 @@
             }
         }
 
-        function actualizarFiltrosMetas() { document.getElementById('sel_piso').value = ""; resetearBarra(); actualizarGraficasDinamicas(); calcularAvance(); }
+        function autoCalcularAvance() { clearTimeout(debounceProgreso); debounceProgreso = setTimeout(calcularAvance, 400); }
 
+        function calcularAvance() {
+            actualizarGraficasDinamicas(); 
+            
+            let proy = document.getElementById('sel_proy').value; 
+            let prod = document.getElementById('sel_prod').value;
+            let pisoDesdeRaw = document.getElementById('sel_piso_desde').value.trim();
+            let pisoHastaRaw = document.getElementById('sel_piso_hasta').value.trim();
+            
+            if(!proy || !prod) { 
+                dibujarGraficaUniverso([]); 
+                document.getElementById('texto_progreso').innerHTML = "<span style='text-align:center; color:#94a3b8; width:100%; display:block;'>Selecciona un proyecto y producto para analizar el universo de obra.</span>"; 
+                return; 
+            }
+
+            let desde = parseInt(pisoDesdeRaw);
+            let hasta = parseInt(pisoHastaRaw);
+            let rangoPisos = [];
+            
+            // Determinar Rango de Pisos (Numérico)
+            if (!isNaN(desde) && !isNaN(hasta) && hasta >= desde) {
+                for(let i = desde; i <= hasta; i++) rangoPisos.push(i);
+            } else if (!isNaN(desde)) {
+                rangoPisos.push(desde);
+            }
+
+            let metaTotal = 0;
+            
+            // Filtramos los muebles reales cargados en el sistema
+            let mueblesReales = window.mueblesCargados.filter(m => { 
+                let nombreArmado = m.bloque ? `${m.proyecto} - Bloque ${m.bloque}` : m.proyecto; 
+                return nombreArmado === proy && m.producto === prod; 
+            });
+
+            // Si hay rango numérico, filtramos los reales
+            if (rangoPisos.length > 0) {
+                mueblesReales = mueblesReales.filter(m => {
+                    let p = parseInt(m.piso);
+                    return !isNaN(p) && rangoPisos.includes(p);
+                });
+            }
+
+            // Calculamos Meta Total de la Plantilla Matriz
+            if (rangoPisos.length > 0) {
+                rangoPisos.forEach(pisoNum => {
+                    let metaPiso = window.metasCargadas.find(m => m.proyecto === proy && m.piso === String(pisoNum) && m.producto === prod);
+                    if (metaPiso) {
+                        metaTotal += metaPiso.cantidad_esperada;
+                    } else {
+                        let metaGral = window.metasCargadas.find(m => m.proyecto === proy && m.piso === "TODOS" && m.producto === prod);
+                        if(metaGral) metaTotal += metaGral.cantidad_esperada;
+                    }
+                });
+            } else {
+                // Si está vacío (Calculamos todos los pisos activos)
+                let metaGral = window.metasCargadas.find(m => m.proyecto === proy && m.piso === "TODOS" && m.producto === prod);
+                let pisosActivos = [...new Set(mueblesReales.map(m => String(m.piso).toUpperCase()))];
+                
+                if (pisosActivos.length === 0) { 
+                    if (metaGral) metaTotal = metaGral.cantidad_esperada; 
+                } else { 
+                    pisosActivos.forEach(p => { 
+                        let metaEsp = window.metasCargadas.find(m => m.proyecto === proy && String(m.piso).toUpperCase() === p && m.producto === prod); 
+                        if (metaEsp) { metaTotal += metaEsp.cantidad_esperada; } 
+                        else if (metaGral) { metaTotal += metaGral.cantidad_esperada; } 
+                    }); 
+                }
+            }
+
+            // Conteo Real (Los estados del gráfico de anillo)
+            let terminadas = mueblesReales.filter(m => window.estadosFinales.includes(m.estado)).length; 
+            let bloqueadas = mueblesReales.filter(m => m.estado && m.estado.toLowerCase().includes('bloque')).length; 
+            let porDigitalizar = mueblesReales.filter(m => m.estado && m.estado.toLowerCase() === 'por digitalizar').length; 
+            let enProceso = mueblesReales.length - terminadas - bloqueadas - porDigitalizar;
+            
+            let totalReal = terminadas + enProceso + porDigitalizar + bloqueadas; 
+            let faltantes = metaTotal - totalReal; 
+            
+            // Si el total real superó la meta teórica, Faltantes no puede ser negativo
+            if (faltantes < 0) faltantes = 0;
+
+            let avisoSobreproduccion = totalReal > metaTotal ? `<span style="color:#ef4444; font-weight:bold; font-size:12px; margin-top:10px; display:block;">⚠️ ¡Sobreproducción! (+${totalReal - metaTotal} piezas detectadas)</span>` : '';
+            let txtRango = rangoPisos.length > 0 ? `(Piso ${rangoPisos[0]} ${rangoPisos.length>1 ? 'al '+rangoPisos[rangoPisos.length-1] : ''})` : '(Todos los pisos)';
+
+            // Renderizar Leyenda Personalizada
+            document.getElementById('texto_progreso').innerHTML = `
+                <div style="font-size: 15px; font-weight: bold; margin-bottom:12px; color:#1e293b;">Universo Total ${txtRango}: ${Math.max(metaTotal, totalReal)} Piezas</div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; font-size:13px;">
+                    <div><span style="display:inline-block; width:12px; height:12px; background:#10b981; border-radius:3px;"></span> Terminados: <b>${terminadas}</b></div>
+                    <div><span style="display:inline-block; width:12px; height:12px; background:#f59e0b; border-radius:3px;"></span> En Proceso: <b>${enProceso}</b></div>
+                    <div><span style="display:inline-block; width:12px; height:12px; background:#8b5cf6; border-radius:3px;"></span> Por Digitalizar: <b>${porDigitalizar}</b></div>
+                    <div><span style="display:inline-block; width:12px; height:12px; background:#ef4444; border-radius:3px;"></span> Bloqueados: <b>${bloqueadas}</b></div>
+                    
+                    <div style="grid-column: span 2; margin-top:8px; padding-top:8px; border-top:1px solid #cbd5e1;">
+                        <span style="display:inline-block; width:12px; height:12px; background:#94a3b8; border-radius:3px; margin-right:5px;"></span> Falta Ingresar (Fantasmas): <b>${faltantes}</b>
+                    </div>
+                </div>
+                ${avisoSobreproduccion}
+            `;
+
+            dibujarGraficaUniverso([terminadas, enProceso, porDigitalizar, bloqueadas, faltantes]);
+        }
+
+        // MOTOR DE LA GRÁFICA DE ANILLO (UNIVERSO TOTAL)
+        function dibujarGraficaUniverso(datosArray) {
+            const ctx = document.getElementById('chartUniverso');
+            if(!ctx) return;
+            if (myChartUniverso) myChartUniverso.destroy(); 
+            
+            // Si todo está en 0, mostramos dona gris vacía
+            if (!datosArray || datosArray.length === 0 || datosArray.reduce((a,b)=>a+b, 0) === 0) {
+                myChartUniverso = new Chart(ctx.getContext('2d'), { 
+                    type: 'doughnut', 
+                    data: { datasets: [{ data: [1], backgroundColor: ['#e2e8f0'] }] }, 
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: {enabled: false} }, cutout: '65%' } 
+                });
+                return;
+            }
+
+            myChartUniverso = new Chart(ctx.getContext('2d'), { 
+                type: 'doughnut', 
+                data: { 
+                    labels: ['Terminados', 'En Proceso', 'Por Digitalizar', 'Bloqueados', 'Falta Ingresar'], 
+                    datasets: [{ 
+                        data: datosArray, 
+                        backgroundColor: ['#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#94a3b8'], 
+                        borderWidth: 2 
+                    }] 
+                }, 
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { legend: { display: false } }, 
+                    cutout: '65%' 
+                } 
+            }); 
+        }
+
+        // ACTUALIZACIÓN DE GRÁFICAS INFERIORES Y TARJETAS GLOBALES
         function actualizarGraficasDinamicas() {
-            let proy = document.getElementById('sel_proy').value; let pisoRaw = document.getElementById('sel_piso').value.trim().toUpperCase(); let prod = document.getElementById('sel_prod').value;
+            let proy = document.getElementById('sel_proy').value; 
+            let prod = document.getElementById('sel_prod').value;
+            let pisoDesde = parseInt(document.getElementById('sel_piso_desde').value.trim());
+            let pisoHasta = parseInt(document.getElementById('sel_piso_hasta').value.trim());
+            
+            // Determinar si hay rango que aplicar también abajo
+            let rangoPisos = [];
+            if (!isNaN(pisoDesde) && !isNaN(pisoHasta) && pisoHasta >= pisoDesde) {
+                for(let i = pisoDesde; i <= pisoHasta; i++) rangoPisos.push(i);
+            } else if (!isNaN(pisoDesde)) {
+                rangoPisos.push(pisoDesde);
+            }
+
             let mueblesFiltrados = window.mueblesCargados;
 
             if (proy) mueblesFiltrados = mueblesFiltrados.filter(m => { let nombreArmado = m.bloque ? `${m.proyecto} - Bloque ${m.bloque}` : m.proyecto; return nombreArmado === proy; });
-            if (pisoRaw && pisoRaw !== "TODOS") mueblesFiltrados = mueblesFiltrados.filter(m => (m.piso || "").toUpperCase() === pisoRaw);
             if (prod) mueblesFiltrados = mueblesFiltrados.filter(m => m.producto === prod);
+            if (rangoPisos.length > 0) {
+                mueblesFiltrados = mueblesFiltrados.filter(m => {
+                    let p = parseInt(m.piso);
+                    return !isNaN(p) && rangoPisos.includes(p);
+                });
+            }
 
             window.mueblesFiltradosGlobal = mueblesFiltrados;
 
@@ -1022,52 +1157,6 @@
             dibujarGraficaEstados(conteoEstados); dibujarGraficaProyectos(conteoProyectos, window.coloresProyectosGlobal);
         }
 
-        function autoCalcularAvance() { clearTimeout(debounceProgreso); debounceProgreso = setTimeout(calcularAvance, 400); }
-
-        function calcularAvance() {
-            actualizarGraficasDinamicas();
-            let proy = document.getElementById('sel_proy').value; let pisoRaw = document.getElementById('sel_piso').value.trim().toUpperCase(); let piso = pisoRaw === "" ? "TODOS" : pisoRaw; let prod = document.getElementById('sel_prod').value;
-            if(!proy || !prod) { resetearBarra(); document.getElementById('texto_progreso').innerHTML = "Selecciona un proyecto y producto para ver el progreso real."; return; }
-            
-            let metaTotal = 0; let usoMetaGeneral = false; let mensajeAviso = "";
-            
-            if (piso === "TODOS") {
-                let metaGral = window.metasCargadas.find(m => m.proyecto === proy && m.piso === "TODOS" && m.producto === prod);
-                let mueblesDelProy = window.mueblesCargados.filter(m => { let nombreArmado = m.bloque ? `${m.proyecto} - Bloque ${m.bloque}` : m.proyecto; return nombreArmado === proy; });
-                let pisosActivos = [...new Set(mueblesDelProy.map(m => (m.piso || "").toUpperCase()))];
-                if (pisosActivos.length === 0) { if (metaGral) metaTotal = metaGral.cantidad_esperada; } 
-                else { pisosActivos.forEach(p => { let metaEsp = window.metasCargadas.find(m => m.proyecto === proy && m.piso === p && m.producto === prod); if (metaEsp) { metaTotal += metaEsp.cantidad_esperada; } else if (metaGral) { metaTotal += metaGral.cantidad_esperada; usoMetaGeneral = true; } }); }
-                if (metaTotal === 0) { document.getElementById('texto_progreso').innerHTML = "<span style='color:#ef4444;'>⚠️ No hay meta general registrada.</span>"; resetearBarra(); return; }
-                if (usoMetaGeneral && pisosActivos.length > 0) { mensajeAviso = `<br><span style="color:#3b82f6; font-size:11px;">*Meta dinámica: Base multiplicada por los ${pisosActivos.length} pisos activos en fábrica.</span>`; }
-            } else {
-                let meta = window.metasCargadas.find(m => m.proyecto === proy && m.piso === piso && m.producto === prod);
-                if (!meta) { meta = window.metasCargadas.find(m => m.proyecto === proy && m.piso === "TODOS" && m.producto === prod); usoMetaGeneral = true; }
-                if(!meta) { document.getElementById('texto_progreso').innerHTML = "<span style='color:#ef4444;'>⚠️ No hay meta registrada para este piso.</span>"; resetearBarra(); return; }
-                metaTotal = meta.cantidad_esperada;
-                if (usoMetaGeneral) { mensajeAviso = `<br><span style="color:#3b82f6; font-size:11px;">*Usando la meta general (plantilla) para el piso ${pisoRaw}.</span>`; }
-            }
-            
-            let mueblesReales = window.mueblesCargados.filter(m => { let nombreArmado = m.bloque ? `${m.proyecto} - Bloque ${m.bloque}` : m.proyecto; return nombreArmado === proy && m.producto === prod; });
-            if(piso !== "TODOS") { mueblesReales = mueblesReales.filter(m => (m.piso || "").toUpperCase() === pisoRaw); }
-            
-            let terminadas = mueblesReales.filter(m => window.estadosFinales.includes(m.estado)).length; 
-            let bloqueadas = mueblesReales.filter(m => m.estado && m.estado.toLowerCase().includes('bloque')).length; 
-            let enProceso = mueblesReales.length - terminadas - bloqueadas;
-            
-            let totalReal = terminadas + enProceso + bloqueadas; 
-            let baseVisual = Math.max(metaTotal, totalReal); 
-            let faltantes = metaTotal - totalReal; if (faltantes < 0) faltantes = 0;
-            
-            document.getElementById('bar_verde').style.width = `${(terminadas / baseVisual) * 100}%`; document.getElementById('bar_verde').innerHTML = terminadas > 0 ? `${terminadas}` : '';
-            document.getElementById('bar_amarillo').style.width = `${(enProceso / baseVisual) * 100}%`; document.getElementById('bar_amarillo').innerHTML = enProceso > 0 ? `${enProceso}` : '';
-            document.getElementById('bar_rojo').style.width = `${(bloqueadas / baseVisual) * 100}%`; document.getElementById('bar_rojo').innerHTML = bloqueadas > 0 ? `${bloqueadas}` : '';
-            
-            let avisoSobreproduccion = totalReal > metaTotal ? `<span style="color:#ef4444; margin-left:10px;">(¡Sobreproducción: +${totalReal - metaTotal}!)</span>` : '';
-            
-            document.getElementById('texto_progreso').innerHTML = `<span style="min-width:150px;">Meta Base: ${metaTotal} unds. ${avisoSobreproduccion}</span> <span style="color:#10b981;">✅ ${terminadas} Completadas</span> <span style="color:#f59e0b;">⏳ ${enProceso} En Planta</span> <span style="color:#94a3b8;">⚪ ${faltantes} Sin Ingresar</span> ${mensajeAviso}`;
-        }
-
-        function resetearBarra() { document.getElementById('bar_verde').style.width = `0%`; document.getElementById('bar_verde').innerHTML = ''; document.getElementById('bar_amarillo').style.width = `0%`; document.getElementById('bar_amarillo').innerHTML = ''; document.getElementById('bar_rojo').style.width = `0%`; document.getElementById('bar_rojo').innerHTML = ''; }
         function animarContador(idElemento, valorFinal) { let actual = 0; const elemento = document.getElementById(idElemento); const incremento = Math.max(1, Math.floor(valorFinal / 20)); const intervalo = setInterval(() => { actual += incremento; if (actual >= valorFinal) { actual = valorFinal; clearInterval(intervalo); } elemento.innerText = actual; }, 30); }
         function dibujarGraficaEstados(datos) { const ctx = document.getElementById('chartEstados').getContext('2d'); if (myChartEstados) myChartEstados.destroy(); const etiquetas = Object.keys(datos); const valores = Object.values(datos); const colores = ['#94a3b8', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#14b8a6']; myChartEstados = new Chart(ctx, { type: 'doughnut', data: { labels: etiquetas, datasets: [{ data: valores, backgroundColor: colores.slice(0, etiquetas.length), borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { boxWidth: 15, font: { size: 11 } } } }, cutout: '60%' } }); }
         function dibujarGraficaProyectos(datos, diccionarioColores) { const ctx = document.getElementById('chartProyectos').getContext('2d'); if (myChartProyectos) myChartProyectos.destroy(); const etiquetas = Object.keys(datos); const valores = Object.values(datos); const coloresBarra = etiquetas.map(lbl => diccionarioColores[lbl] || '#3b82f6'); myChartProyectos = new Chart(ctx, { type: 'bar', data: { labels: etiquetas, datasets: [{ label: 'Cant. de Muebles', data: valores, backgroundColor: coloresBarra, borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } }, x: { grid: { display: false } } } } }); }
