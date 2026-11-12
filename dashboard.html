@@ -999,7 +999,6 @@
             let hasta = parseInt(pisoHastaRaw);
             let rangoPisos = [];
             
-            // Determinar Rango de Pisos (Numérico)
             if (!isNaN(desde) && !isNaN(hasta) && hasta >= desde) {
                 for(let i = desde; i <= hasta; i++) rangoPisos.push(i);
             } else if (!isNaN(desde)) {
@@ -1008,13 +1007,11 @@
 
             let metaTotal = 0;
             
-            // Filtramos los muebles reales cargados en el sistema
             let mueblesReales = window.mueblesCargados.filter(m => { 
                 let nombreArmado = m.bloque ? `${m.proyecto} - Bloque ${m.bloque}` : m.proyecto; 
                 return nombreArmado === proy && m.producto === prod; 
             });
 
-            // Si hay rango numérico, filtramos los reales
             if (rangoPisos.length > 0) {
                 mueblesReales = mueblesReales.filter(m => {
                     let p = parseInt(m.piso);
@@ -1022,7 +1019,6 @@
                 });
             }
 
-            // Calculamos Meta Total de la Plantilla Matriz
             if (rangoPisos.length > 0) {
                 rangoPisos.forEach(pisoNum => {
                     let metaPiso = window.metasCargadas.find(m => m.proyecto === proy && m.piso === String(pisoNum) && m.producto === prod);
@@ -1034,7 +1030,6 @@
                     }
                 });
             } else {
-                // Si está vacío (Calculamos todos los pisos activos)
                 let metaGral = window.metasCargadas.find(m => m.proyecto === proy && m.piso === "TODOS" && m.producto === prod);
                 let pisosActivos = [...new Set(mueblesReales.map(m => String(m.piso).toUpperCase()))];
                 
@@ -1049,7 +1044,6 @@
                 }
             }
 
-            // Conteo Real (Los estados del gráfico de anillo)
             let terminadas = mueblesReales.filter(m => window.estadosFinales.includes(m.estado)).length; 
             let bloqueadas = mueblesReales.filter(m => m.estado && m.estado.toLowerCase().includes('bloque')).length; 
             let porDigitalizar = mueblesReales.filter(m => m.estado && m.estado.toLowerCase() === 'por digitalizar').length; 
@@ -1058,23 +1052,24 @@
             let totalReal = terminadas + enProceso + porDigitalizar + bloqueadas; 
             let faltantes = metaTotal - totalReal; 
             
-            // Si el total real superó la meta teórica, Faltantes no puede ser negativo
             if (faltantes < 0) faltantes = 0;
 
             let avisoSobreproduccion = totalReal > metaTotal ? `<span style="color:#ef4444; font-weight:bold; font-size:12px; margin-top:10px; display:block;">⚠️ ¡Sobreproducción! (+${totalReal - metaTotal} piezas detectadas)</span>` : '';
             let txtRango = rangoPisos.length > 0 ? `(Piso ${rangoPisos[0]} ${rangoPisos.length>1 ? 'al '+rangoPisos[rangoPisos.length-1] : ''})` : '(Todos los pisos)';
 
-            // Renderizar Leyenda Personalizada
+            // NUEVA LÓGICA DE TEXTOS (RESUMEN EJECUTIVO LIMPIO)
+            let universo = Math.max(metaTotal, totalReal);
+            let faltaPorEnviar = universo - terminadas;
+
             document.getElementById('texto_progreso').innerHTML = `
-                <div style="font-size: 15px; font-weight: bold; margin-bottom:12px; color:#1e293b;">Universo Total ${txtRango}: ${Math.max(metaTotal, totalReal)} Piezas</div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; font-size:13px;">
-                    <div><span style="display:inline-block; width:12px; height:12px; background:#10b981; border-radius:3px;"></span> Terminados: <b>${terminadas}</b></div>
-                    <div><span style="display:inline-block; width:12px; height:12px; background:#f59e0b; border-radius:3px;"></span> En Proceso: <b>${enProceso}</b></div>
-                    <div><span style="display:inline-block; width:12px; height:12px; background:#8b5cf6; border-radius:3px;"></span> Por Digitalizar: <b>${porDigitalizar}</b></div>
-                    <div><span style="display:inline-block; width:12px; height:12px; background:#ef4444; border-radius:3px;"></span> Bloqueados: <b>${bloqueadas}</b></div>
-                    
-                    <div style="grid-column: span 2; margin-top:8px; padding-top:8px; border-top:1px solid #cbd5e1;">
-                        <span style="display:inline-block; width:12px; height:12px; background:#94a3b8; border-radius:3px; margin-right:5px;"></span> Falta Ingresar (Fantasmas): <b>${faltantes}</b>
+                <div style="font-size: 15px; font-weight: bold; margin-bottom:15px; color:#1e293b;">
+                    🎯 Universo Total ${txtRango}: <span style="color:#3b82f6;">${universo} Piezas</span>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:12px; font-size:14px; color:#475569;">
+                    <div>👻 Falta Ingresar (Fantasmas): <b style="color:#64748b;">${faltantes} Piezas</b></div>
+                    <div style="padding-top:10px; border-top:1px solid #e2e8f0;">
+                        🚚 Falta por Enviar (Brecha): <b style="color:#ef4444; font-size:15px;">${faltaPorEnviar} Piezas</b>
+                        <br><small style="font-size:11px; color:#94a3b8; font-weight:normal;">*Suma de fantasmas y piezas en planta (en proceso, bloqueos, por digitalizar).</small>
                     </div>
                 </div>
                 ${avisoSobreproduccion}
@@ -1089,7 +1084,6 @@
             if(!ctx) return;
             if (myChartUniverso) myChartUniverso.destroy(); 
             
-            // Si todo está en 0, mostramos dona gris vacía
             if (!datosArray || datosArray.length === 0 || datosArray.reduce((a,b)=>a+b, 0) === 0) {
                 myChartUniverso = new Chart(ctx.getContext('2d'), { 
                     type: 'doughnut', 
@@ -1112,7 +1106,10 @@
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: false, 
-                    plugins: { legend: { display: false } }, 
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: { enabled: true } // Mantener tooltips activos para ver el detalle al posar el mouse
+                    }, 
                     cutout: '65%' 
                 } 
             }); 
@@ -1125,7 +1122,6 @@
             let pisoDesde = parseInt(document.getElementById('sel_piso_desde').value.trim());
             let pisoHasta = parseInt(document.getElementById('sel_piso_hasta').value.trim());
             
-            // Determinar si hay rango que aplicar también abajo
             let rangoPisos = [];
             if (!isNaN(pisoDesde) && !isNaN(pisoHasta) && pisoHasta >= pisoDesde) {
                 for(let i = pisoDesde; i <= pisoHasta; i++) rangoPisos.push(i);
