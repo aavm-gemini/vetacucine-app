@@ -32,6 +32,16 @@
         .form-group label { font-size: 12px; font-weight: bold; color: #475569; }
         .form-group select, .form-group input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; outline: none; transition: 0.2s; background: white; }
         .form-group input:focus, .form-group select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+        
+        /* FILTRO DE CHECKBOX MULTIPLE */
+        .dropdown-check-container { position: relative; width: 100%; }
+        .dropdown-check-btn { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; background: white; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .dropdown-check-btn.active { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+        .dropdown-check-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-top: 5px; max-height: 200px; overflow-y: auto; z-index: 100; display: none; }
+        .dropdown-check-list.show { display: block; }
+        .check-item { padding: 8px 12px; display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; transition: 0.2s; }
+        .check-item:hover { background: #f8fafc; }
+        .badge-seleccion { background: #3b82f6; color: white; font-size: 11px; padding: 2px 6px; border-radius: 10px; font-weight: bold; }
 
         /* --- MATRIZ (TABLA) --- */
         .matriz-container { background: white; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: hidden; flex: 1; display: flex; flex-direction: column; }
@@ -43,16 +53,23 @@
         .tabla-matriz th:first-child { position: sticky; left: 0; z-index: 3; background-color: #0f172a; min-width: 100px; text-align: left; padding-left: 15px; }
         .tabla-matriz td:first-child { position: sticky; left: 0; z-index: 1; background-color: #f8fafc; font-weight: bold; color: #1e293b; text-align: left; padding-left: 15px; border-right: 2px solid #cbd5e1; }
         
-        /* ESTILOS DE PÍLDORAS (CELDAS) */
+        /* ESTILOS DE PÍLDORAS (CELDAS) Y MICRO-ETIQUETAS */
         .celda-vacia { background-color: #f8fafc; color: #cbd5e1; }
+        .celda-blanca { background-color: white; padding: 5px; }
+        .multi-pildora-container { display: flex; flex-direction: column; gap: 4px; align-items: center; justify-content: center; }
         
         .pildora { display: inline-flex; align-items: center; justify-content: center; padding: 6px 10px; border-radius: 6px; font-weight: bold; font-size: 11px; cursor: pointer; transition: 0.2s; width: 90%; box-sizing: border-box; text-transform: uppercase; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .pildora:hover { transform: scale(1.05); filter: brightness(1.1); }
         
+        .micro-pildora { display: inline-flex; align-items: center; justify-content: center; padding: 4px 6px; border-radius: 4px; font-weight: bold; font-size: 10px; cursor: pointer; transition: 0.2s; width: 100%; box-sizing: border-box; box-shadow: 0 1px 2px rgba(0,0,0,0.05); gap: 4px; }
+        .micro-pildora:hover { transform: scale(1.03); filter: brightness(1.1); }
+
+        /* COLORES DE ESTADO (REDISEÑO CON "PAUSADO") */
         .estado-bloqueado { background-color: #ef4444; color: white; border: 1px solid #dc2626; }
         .estado-digitalizar { background-color: #8b5cf6; color: white; border: 1px solid #7c3aed; }
         .estado-proceso { background-color: #f59e0b; color: white; border: 1px solid #d97706; }
         .estado-terminado { background-color: #10b981; color: white; border: 1px solid #059669; }
+        .estado-pausado { background-color: #64748b; color: white; border: 1px solid #475569; } /* NUEVO */
         .estado-falta { background-color: #e2e8f0; color: #64748b; border: 1px dashed #94a3b8; }
 
         /* LEYENDA */
@@ -109,17 +126,27 @@
                     <label>Proyecto</label>
                     <select id="filtro_proyecto" onchange="verificarBloques(); autoGenerarMapa()"><option value="">Cargando...</option></select>
                 </div>
-                <!-- CAJÓN DE BLOQUES OCULTO POR DEFECTO -->
                 <div class="form-group" id="grupo_bloque" style="display: none; max-width: 130px;">
                     <label>Bloque / Torre</label>
                     <select id="filtro_bloque" onchange="autoGenerarMapa()">
                         <option value="">Seleccione...</option>
                     </select>
                 </div>
+                
+                <!-- NUEVO FILTRO MULTIPLE DE PRODUCTOS -->
                 <div class="form-group">
-                    <label>Producto</label>
-                    <select id="filtro_producto" onchange="autoGenerarMapa()"><option value="">Cargando...</option></select>
+                    <label>Producto(s)</label>
+                    <div class="dropdown-check-container" id="dropdown_productos">
+                        <div class="dropdown-check-btn" onclick="toggleDropdown()">
+                            <span id="texto_seleccion_productos">Seleccionar Productos</span> 
+                            <span>▼</span>
+                        </div>
+                        <div class="dropdown-check-list" id="lista_productos_chk">
+                            <div style="padding: 10px; font-size: 12px; color: #94a3b8;">Cargando productos...</div>
+                        </div>
+                    </div>
                 </div>
+
                 <div class="form-group" style="max-width: 150px;">
                     <label>Piso</label>
                     <input type="text" id="filtro_piso" placeholder="Ej: 4" style="text-transform:uppercase;" oninput="autoGenerarMapa()">
@@ -135,6 +162,7 @@
                 </div>
                 <div class="leyenda">
                     <div class="ley-item"><div class="ley-color" style="background:#ef4444;"></div> Bloqueado</div>
+                    <div class="ley-item"><div class="ley-color" style="background:#64748b;"></div> Pausado</div> <!-- NUEVO ESTADO -->
                     <div class="ley-item"><div class="ley-color" style="background:#8b5cf6;"></div> Por Digitalizar</div>
                     <div class="ley-item"><div class="ley-color" style="background:#f59e0b;"></div> En Proceso (Corte, CNC...)</div>
                     <div class="ley-item"><div class="ley-color" style="background:#10b981;"></div> Terminado (Enviado)</div>
@@ -154,6 +182,32 @@
         window.catalogoEspaciosGlobal = []; 
         window.proyectosGlobal = []; 
         let temporizadorMapa = null;
+
+        // UI DEL DROPDOWN MULTIPLE
+        function toggleDropdown() {
+            document.getElementById('lista_productos_chk').classList.toggle('show');
+            document.querySelector('.dropdown-check-btn').classList.toggle('active');
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!document.getElementById('dropdown_productos').contains(e.target)) {
+                document.getElementById('lista_productos_chk').classList.remove('show');
+                document.querySelector('.dropdown-check-btn').classList.remove('active');
+            }
+        });
+
+        function actualizarTextoSeleccion() {
+            const checkboxes = document.querySelectorAll('.chk-prod:checked');
+            const btnTexto = document.getElementById('texto_seleccion_productos');
+            if (checkboxes.length === 0) {
+                btnTexto.innerText = "Seleccionar Productos";
+            } else if (checkboxes.length === 1) {
+                btnTexto.innerHTML = `Producto: <b>${checkboxes[0].value}</b>`;
+            } else {
+                btnTexto.innerHTML = `${checkboxes.length} Seleccionados <span class="badge-seleccion">${checkboxes.length}</span>`;
+            }
+            autoGenerarMapa();
+        }
 
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -176,11 +230,17 @@
                 proy.forEach(p => selProy.innerHTML += `<option value="${p.nombre}">${p.nombre}</option>`);
             }
 
-            const { data: prod } = await supabaseClient.from('catalogo_productos').select('sigla').order('sigla');
+            const { data: prod } = await supabaseClient.from('catalogo_productos').select('sigla, nombre').order('sigla');
             if(prod) {
-                let selProd = document.getElementById('filtro_producto');
-                selProd.innerHTML = '<option value="">Seleccione Producto...</option>';
-                prod.forEach(p => selProd.innerHTML += `<option value="${p.sigla}">${p.sigla}</option>`);
+                let listProd = document.getElementById('lista_productos_chk');
+                listProd.innerHTML = '';
+                prod.forEach(p => {
+                    listProd.innerHTML += `
+                        <label class="check-item">
+                            <input type="checkbox" class="chk-prod" value="${p.sigla}" onchange="actualizarTextoSeleccion()">
+                            <b>${p.sigla}</b> - <span style="color:#64748b;">${p.nombre}</span>
+                        </label>`;
+                });
             }
         });
 
@@ -211,14 +271,14 @@
 
         function autoGenerarMapa() {
             const proyecto = document.getElementById('filtro_proyecto').value;
-            const producto = document.getElementById('filtro_producto').value;
+            const checkedProds = document.querySelectorAll('.chk-prod:checked');
             const pisoInput = document.getElementById('filtro_piso').value.trim();
             const bloqueSeleccionado = document.getElementById('filtro_bloque').value;
             const divBloqueVisible = document.getElementById('grupo_bloque').style.display === 'flex';
 
             clearTimeout(temporizadorMapa);
 
-            if (!proyecto || !producto || !pisoInput || (divBloqueVisible && !bloqueSeleccionado)) {
+            if (!proyecto || checkedProds.length === 0 || !pisoInput || (divBloqueVisible && !bloqueSeleccionado)) {
                 document.getElementById('tabla_matriz').innerHTML = `<thead><tr><th style="text-align:center; padding: 40px; color:#64748b;">Complete todos los filtros para generar el mapa.</th></tr></thead>`;
                 return;
             }
@@ -228,13 +288,17 @@
 
         async function generarMapa() {
             const proyecto = document.getElementById('filtro_proyecto').value;
-            const producto = document.getElementById('filtro_producto').value;
             const pisoInput = document.getElementById('filtro_piso').value.trim();
             const bloqueSeleccionado = document.getElementById('filtro_bloque').value;
+            
+            // Obtener array de productos seleccionados
+            const checkedProds = Array.from(document.querySelectorAll('.chk-prod:checked')).map(c => c.value);
+            const esMultiproducto = checkedProds.length > 1;
 
             Swal.fire({ title: 'Dibujando Mapa...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
-            const { data: plantillasDB, error: errPlan } = await supabaseClient.from('plantillas_matriz').select('*').eq('proyecto', proyecto).eq('producto', producto);
+            // 1. Obtener todas las plantillas correspondientes a los productos seleccionados
+            const { data: plantillasDB, error: errPlan } = await supabaseClient.from('plantillas_matriz').select('*').eq('proyecto', proyecto).in('producto', checkedProds);
             
             if (errPlan || !plantillasDB || plantillasDB.length === 0) {
                 document.getElementById('tabla_matriz').innerHTML = `<thead><tr><th style="padding:40px; color:#ef4444;">No hay plantillas creadas en el Administrador para esta combinación.</th></tr></thead>`;
@@ -253,10 +317,17 @@
                 return Swal.close();
             }
 
-            // ORDENAMIENTO NATURAL: Obliga a Javascript a leer "10" como el número diez y no como un texto que empieza con "1"
-            plantillas.sort((a, b) => a.suite.localeCompare(b.suite, undefined, { numeric: true, sensitivity: 'base' }));
+            // Agrupar plantillas por suite para saber qué espacios totales tiene una suite
+            let suitesAgrupadas = {};
+            plantillas.forEach(p => {
+                if (!suitesAgrupadas[p.suite]) suitesAgrupadas[p.suite] = [];
+                suitesAgrupadas[p.suite].push(p);
+            });
 
-            const { data: registros, error: errReg } = await supabaseClient.from('registros_produccion').select('id, codigo_proyecto, suite, piso, bloque, espacio, estado, producto').eq('proyecto', proyecto).eq('producto', producto);
+            let suitesOrdenadas = Object.keys(suitesAgrupadas).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+            // 2. Obtener los muebles reales
+            const { data: registros, error: errReg } = await supabaseClient.from('registros_produccion').select('id, codigo_proyecto, suite, piso, bloque, espacio, estado, producto').eq('proyecto', proyecto).in('producto', checkedProds);
             let mueblesReales = registros || [];
 
             let filterPiso = normalizeText(pisoInput);
@@ -271,6 +342,7 @@
                 mueblesReales = mueblesReales.filter(m => !m.bloque || m.bloque.trim() === '');
             }
 
+            // 3. Definir las columnas (Espacios Únicos de todas las plantillas)
             let espaciosSet = new Set();
             plantillas.forEach(p => {
                 let espaciosArr = p.espacios.split(',').map(e => e.trim());
@@ -278,46 +350,71 @@
             });
             let espaciosUnicos = Array.from(espaciosSet).sort();
 
+            // 4. Renderizar Tabla
             let tablaHTML = `<thead><tr><th>SUITE</th>`;
             espaciosUnicos.forEach(esp => { tablaHTML += `<th>${esp}</th>`; });
             tablaHTML += `</tr></thead><tbody>`;
 
-            plantillas.forEach(plan => {
-                tablaHTML += `<tr><td>${plan.suite}</td>`;
+            suitesOrdenadas.forEach(suiteNombre => {
+                tablaHTML += `<tr><td>${suiteNombre}</td>`;
                 
-                let espaciosDeEstaSuite = plan.espacios.split(',').map(e => normalizeText(e));
-                let strPlanSuite = normalizeText(plan.suite);
+                let plantillasDeEstaSuite = suitesAgrupadas[suiteNombre];
+                let strPlanSuite = normalizeText(suiteNombre);
 
                 espaciosUnicos.forEach(esp => {
                     let espPlan = normalizeText(esp);
+                    
+                    // Verificar qué productos de los seleccionados aplican para este espacio específico en esta suite
+                    let productosAplica = plantillasDeEstaSuite.filter(plan => {
+                        let espaciosArray = plan.espacios.split(',').map(e => normalizeText(e));
+                        return espaciosArray.includes(espPlan);
+                    });
 
-                    if (!espaciosDeEstaSuite.includes(espPlan)) {
+                    if (productosAplica.length === 0) {
                         tablaHTML += `<td class="celda-vacia"><span style="opacity:0.3;">---</span></td>`;
                     } else {
+                        // Encontramos que el espacio existe. Ahora a buscar sus piezas en la base de datos real.
                         let cat = window.catalogoEspaciosGlobal.find(e => normalizeText(e.nombre) === espPlan || normalizeText(e.sigla) === espPlan);
                         let siglaEsperada = cat ? normalizeText(cat.sigla) : espPlan;
                         let nombreEsperado = cat ? normalizeText(cat.nombre) : espPlan;
 
-                        let piezasEncontradas = mueblesReales.filter(m => {
-                            let strMuebleSuite = normalizeText(m.suite);
-                            let mEsp = normalizeText(m.espacio);
-                            
-                            let matchLugar = (strMuebleSuite === strPlanSuite);
-                            let matchEspacio = (mEsp === siglaEsperada || mEsp === nombreEsperado);
+                        let htmlCelda = "";
 
-                            if (!mEsp && (siglaEsperada === 'AC' || nombreEsperado.includes('COMUN') || nombreEsperado.includes('COMÚN'))) { matchEspacio = true; }
-                            return matchLugar && matchEspacio;
-                        });
-                        
-                        let celdaInfo = evaluarEstadoCelda(piezasEncontradas);
-                        
-                        if (celdaInfo.tipo === 'falta') {
-                            tablaHTML += `<td><div class="pildora estado-falta">Falta Ingresar</div></td>`;
+                        if (esMultiproducto) {
+                            // MODO VISIÓN RAYOS X (Contenedor Blanco + Micro-Etiquetas)
+                            htmlCelda = `<td class="celda-blanca"><div class="multi-pildora-container">`;
+                            
+                            productosAplica.forEach(plan => {
+                                let piezasEncontradas = buscarPiezasReales(mueblesReales, strPlanSuite, siglaEsperada, nombreEsperado, plan.producto);
+                                let celdaInfo = evaluarEstadoCelda(piezasEncontradas);
+                                let pisoMapeado = bloqueSeleccionado ? `${pisoInput} (Blq ${bloqueSeleccionado})` : pisoInput;
+                                
+                                if (celdaInfo.tipo === 'falta') {
+                                    htmlCelda += `<div class="micro-pildora estado-falta"><span>[${plan.producto}]</span> FALTA INGR.</div>`;
+                                } else {
+                                    let arrayIds = piezasEncontradas.map(p => p.id).join(',');
+                                    htmlCelda += `<div class="micro-pildora ${celdaInfo.clase_css}" onclick="verDetalles('${pisoMapeado}', '${suiteNombre}', '${esp}', '${arrayIds}')" title="Ver detalles ${plan.producto}"><span>[${plan.producto}]</span> ${celdaInfo.texto}</div>`;
+                                }
+                            });
+                            
+                            htmlCelda += `</div></td>`;
+                            
                         } else {
-                            let arrayIds = piezasEncontradas.map(p => p.id).join(',');
+                            // MODO VISIÓN LÁSER ORIGINAL (1 solo producto)
+                            let planUnico = productosAplica[0];
+                            let piezasEncontradas = buscarPiezasReales(mueblesReales, strPlanSuite, siglaEsperada, nombreEsperado, planUnico.producto);
+                            let celdaInfo = evaluarEstadoCelda(piezasEncontradas);
                             let pisoMapeado = bloqueSeleccionado ? `${pisoInput} (Blq ${bloqueSeleccionado})` : pisoInput;
-                            tablaHTML += `<td><div class="pildora ${celdaInfo.clase_css}" onclick="verDetalles('${pisoMapeado}', '${plan.suite}', '${esp}', '${arrayIds}')" title="Clic para ver detalles">${celdaInfo.texto}</div></td>`;
+
+                            if (celdaInfo.tipo === 'falta') {
+                                htmlCelda = `<td><div class="pildora estado-falta">Falta Ingresar</div></td>`;
+                            } else {
+                                let arrayIds = piezasEncontradas.map(p => p.id).join(',');
+                                htmlCelda = `<td><div class="pildora ${celdaInfo.clase_css}" onclick="verDetalles('${pisoMapeado}', '${suiteNombre}', '${esp}', '${arrayIds}')" title="Clic para ver detalles">${celdaInfo.texto}</div></td>`;
+                            }
                         }
+
+                        tablaHTML += htmlCelda;
                     }
                 });
                 tablaHTML += `</tr>`;
@@ -328,22 +425,41 @@
             Swal.close();
         }
 
+        // Función auxiliar para aislar la búsqueda de piezas
+        function buscarPiezasReales(mueblesReales, suitePlan, siglaEsp, nombreEsp, siglaProd) {
+            return mueblesReales.filter(m => {
+                let mSuite = normalizeText(m.suite);
+                let mEsp = normalizeText(m.espacio);
+                let matchLugar = (mSuite === suitePlan);
+                let matchEspacio = (mEsp === siglaEsp || mEsp === nombreEsp);
+
+                if (!mEsp && (siglaEsp === 'AC' || nombreEsp.includes('COMUN') || nombreEsp.includes('COMÚN'))) { matchEspacio = true; }
+                
+                return matchLugar && matchEspacio && (m.producto === siglaProd);
+            });
+        }
+
+        // SE AGREGA LA LÓGICA DEL ESTADO "PAUSADO"
         function evaluarEstadoCelda(piezas) {
             if (piezas.length === 0) return { tipo: 'falta' };
 
             let tieneBloqueo = false;
+            let tienePausado = false;
             let tieneDigitalizar = false;
             let tieneProceso = false;
             let todasTerminadas = true;
 
             piezas.forEach(p => {
                 let est = (p.estado || '').toLowerCase();
-                if (est.includes('bloque')) { tieneBloqueo = true; todasTerminadas = false; } 
+                
+                if (est.includes('bloque')) { tieneBloqueo = true; todasTerminadas = false; }
+                else if (est === 'pausado') { tienePausado = true; todasTerminadas = false; } 
                 else if (est === 'por digitalizar') { tieneDigitalizar = true; todasTerminadas = false; } 
                 else if (!estadosFinales.includes(p.estado)) { tieneProceso = true; todasTerminadas = false; }
             });
 
             if (tieneBloqueo) return { tipo: 'bloqueado', clase_css: 'estado-bloqueado', texto: 'Bloqueado' };
+            if (tienePausado) return { tipo: 'pausado', clase_css: 'estado-pausado', texto: 'Pausado' };
             if (tieneDigitalizar) return { tipo: 'digitalizar', clase_css: 'estado-digitalizar', texto: 'Por Dig.' };
             if (tieneProceso) return { tipo: 'proceso', clase_css: 'estado-proceso', texto: 'En Proceso' };
             if (todasTerminadas) return { tipo: 'terminado', clase_css: 'estado-terminado', texto: 'Terminado' };
@@ -374,7 +490,9 @@
 
             muebles.forEach(mueble => {
                 let estadoColor = mueble.estado.toLowerCase().includes('bloque') ? 'color:#ef4444;' : 'color:#10b981;';
-                htmlModal += `<div class="pieza-grupo"><div class="pieza-header"><span>Código: #${mueble.codigo_proyecto}</span><span style="${estadoColor}">Estado: ${mueble.estado}</span></div>`;
+                if(mueble.estado.toLowerCase() === 'pausado') estadoColor = 'color:#64748b;';
+                
+                htmlModal += `<div class="pieza-grupo"><div class="pieza-header"><span>Código: #${mueble.codigo_proyecto} (${mueble.producto})</span><span style="${estadoColor}">Estado: ${mueble.estado}</span></div>`;
 
                 let histMueble = (historiales || []).filter(h => String(h.id_mueble) === String(mueble.id));
                 
